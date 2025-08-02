@@ -5,9 +5,12 @@ import { useBranchStore } from '../../store/branchStore';
 export default function MenuTabs() {
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [isSticky, setIsSticky] = useState(false);
   const { activeCategory, activeSubcategory, setActiveCategory, setActiveSubcategory } = useMenuStore();
   const { branch } = useBranchStore(); 
   const categoriesContainerRef = useRef(null);
+  const menuTabsRef = useRef(null);
+  const menuTabsPositionRef = useRef(null);
 
   const getId = (idField) => {
     if (typeof idField === 'object' && idField !== null) {
@@ -26,6 +29,36 @@ export default function MenuTabs() {
       });
     }
   };
+
+  useEffect(() => {
+    // Store the original position of the menu tabs
+    const calculateMenuTabsPosition = () => {
+      if (menuTabsRef.current) {
+        menuTabsPositionRef.current = menuTabsRef.current.getBoundingClientRect().top + window.scrollY;
+      }
+    };
+
+    // Handle scroll event to set sticky state
+    const handleScroll = () => {
+      if (!menuTabsPositionRef.current) {
+        calculateMenuTabsPosition();
+      }
+
+      if (menuTabsPositionRef.current) {
+        setIsSticky(window.scrollY > menuTabsPositionRef.current);
+      }
+    };
+
+    // Calculate initial position after components are mounted
+    calculateMenuTabsPosition();
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', calculateMenuTabsPosition);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', calculateMenuTabsPosition);
+    };
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -105,118 +138,104 @@ export default function MenuTabs() {
     }
   }, [filteredSubcategories, setActiveSubcategory]);
 
+  // Add a placeholder div when menu is sticky to prevent page jump
+  const stickyPlaceholderHeight = isSticky ? 
+    (filteredSubcategories.length > 0 ? 'h-[107px]' : 'h-[56px]') : 'h-0';
+
   return (
     <>
-      <div className="bg-red-700 relative">
-        <div className="absolute right-4 top-[-29px] hidden md:flex items-center gap-[2px] z-10">
-          <button 
-            onClick={() => scrollCategories('left')} 
-            className="bg-red-700 rounded-full p-2 shadow-md focus:outline-none"
-            aria-label="Scroll left"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
+      {/* Placeholder to prevent content jump when menu becomes fixed */}
+      <div className={`${stickyPlaceholderHeight} transition-height duration-200 ${isSticky ? 'block' : 'hidden'}`}></div>
+      
+      <div 
+        ref={menuTabsRef}
+        className={`${
+          isSticky 
+            ? 'fixed top-0 left-0 right-0 z-50 shadow-md' 
+            : 'relative'
+        } transition-all duration-300 ease-in-out`}
+      >
+        <div className="bg-red-700">
+          <div className="absolute right-4 top-[-29px] hidden md:flex items-center gap-[2px] z-10">
+            <button 
+              onClick={() => scrollCategories('left')} 
+              className="bg-red-700 rounded-full p-2 shadow-md focus:outline-none"
+              aria-label="Scroll left"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button 
-            onClick={() => scrollCategories('right')} 
-            className="bg-red-700 rounded-full p-2 shadow-md focus:outline-none"
-            aria-label="Scroll right"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button 
+              onClick={() => scrollCategories('right')} 
+              className="bg-red-700 rounded-full p-2 shadow-md focus:outline-none"
+              aria-label="Scroll right"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            className="relative flex items-center overflow-x-auto py-3"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            }}
-            ref={categoriesContainerRef}
-          >
-            <style jsx>{`
-              .no-scroll::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
-            <div className="flex items-center gap-3 mx-auto no-scroll">
-              <button className="text-white shrink-0 focus:outline-none p-1">
-                <svg
-                  className="w-5 h-5 sm:w-6 sm:h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              {categories.map((cat) => {
-                const catId = getId(cat._id);
-                return (
-                  <button
-                    key={catId}
-                    onClick={() => {
-                      console.log('User selected active category:', catId);
-                      setActiveCategory(catId);
-                    }}
-                    className={
-                      activeCategory === catId
-                        ? 'bg-white text-black font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 shadow-sm'
-                        : 'border border-white text-white font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 hover:bg-white/10 transition-colors'
-                    }
-                  >
-                    {cat.name}
-                  </button>
-                );
-              })}
-            </div>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
-        </div>
-      </div>
-      {filteredSubcategories.length > 0 && (
-        <div className="bg-white py-4">
+
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div 
-              className="relative flex overflow-x-auto"
+            <div
+              className="relative flex items-center overflow-x-auto py-3"
               style={{
                 scrollbarWidth: 'none',
                 msOverflowStyle: 'none',
               }}
+              ref={categoriesContainerRef}
             >
-              <div className="flex items-center gap-3 sm:gap-4 mx-auto no-scroll">
-                {filteredSubcategories.map((sub) => {
-                  const subId = getId(sub._id);
+              <style jsx>{`
+                .no-scroll::-webkit-scrollbar {
+                  display: none;
+                }
+                
+                /* Add transition for height changes */
+                .transition-height {
+                  transition: height 0.3s ease-in-out;
+                }
+              `}</style>
+              <div className="flex items-center gap-3 mx-auto no-scroll">
+                <button className="text-white shrink-0 focus:outline-none p-1">
+                  <svg
+                    className="w-5 h-5 sm:w-6 sm:h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                {categories.map((cat) => {
+                  const catId = getId(cat._id);
                   return (
                     <button
-                      key={subId}
+                      key={catId}
                       onClick={() => {
-                        console.log('User selected active subcategory:', subId);
-                        setActiveSubcategory(subId);
+                        console.log('User selected active category:', catId);
+                        setActiveCategory(catId);
                       }}
-                      className={`${
-                        activeSubcategory === subId
-                          ? 'bg-black text-white hover:bg-gray-800'
-                          : 'border border-black text-black hover:bg-gray-50'
-                      } px-5 sm:px-6 py-1 rounded-2xl font-medium text-sm sm:text-[15px] transition-colors whitespace-nowrap shrink-0`}
+                      className={
+                        activeCategory === catId
+                          ? 'bg-white text-black font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 shadow-sm'
+                          : 'border border-white text-white font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 hover:bg-white/10 transition-colors'
+                      }
                     >
-                      {sub.name.toUpperCase()}
+                      {cat.name}
                     </button>
                   );
                 })}
@@ -224,7 +243,42 @@ export default function MenuTabs() {
             </div>
           </div>
         </div>
-      )}
+        {filteredSubcategories.length > 0 && (
+          <div className="bg-white py-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div 
+                className="relative flex overflow-x-auto"
+                style={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                }}
+              >
+                <div className="flex items-center gap-3 sm:gap-4 mx-auto no-scroll">
+                  {filteredSubcategories.map((sub) => {
+                    const subId = getId(sub._id);
+                    return (
+                      <button
+                        key={subId}
+                        onClick={() => {
+                          console.log('User selected active subcategory:', subId);
+                          setActiveSubcategory(subId);
+                        }}
+                        className={`${
+                          activeSubcategory === subId
+                            ? 'bg-black text-white hover:bg-gray-800'
+                            : 'border border-black text-black hover:bg-gray-50'
+                        } px-5 sm:px-6 py-1 rounded-2xl font-medium text-sm sm:text-[15px] transition-colors whitespace-nowrap shrink-0`}
+                      >
+                        {sub.name.toUpperCase()}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }
