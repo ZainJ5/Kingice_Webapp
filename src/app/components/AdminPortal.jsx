@@ -333,12 +333,12 @@ export default function AdminPortal({ onLogout }) {
   };
 
   const navigationItems = [
+    { id: "orders", label: "Orders Management", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
     { id: "branch", label: "Branch Management", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
     { id: "category", label: "Add Category", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
     { id: "subcategory", label: "Add Subcategory", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
     { id: "foodItem", label: "Add Food Item", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
-    { id: "orders", label: "Orders Management", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
-    { id: "userDetails", label: "User Management", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
+    { id: "userDetails", label: "Customers", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
     { id: "items", label: "Food Items", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
     { id: "allCategories", label: "Categories", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" },
     { id: "allSubcategories", label: "Subcategories", icon: "M4 6h16M4 10h16M4 14h16M4 18h16" },
