@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { FaCreditCard, FaMoneyBill, FaClock } from "react-icons/fa";
+import { FaCreditCard, FaMoneyBill, FaClock, FaTag, FaPercent } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useOrderTypeStore } from "../../store/orderTypeStore";
@@ -9,7 +9,7 @@ import { useBranchStore } from "../../store/branchStore";
 import DeliveryPickupModal from "../components/DeliveryPickupModal";
 import { useRouter } from "next/navigation";
 
-const MIN_ORDER_VALUE = 1; // In Pakistani Rupees
+const MIN_ORDER_VALUE = 1;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -32,6 +32,12 @@ export default function CheckoutPage() {
   const [pickupTime, setPickupTime] = useState("20"); 
   const [orderPlaced, setOrderPlaced] = useState(false);
   
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromoCode, setAppliedPromoCode] = useState(null);
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  
   const [discountPercentage, setDiscountPercentage] = useState(10);
   const [discountActive, setDiscountActive] = useState(true);
 
@@ -50,7 +56,20 @@ export default function CheckoutPage() {
   const subtotal = total;
   const tax = 0;
   const deliveryFee = orderType === "delivery" && selectedArea ? selectedArea.fee : 0;
-  const grandTotal = subtotal + tax + deliveryFee - appliedDiscount;
+  
+  const globalDiscount = discountActive ? Math.round(subtotal * (discountPercentage / 100)) : 0;
+  
+  useEffect(() => {
+    if (appliedPromoCode) {
+      const calculatedDiscount = Math.round(subtotal * (appliedPromoCode.discount / 100));
+      setPromoDiscount(calculatedDiscount);
+    } else {
+      setPromoDiscount(0);
+    }
+  }, [subtotal, appliedPromoCode]);
+  
+  const totalDiscount = globalDiscount + promoDiscount;
+  const grandTotal = Math.max(0, subtotal + tax + deliveryFee - totalDiscount);
 
   const easypaisaDetails = {
     title: "EasyPaisa Payment Details",
@@ -127,7 +146,6 @@ export default function CheckoutPage() {
         const res = await fetch("/api/delivery-areas");
         if (res.ok) {
           const data = await res.json();
-          // Filter to only show active delivery areas
           setDeliveryAreas(data.filter(area => area.isActive));
         } else {
           toast.error("Failed to fetch delivery areas. Please try again later.", {
@@ -149,12 +167,56 @@ export default function CheckoutPage() {
   }, [orderType]);
 
   useEffect(() => {
-    if (discountActive) {
-      setAppliedDiscount(subtotal * (discountPercentage / 100));
-    } else {
-      setAppliedDiscount(0);
+    setAppliedDiscount(totalDiscount);
+  }, [totalDiscount]);
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoError("Please enter a promo code");
+      return;
     }
-  }, [subtotal, discountPercentage, discountActive]);
+    
+    setPromoError("");
+    setIsApplyingPromo(true);
+    
+    try {
+      const res = await fetch(`/api/promocodes/verify?code=${promoCode.trim().toUpperCase()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAppliedPromoCode(data);
+        
+        const discountAmount = Math.round(subtotal * (data.discount / 100));
+        setPromoDiscount(discountAmount);
+        
+        toast.success(`Promo code ${data.code} applied successfully! Additional ${data.discount}% off`, {
+          style: { background: "#16a34a", color: "#ffffff" },
+        });
+        setPromoCode("");
+      } else {
+        const errorData = await res.json();
+        setPromoError(errorData.message || "Invalid promo code");
+        toast.error("Invalid promo code", {
+          style: { background: "#dc2626", color: "#ffffff" },
+        });
+      }
+    } catch (error) {
+      console.error("Error verifying promo code:", error);
+      setPromoError("Error verifying promo code. Please try again.");
+      toast.error("Error verifying promo code", {
+        style: { background: "#dc2626", color: "#ffffff" },
+      });
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setAppliedPromoCode(null);
+    setPromoDiscount(0);
+    toast.info("Promo code removed", {
+      style: { background: "#6b7280", color: "#ffffff" },
+    });
+  };
 
   const validateForm = () => {
     if (items.length === 0 && !orderPlaced) {
@@ -269,6 +331,14 @@ export default function CheckoutPage() {
         imageUrl: item.imageUrl || `/api/placeholder/100/100`,
       }));
       
+      const subtotalValue = Math.round(subtotal);
+      const taxValue = Math.round(tax);
+      const deliveryFeeValue = Math.round(deliveryFee);
+      const globalDiscountValue = Math.round(globalDiscount);
+      const promoDiscountValue = Math.round(promoDiscount);
+      const totalDiscountValue = Math.round(totalDiscount);
+      const grandTotalValue = Math.round(grandTotal);
+      
       const formData = new FormData();
       formData.append("fullName", fullName);
       formData.append("mobileNumber", mobileNumber);
@@ -288,12 +358,25 @@ export default function CheckoutPage() {
       formData.append("email", email);
       formData.append("paymentInstructions", paymentInstructions);
       formData.append("paymentMethod", paymentType);
-      formData.append("subtotal", subtotal.toString());
-      formData.append("tax", tax.toString());
-      formData.append("discount", appliedDiscount.toString());
-      formData.append("total", grandTotal.toString());
-      formData.append("discountPercentage", discountPercentage.toString());
-      formData.append("discountActive", discountActive ? "true" : "false");
+      
+      formData.append("subtotal", subtotalValue.toString());
+      formData.append("tax", taxValue.toString());
+      formData.append("discount", totalDiscountValue.toString());
+      formData.append("total", grandTotalValue.toString());
+      
+      formData.append("globalDiscountActive", discountActive ? "true" : "false");
+      formData.append("globalDiscountPercentage", discountPercentage.toString());
+      formData.append("globalDiscountAmount", globalDiscountValue.toString());
+      
+      if (appliedPromoCode) {
+        formData.append("promoCodeApplied", "true");
+        formData.append("promoCode", appliedPromoCode.code);
+        formData.append("promoDiscountPercentage", appliedPromoCode.discount.toString());
+        formData.append("promoDiscountAmount", promoDiscountValue.toString());
+      } else {
+        formData.append("promoCodeApplied", "false");
+      }
+      
       formData.append("isGift", isGift ? "true" : "false");
       formData.append("giftMessage", giftMessage);
       formData.append("items", JSON.stringify(orderItems));
@@ -342,11 +425,15 @@ export default function CheckoutPage() {
               ? "JazzCash"
               : "Bank Transfer"
             : undefined,
-        subtotal: subtotal,
-        deliveryFee: deliveryFee,
-        discount: appliedDiscount,
-        discountPercentage: discountActive ? discountPercentage : 0,
-        total: grandTotal,
+        subtotal: subtotalValue,
+        deliveryFee: deliveryFeeValue,
+        globalDiscount: globalDiscountValue,
+        promoDiscount: promoDiscountValue,
+        totalDiscount: totalDiscountValue,
+        promoCode: appliedPromoCode ? appliedPromoCode.code : null,
+        globalDiscountPercentage: discountActive ? discountPercentage : 0,
+        promoDiscountPercentage: appliedPromoCode ? appliedPromoCode.discount : 0,
+        total: grandTotalValue,
         items: orderItems,
       };
       
@@ -392,7 +479,9 @@ export default function CheckoutPage() {
     setOnlineOption(null);
     setIsGift(false);
     setGiftMessage("");
-    setAppliedDiscount(0);
+    setAppliedPromoCode(null);
+    setPromoDiscount(0);
+    setPromoCode("");
     setSelectedArea(null);
     setReceiptFile(null);
     setChangeRequest("");
@@ -670,6 +759,10 @@ export default function CheckoutPage() {
                       </button>
                       <button
                         type="button"
+                        // onClick={() => {
+                        //   setOnlineOption("jazzcash");
+                        //   setReceiptFile(null);
+                        // }}
                         className={`p-4 border rounded-md flex flex-col items-center justify-center space-y-2 ${
                           onlineOption === "jazzcash"
                             ? "border-blue-500 bg-blue-50"
@@ -681,6 +774,10 @@ export default function CheckoutPage() {
                       </button>
                       <button
                         type="button"
+                        // onClick={() => {
+                        //   setOnlineOption("bank_transfer");
+                        //   setReceiptFile(null);
+                        // }}
                         className={`p-4 border rounded-md flex flex-col items-center justify-center space-y-2 ${
                           onlineOption === "bank_transfer"
                             ? "border-red-500 bg-red-50"
@@ -819,7 +916,7 @@ export default function CheckoutPage() {
                 <span className="text-lg sm:text-xl font-semibold">Rs. {subtotal}</span>
               </div>
               {items.length > 0 ? (
-                <div className="mb-4 space-y-2">
+                <div className="mb-4 space-y-2 max-h-60 overflow-y-auto">
                   {items.map((item, index) => (
                     <div
                       key={`${item.id}-${index}`}
@@ -837,10 +934,76 @@ export default function CheckoutPage() {
                   Your cart is empty. Please add items to continue.
                 </div>
               )}
-              <div className="space-y-4 text-sm sm:text-base text-gray-600">
+              
+              <div className="mb-6 p-4 border border-gray-200 rounded-md bg-gray-50">
+                <div className="flex items-center mb-3">
+                  <FaTag className="text-red-500 mr-2" />
+                  <span className="font-medium">Promo Code</span>
+                </div>
+                {appliedPromoCode ? (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <span className="font-medium text-green-700">{appliedPromoCode.code}</span>
+                        <span className="ml-2 text-sm bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                          {appliedPromoCode.discount}% off
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemovePromoCode}
+                        className="text-sm text-red-600 hover:text-red-800 font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <p className="text-sm text-green-600 mt-2 flex items-center">
+                      <FaPercent className="mr-1" size={12} />
+                      <span>
+                        Additional {appliedPromoCode.discount}% off: Rs. {promoDiscount}
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        placeholder="Enter promo code"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPromoCode}
+                        disabled={isApplyingPromo || !promoCode.trim()}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center"
+                      >
+                        {isApplyingPromo ? (
+                          <span className="inline-block animate-pulse">Applying...</span>
+                        ) : (
+                          <span>Apply</span>
+                        )}
+                      </button>
+                    </div>
+                    {promoError && (
+                      <p className="text-xs text-red-500 mt-1">{promoError}</p>
+                    )}
+                    {discountActive && (
+                      <div className="mt-2 text-xs text-gray-600 bg-gray-100 p-2 rounded-md">
+                        <span className="font-medium">Note:</span> A global discount of {discountPercentage}% is already active.
+                        Promo codes will provide additional discounts!
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="space-y-3 text-sm sm:text-base text-gray-600 border-t border-b border-gray-200 py-4 mb-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>Rs. {subtotal}</span>
+                  <span>Rs. {subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (0%)</span>
@@ -849,25 +1012,52 @@ export default function CheckoutPage() {
                 {orderType === "delivery" && (
                   <div className="flex justify-between">
                     <span>Delivery Fee</span>
-                    <span>Rs. {deliveryFee}</span>
+                    <span>Rs. {deliveryFee.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-yellow-500">
-                  <span>Discount {discountActive ? `(${discountPercentage}%)` : '(0%)'}</span>
-                  <span>Rs. {appliedDiscount}</span>
-                </div>
+                
+                {discountActive && globalDiscount > 0 && (
+                  <div className="flex justify-between text-yellow-600 font-medium">
+                    <span>Global Discount ({discountPercentage}%)</span>
+                    <span>- Rs. {globalDiscount.toLocaleString()}</span>
+                  </div>
+                )}
+                
+                {appliedPromoCode && promoDiscount > 0 && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>Promo Discount ({appliedPromoCode.discount}%)</span>
+                    <span>- Rs. {promoDiscount.toLocaleString()}</span>
+                  </div>
+                )}
+
+                {totalDiscount > 0 && (
+                  <div className="flex justify-between text-red-600 font-bold">
+                    <span>Total Discount</span>
+                    <span>- Rs. {totalDiscount.toLocaleString()}</span>
+                  </div>
+                )}
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-200">
+              
+              <div className="mt-4">
                 <div className="flex justify-between text-base sm:text-lg font-semibold">
                   <span>Grand Total</span>
-                  <span>Rs. {grandTotal}</span>
+                  <span className="text-red-600">Rs. {grandTotal.toLocaleString()}</span>
                 </div>
+                {totalDiscount > 0 && (
+                  <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded-md text-center">
+                    <span className="font-medium">You saved Rs. {totalDiscount.toLocaleString()} on this order!</span>
+                    {discountActive && appliedPromoCode && (
+                      <p className="mt-1">Combined discounts: Global ({discountPercentage}%) + Promo ({appliedPromoCode.discount}%)</p>
+                    )}
+                  </div>
+                )}
                 {subtotal < MIN_ORDER_VALUE && (
                   <div className="mt-2 text-xs text-red-600">
                     Minimum order value is Rs. {MIN_ORDER_VALUE}. Please add more items.
                   </div>
                 )}
               </div>
+              
               <div className="mt-6">
                 <button
                   type="button"
@@ -875,13 +1065,23 @@ export default function CheckoutPage() {
                   disabled={isSubmitting || items.length === 0 || subtotal < MIN_ORDER_VALUE}
                   className="w-full mt-6 bg-red-600 text-white py-3 rounded-md hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "Placing Order..." : "Place Order"}
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Placing Order...
+                    </span>
+                  ) : (
+                    "Place Order"
+                  )}
                 </button>
                 <a
                   href="/"
                   className="block mt-4 text-center text-blue-500 hover:underline text-sm sm:text-base"
                 >
-                  ← continue to add more items
+                  ← Continue to add more items
                 </a>
               </div>
             </div>
