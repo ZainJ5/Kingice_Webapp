@@ -29,7 +29,6 @@ function OrderContent({ searchParams }) {
     }
   };
   
-  // Get timestamp for logo cache busting
   const getLogoTimestamp = () => {
     return logoData?.updatedAt ? new Date(logoData.updatedAt).getTime() : Date.now();
   };
@@ -99,6 +98,14 @@ function OrderContent({ searchParams }) {
     });
   };
 
+  // Function to safely get numeric values with fallback to prevent NaN
+  const safeGetNumber = (value, fallback = 0) => {
+    if (value === undefined || value === null) return fallback;
+    
+    const num = Number(value);
+    return isNaN(num) ? fallback : num;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -145,6 +152,21 @@ function OrderContent({ searchParams }) {
       </div>
     );
   }
+
+  // Calculate safe numeric values for the order summary
+  const subtotal = safeGetNumber(orderDetails.subtotal);
+  const deliveryFee = safeGetNumber(orderDetails.deliveryFee);
+  const total = safeGetNumber(orderDetails.total);
+  
+  // Calculate discount components
+  const globalDiscount = safeGetNumber(orderDetails.globalDiscount);
+  const promoDiscount = safeGetNumber(orderDetails.promoDiscount);
+  
+  // Calculate total discount (sum of global and promo discounts)
+  const totalDiscount = globalDiscount + promoDiscount;
+  
+  // If totalDiscount is still 0 but we have a discount field in orderDetails, use that
+  const displayDiscount = totalDiscount || safeGetNumber(orderDetails.discount) || safeGetNumber(orderDetails.totalDiscount);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -333,19 +355,19 @@ function OrderContent({ searchParams }) {
               <div className="space-y-2 text-sm text-black">
                 <div className="flex justify-between">
                   <span>SubTotal:</span>
-                  <span className="font-medium">Rs. {orderDetails.subtotal}</span>
+                  <span className="font-medium">Rs. {subtotal}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-green-600">
                   <span>Discount:</span>
-                  <span className="font-medium">- Rs. {parseInt(orderDetails.discount)}</span>
+                  <span className="font-medium">- Rs. {displayDiscount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Delivery Fee:</span>
-                  <span className="font-medium">Rs. {orderDetails.deliveryFee || 0}</span>
+                  <span className="font-medium">Rs. {deliveryFee}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t mt-2">
                   <span className="font-medium">Total:</span>
-                  <span className="font-bold">Rs. {orderDetails.total}</span>
+                  <span className="font-bold">Rs. {total}</span>
                 </div>
                 <div className="flex justify-between pt-2">
                   <span>Payment Status:</span>
@@ -361,6 +383,25 @@ function OrderContent({ searchParams }) {
                     <span>{orderDetails.bankName}</span>
                   </div>
                 )}
+
+                {/* Show discount breakdown */}
+                <div className="pt-2 border-t mt-2">
+                  <div className="text-sm font-medium mb-2">Discount Details:</div>
+                  
+                  {(globalDiscount > 0 || safeGetNumber(orderDetails.globalDiscountPercentage) > 0) && (
+                    <div className="flex justify-between text-gray-600">
+                      <span>Global Discount:</span>
+                      <span>{safeGetNumber(orderDetails.globalDiscountPercentage)}% (Rs. {globalDiscount})</span>
+                    </div>
+                  )}
+                  
+                  {orderDetails.promoCode && (
+                    <div className="flex justify-between text-gray-600">
+                      <span>Promo Code:</span>
+                      <span>{orderDetails.promoCode} ({safeGetNumber(orderDetails.promoDiscountPercentage)}% off)</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
