@@ -1,16 +1,16 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useMenuStore } from '../../store/menu';
-import { useBranchStore } from '../../store/branchStore';
+"use client";
 
-export default function MenuTabs() {
-  const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
+import { useState, useEffect, useRef } from 'react';
+import { useMenuStore } from '../../store/menu';
+
+export default function MenuTabs({ categories = [], visibleCategory }) {
   const [isSticky, setIsSticky] = useState(false);
-  const { activeCategory, activeSubcategory, setActiveCategory, setActiveSubcategory } = useMenuStore();
-  const { branch } = useBranchStore(); 
+  const [tabHeight, setTabHeight] = useState(0);
+  const { activeCategory, setActiveCategory } = useMenuStore();
   const categoriesContainerRef = useRef(null);
   const menuTabsRef = useRef(null);
-  const menuTabsPositionRef = useRef(null);
+  const originalPositionRef = useRef(null);
+  const ticking = useRef(false);
 
   const getId = (idField) => {
     if (typeof idField === 'object' && idField !== null) {
@@ -30,132 +30,107 @@ export default function MenuTabs() {
     }
   };
 
+  // Calculate and store the original position of the menu tabs and its height
+  const updateHeightAndPosition = () => {
+    if (menuTabsRef.current) {
+      setTabHeight(menuTabsRef.current.offsetHeight);
+      originalPositionRef.current = menuTabsRef.current.getBoundingClientRect().top + window.scrollY;
+    }
+  };
+
   useEffect(() => {
-    // Store the original position of the menu tabs
-    const calculateMenuTabsPosition = () => {
-      if (menuTabsRef.current) {
-        menuTabsPositionRef.current = menuTabsRef.current.getBoundingClientRect().top + window.scrollY;
-      }
-    };
+    // Calculate the initial position and height after component mounts
+    updateHeightAndPosition();
 
-    // Handle scroll event to set sticky state
+    // Enhanced scroll handler with better performance and accuracy
     const handleScroll = () => {
-      if (!menuTabsPositionRef.current) {
-        calculateMenuTabsPosition();
-      }
-
-      if (menuTabsPositionRef.current) {
-        setIsSticky(window.scrollY > menuTabsPositionRef.current);
+      if (!ticking.current && originalPositionRef.current !== null) {
+        window.requestAnimationFrame(() => {
+          // Compare current scroll position with original position
+          const shouldBeSticky = window.scrollY >= originalPositionRef.current;
+          
+          if (shouldBeSticky !== isSticky) {
+            setIsSticky(shouldBeSticky);
+          }
+          
+          ticking.current = false;
+        });
+        
+        ticking.current = true;
       }
     };
 
-    // Calculate initial position after components are mounted
-    calculateMenuTabsPosition();
-    window.addEventListener('scroll', handleScroll);
-    window.addEventListener('resize', calculateMenuTabsPosition);
+    // Recalculate position and height on resize
+    const handleResize = () => {
+      updateHeightAndPosition();
+      handleScroll(); // Check sticky state after recalculating
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    // Initial check
+    handleScroll();
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', calculateMenuTabsPosition);
+      window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [isSticky]);
+
+  const handleCategoryClick = (categoryId) => {
+    setActiveCategory(categoryId);
+    
+    const sectionElement = document.getElementById(`category-${categoryId}`);
+    if (sectionElement) {
+      const yOffset = -70; 
+      const y = sectionElement.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        console.log('Fetching categories. Branch:', branch);
-        const categoriesRes = await fetch('/api/categories');
-        const categoriesData = await categoriesRes.json();
-        console.log('Fetched categories:', categoriesData);
-
-        const filteredCategoriesData = categoriesData.filter((cat) => {
-          if (cat.branch) {
-            const catBranch = typeof cat.branch === 'object' ? getId(cat.branch) : cat.branch;
-            console.log(`Category "${cat.name}" branch:`, catBranch, 'Comparing with branch:', getId(branch));
-            return catBranch === getId(branch);
+    if (visibleCategory) {
+      const categoryId = getId(visibleCategory._id);
+      setActiveCategory(categoryId);
+      
+      if (categoriesContainerRef.current && isSticky) {
+        const activeButton = categoriesContainerRef.current.querySelector(`[data-category="${categoryId}"]`);
+        if (activeButton) {
+          const containerRect = categoriesContainerRef.current.getBoundingClientRect();
+          const buttonRect = activeButton.getBoundingClientRect();
+          
+          const isButtonVisible = 
+            buttonRect.left >= containerRect.left && 
+            buttonRect.right <= containerRect.right;
+            
+          if (!isButtonVisible) {
+            activeButton.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'nearest', 
+              inline: 'center' 
+            });
           }
-          console.log(`Category "${cat.name}" has no branch. Excluding.`);
-          return false;
-        });
-        console.log('Filtered categories:', filteredCategoriesData);
-        setCategories(filteredCategoriesData);
-        if (filteredCategoriesData.length > 0) {
-          const firstCatId = getId(filteredCategoriesData[0]._id);
-          console.log('Automatically setting active category to first button:', firstCatId);
-          setActiveCategory(firstCatId);
-        } else {
-          setActiveCategory(null);
         }
-
-        console.log('Fetching subcategories. Branch:', branch);
-        const subcategoriesRes = await fetch('/api/subcategories');
-        const subcategoriesData = await subcategoriesRes.json();
-        console.log('Fetched subcategories:', subcategoriesData);
-
-        const filteredSubcategoriesData = subcategoriesData.filter((sub) => {
-          if (sub.branch) {
-            const subBranch = typeof sub.branch === 'object' ? getId(sub.branch) : sub.branch;
-            console.log(`Subcategory "${sub.name}" branch:`, subBranch, 'Comparing with branch:', getId(branch));
-            return subBranch === getId(branch);
-          }
-          console.log(`Subcategory "${sub.name}" has no branch. Excluding.`);
-          return false;
-        });
-        console.log('Filtered subcategories by branch:', filteredSubcategoriesData);
-        setSubcategories(filteredSubcategoriesData);
-      } catch (error) {
-        console.error("Error fetching categories/subcategories:", error);
       }
     }
-    if (branch) {
-      fetchData();
-    }
-  }, [branch, setActiveCategory]);
-
-  const filteredSubcategories = useMemo(() => {
-    const filtered = subcategories.filter((sub) => {
-      let subCatId = null;
-      if (sub.category && typeof sub.category === 'object') {
-        subCatId = getId(sub.category);
-      } else {
-        subCatId = sub.category;
-      }
-      console.log(`Subcategory "${sub.name}" category id:`, subCatId, ' activeCategory:', activeCategory);
-      return subCatId === activeCategory;
-    });
-    console.log('Subcategories after filtering by active category:', filtered);
-    return filtered;
-  }, [activeCategory, subcategories]);
-
-  useEffect(() => {
-    if (filteredSubcategories.length > 0) {
-      const firstSubId = getId(filteredSubcategories[0]._id);
-      console.log('Setting active subcategory to:', firstSubId);
-      setActiveSubcategory(firstSubId);
-    } else {
-      console.log('No filtered subcategories found. Setting active subcategory to null.');
-      setActiveSubcategory(null);
-    }
-  }, [filteredSubcategories, setActiveSubcategory]);
-
-  // Add a placeholder div when menu is sticky to prevent page jump
-  const stickyPlaceholderHeight = isSticky ? 
-    (filteredSubcategories.length > 0 ? 'h-[107px]' : 'h-[56px]') : 'h-0';
+  }, [visibleCategory, setActiveCategory, isSticky]);
 
   return (
     <>
-      {/* Placeholder to prevent content jump when menu becomes fixed */}
-      <div className={`${stickyPlaceholderHeight} transition-height duration-200 ${isSticky ? 'block' : 'hidden'}`}></div>
+      {/* Placeholder to prevent content jump when menu becomes sticky */}
+      {isSticky && <div style={{ height: `${tabHeight}px` }}></div>}
       
       <div 
         ref={menuTabsRef}
-        className={`${
+        className={`bg-red-700 w-full ${
           isSticky 
-            ? 'fixed top-0 left-0 right-0 z-50 shadow-md' 
+            ? 'fixed top-0 left-0 right-0 z-[60] shadow-md' 
             : 'relative'
-        } transition-all duration-300 ease-in-out`}
+        } transition-transform duration-200 ease-in-out`}
       >
-        <div className="bg-red-700">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="absolute right-4 top-[-29px] hidden md:flex items-center gap-[2px] z-10">
             <button 
               onClick={() => scrollCategories('left')} 
@@ -189,95 +164,52 @@ export default function MenuTabs() {
             </button>
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div
-              className="relative flex items-center overflow-x-auto py-3"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-              }}
-              ref={categoriesContainerRef}
-            >
-              <style jsx>{`
-                .no-scroll::-webkit-scrollbar {
-                  display: none;
-                }
-                
-                /* Add transition for height changes */
-                .transition-height {
-                  transition: height 0.3s ease-in-out;
-                }
-              `}</style>
-              <div className="flex items-center gap-3 mx-auto no-scroll">
-                <button className="text-white shrink-0 focus:outline-none p-1">
-                  <svg
-                    className="w-5 h-5 sm:w-6 sm:h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
+          <div
+            className="relative flex items-center overflow-x-auto py-3 no-scrollbar"
+            ref={categoriesContainerRef}
+          >
+            <style jsx global>{`
+              .no-scrollbar::-webkit-scrollbar {
+                display: none;
+              }
+              .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+            `}</style>
+            
+            <div className="flex items-center gap-3 mx-auto">
+              <button className="text-white shrink-0 focus:outline-none p-1">
+                <svg
+                  className="w-5 h-5 sm:w-6 sm:h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              {categories.map((cat) => {
+                const catId = getId(cat._id);
+                return (
+                  <button
+                    key={catId}
+                    data-category={catId}
+                    onClick={() => handleCategoryClick(catId)}
+                    className={
+                      activeCategory === catId
+                        ? 'bg-white text-black font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 shadow-sm'
+                        : 'border border-white text-white font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 hover:bg-white/10 transition-colors'
+                    }
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-                {categories.map((cat) => {
-                  const catId = getId(cat._id);
-                  return (
-                    <button
-                      key={catId}
-                      onClick={() => {
-                        console.log('User selected active category:', catId);
-                        setActiveCategory(catId);
-                      }}
-                      className={
-                        activeCategory === catId
-                          ? 'bg-white text-black font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 shadow-sm'
-                          : 'border border-white text-white font-semibold px-4 py-1 rounded-lg whitespace-nowrap text-sm sm:text-base shrink-0 hover:bg-white/10 transition-colors'
-                      }
-                    >
-                      {cat.name}
-                    </button>
-                  );
-                })}
-              </div>
+                    {cat.name}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
-        {filteredSubcategories.length > 0 && (
-          <div className="bg-white py-4">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div 
-                className="relative flex overflow-x-auto"
-                style={{
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                }}
-              >
-                <div className="flex items-center gap-3 sm:gap-4 mx-auto no-scroll">
-                  {filteredSubcategories.map((sub) => {
-                    const subId = getId(sub._id);
-                    return (
-                      <button
-                        key={subId}
-                        onClick={() => {
-                          console.log('User selected active subcategory:', subId);
-                          setActiveSubcategory(subId);
-                        }}
-                        className={`${
-                          activeSubcategory === subId
-                            ? 'bg-black text-white hover:bg-gray-800'
-                            : 'border border-black text-black hover:bg-gray-50'
-                        } px-5 sm:px-6 py-1 rounded-2xl font-medium text-sm sm:text-[15px] transition-colors whitespace-nowrap shrink-0`}
-                      >
-                        {sub.name.toUpperCase()}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
