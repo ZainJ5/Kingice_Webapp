@@ -18,31 +18,25 @@ export default function MenuSection({ category, subcategories, items, onSectionV
     return idField;
   };
 
-  // Add cache buster to image URLs
   const getCacheBustedUrl = (url) => {
     if (!url) return "";
-    // Check if URL already has parameters
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}t=${Date.now()}`;
   };
 
-  // Check if category has subcategories with items
   const hasActiveSubcategories = subcategories && subcategories.length > 0 && 
     subcategories.some(sub => {
       return items.some(item => getId(item.subcategory) === getId(sub._id));
     });
 
-  // Count items for this category
   const itemCount = items.length;
 
-  // Set up global tracking of all active sections if it doesn't exist
   useEffect(() => {
     if (!window.menuSectionTracker) {
       window.menuSectionTracker = {
         sections: new Map(),
         activeId: null,
         updateActiveSection: function() {
-          // Calculate which section should be active based on all intersecting sections
           let bestSection = null;
           let bestScore = -1;
           
@@ -50,19 +44,12 @@ export default function MenuSection({ category, subcategories, items, onSectionV
             const { ratio, rect, timestamp } = sectionData;
             if (!ratio || ratio <= 0) return;
             
-            // Calculate score based on:
-            // 1. Intersection ratio
-            // 2. Proximity to the center of the viewport
-            // 3. Recency of intersection
-            
-            // How close the section is to the center of the viewport (0-1, where 1 is centered)
             const viewportHeight = window.innerHeight;
             const sectionCenter = rect.top + (rect.height / 2);
             const viewportCenter = viewportHeight / 2;
             const distanceFromCenter = Math.abs(sectionCenter - viewportCenter) / (viewportHeight / 2);
             const centeringFactor = 1 - Math.min(1, distanceFromCenter);
             
-            // Calculate overall score (intersection + centering + small recency bonus)
             const recencyBonus = (Date.now() - timestamp) < 500 ? 0.05 : 0;
             const score = (ratio * 0.6) + (centeringFactor * 0.4) + recencyBonus;
             
@@ -72,7 +59,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
             }
           });
           
-          // Only update if we found a section and it's different from current
           if (bestSection && bestSection.id !== this.activeId) {
             this.activeId = bestSection.id;
             if (bestSection.callback) {
@@ -84,20 +70,17 @@ export default function MenuSection({ category, subcategories, items, onSectionV
     }
   }, []);
 
-  // Improved intersection observer setup
   useEffect(() => {
     if (!sectionRef.current || !window.menuSectionTracker) return;
     
     const categoryId = getId(category._id);
     
-    // Callback when this category becomes active
     const activateCallback = (cat) => {
       setActiveCategory(categoryId);
       setActiveCategoryName(category.name);
       onSectionVisible(cat);
     };
     
-    // Register this section with the global tracker
     window.menuSectionTracker.sections.set(categoryId, {
       id: categoryId,
       category,
@@ -107,7 +90,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
       callback: activateCallback
     });
     
-    // Observer callback
     const observerCallback = (entries) => {
       entries.forEach(entry => {
         const tracker = window.menuSectionTracker;
@@ -116,26 +98,21 @@ export default function MenuSection({ category, subcategories, items, onSectionV
         const sectionData = tracker.sections.get(categoryId);
         if (!sectionData) return;
         
-        // Update section data with new intersection info
         sectionData.ratio = entry.isIntersecting ? entry.intersectionRatio : 0;
         sectionData.rect = entry.boundingClientRect;
         sectionData.timestamp = Date.now();
         
-        // If the section is not intersecting at all, it shouldn't be considered
         if (!entry.isIntersecting && tracker.activeId === categoryId) {
           sectionData.ratio = 0;
         }
         
-        // Recalculate the active section
         tracker.updateActiveSection();
       });
     };
     
-    // Create observer with appropriate thresholds
     const observer = new IntersectionObserver(
       observerCallback,
       {
-        // Use multiple thresholds for more precise measurement
         threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         rootMargin: '-10% 0px -20% 0px'
       }
@@ -148,7 +125,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
         observer.unobserve(sectionRef.current);
       }
       
-      // Clean up this section from the global tracker when unmounting
       if (window.menuSectionTracker) {
         window.menuSectionTracker.sections.delete(categoryId);
       }
@@ -162,7 +138,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
       className="pt-4 pb-8"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-16">
-        {/* Only show category banner if there are no subcategories */}
         {!hasActiveSubcategories && category.image && (
           <div className="relative w-full h-auto bg-gray-200 rounded-md overflow-hidden mb-6">
             <img 
@@ -179,7 +154,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
           </div>
         )}
         
-        {/* Display items organized by subcategories */}
         {hasActiveSubcategories ? (
           subcategories.map(subcategory => {
             const subcategoryItems = items.filter(item => 
@@ -194,7 +168,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
                 id={`subcategory-${getId(subcategory._id)}`} 
                 className="mb-12"
               >
-                {/* Show subcategory banner image if available */}
                 {subcategory.image && (
                   <div className="relative w-full h-auto bg-gray-200 rounded-md overflow-hidden mb-6">
                     <img 
@@ -224,7 +197,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
             );
           })
         ) : (
-          // Display items directly under category if no subcategories
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
             {items.map(item => (
               <MenuItemCard 
@@ -236,7 +208,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
           </div>
         )}
         
-        {/* Display items that don't belong to any subcategory */}
         {hasActiveSubcategories && (
           (() => {
             const uncategorizedItems = items.filter(item => 
@@ -266,7 +237,6 @@ export default function MenuSection({ category, subcategories, items, onSectionV
 }
 
 function MenuItemCard({ item, getCacheBustedUrl }) {
-  // MenuItemCard component remains the same as before
   const { addToCart } = useCartStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState("");
@@ -334,7 +304,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     setIsModalOpen(false);
   };
 
-  // Cache-busted image URL
   const imageUrl = item.imageUrl && item.imageUrl !== '' 
     ? getCacheBustedUrl(item.imageUrl)
     : '';

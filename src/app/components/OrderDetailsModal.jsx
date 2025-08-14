@@ -1,0 +1,391 @@
+import { Eye, Printer, CheckCircle, XCircle, Trash2 } from "lucide-react";
+
+const OrderDetailsSkeleton = () => (
+  <div className="animate-pulse space-y-4">
+    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+    <div className="h-4 bg-gray-200 rounded w-3/5"></div>
+    <div className="h-4 bg-gray-200 rounded w-2/5"></div>
+    <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+    <div className="mt-6">
+      <div className="h-5 bg-gray-200 rounded w-1/4 mb-3"></div>
+      <div className="space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-11/12"></div>
+        <div className="h-4 bg-gray-200 rounded w-10/12"></div>
+        <div className="h-4 bg-gray-200 rounded w-9/12"></div>
+      </div>
+    </div>
+    <div className="mt-6 space-y-2">
+      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+    </div>
+    <div className="h-4 bg-gray-200 rounded w-2/5 mt-4"></div>
+  </div>
+);
+
+export default function OrderDetailsModal({
+  selectedOrder,
+  modalLoading,
+  closeModal,
+  toggleCompletion,
+  deleteOrder,
+  printKitchenSlip,
+  printDeliveryPreBill,
+  printDeliveryPaymentReceipt,
+  openReceiptModal,
+  receiptModal,
+  closeReceiptModal,
+  getDeliveryFeeForArea,
+  extractValue,
+  parseItemName,
+  extractAreaFromAddress,
+}) {
+  if (!selectedOrder) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="bg-white rounded-lg shadow-lg relative max-w-lg w-full mx-4 max-h-[90vh] flex flex-col">
+          <div className="p-4 border-b flex justify-between items-center bg-red-600 text-white rounded-t-lg">
+            <h3 className="text-lg font-bold">Order Details</h3>
+            <button
+              onClick={closeModal}
+              className="text-white hover:text-gray-200"
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            {modalLoading ? (
+              <OrderDetailsSkeleton />
+            ) : (
+              <div className="space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Customer Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-sm text-gray-600">Full Name:</p>
+                      <p className="font-medium">{selectedOrder.fullName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Mobile Number:</p>
+                      <p className="font-medium">{selectedOrder.mobileNumber}</p>
+                    </div>
+                    {selectedOrder.alternateMobile && (
+                      <div>
+                        <p className="text-sm text-gray-600">Alternate Mobile:</p>
+                        <p className="font-medium">{selectedOrder.alternateMobile}</p>
+                      </div>
+                    )}
+                    {selectedOrder.email && (
+                      <div>
+                        <p className="text-sm text-gray-600">Email:</p>
+                        <p className="font-medium">{selectedOrder.email}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    Order Details
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-sm text-gray-600">Order Type:</p>
+                      <p className="font-medium capitalize">
+                        {selectedOrder.orderType || "Delivery"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Order Status:</p>
+                      <p className={`font-medium ${selectedOrder.isCompleted ? "text-green-600" : "text-red-600"}`}>
+                        {selectedOrder.isCompleted ? "Completed" : "Pending"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Payment Method:</p>
+                      <p className="font-medium">{selectedOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</p>
+                    </div>
+                    {selectedOrder.paymentMethod === "online" && selectedOrder.bankName && (
+                      <div>
+                        <p className="text-sm text-gray-600">Payment Platform:</p>
+                        <p className="font-medium">{selectedOrder.bankName}</p>
+                      </div>
+                    )}
+                    {selectedOrder.createdAt && (
+                      <div>
+                        <p className="text-sm text-gray-600">Order Date:</p>
+                        <p className="font-medium">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedOrder.orderType === "delivery" && selectedOrder.deliveryAddress && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Delivery Information
+                    </h4>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-600">Delivery Address:</p>
+                        <p className="font-medium">{selectedOrder.deliveryAddress}</p>
+                      </div>
+                      {selectedOrder.area && (
+                        <div>
+                          <p className="text-sm text-gray-600">Area:</p>
+                          <p className="font-medium">{selectedOrder.area}</p>
+                        </div>
+                      )}
+                      {selectedOrder.nearestLandmark && (
+                        <div>
+                          <p className="text-sm text-gray-600">Nearest Landmark:</p>
+                          <p className="font-medium">{selectedOrder.nearestLandmark}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedOrder.orderType === "pickup" && selectedOrder.pickupTime && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Pickup Information
+                    </h4>
+                    <div>
+                      <p className="text-sm text-gray-600">Pickup Time:</p>
+                      <p className="font-medium">{selectedOrder.pickupTime}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Items */}
+                {selectedOrder.items && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Order Items
+                    </h4>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead>
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                            <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedOrder.items.map((item, i) => {
+                            const { quantity, cleanName } = parseItemName(item.name);
+                            const price = extractValue(item.price) || 0;
+                            const total = price * quantity;
+
+                            return (
+                              <tr key={i}>
+                                <td className="px-3 py-2 text-sm text-gray-900">
+                                  <div className="font-medium">{cleanName}</div>
+                                  {item.type && <div className="text-xs text-gray-500">{item.type}</div>}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-gray-500 text-center">{quantity}</td>
+                                <td className="px-3 py-2 text-sm text-gray-500 text-right">Rs. {price}</td>
+                                <td className="px-3 py-2 text-sm font-medium text-gray-900 text-right">Rs. {total}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Payment Summary
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="font-medium">Rs. {extractValue(selectedOrder.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tax:</span>
+                      <span className="font-medium">Rs. {extractValue(selectedOrder.tax)}</span>
+                    </div>
+                    {selectedOrder.orderType === "delivery" && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Delivery Fee:</span>
+                        <span className="font-medium">
+                          Rs. {getDeliveryFeeForArea(selectedOrder.area || extractAreaFromAddress(selectedOrder.deliveryAddress))}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Discount:</span>
+                      <span className="font-medium text-yellow-600">Rs. {extractValue(selectedOrder.discount)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
+                      <span className="font-semibold">Total:</span>
+                      <span className="font-bold text-red-600">Rs. {extractValue(selectedOrder.total)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {selectedOrder.paymentInstructions && (
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Payment Instructions:</p>
+                      <p className="text-sm bg-yellow-50 p-2 rounded border border-yellow-100">
+                        {selectedOrder.paymentInstructions}
+                      </p>
+                    </div>
+                  )}
+                  {selectedOrder.changeRequest && (
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Change Request:</p>
+                      <p className="text-sm">Rs. {selectedOrder.changeRequest}</p>
+                    </div>
+                  )}
+                  {selectedOrder.isGift && selectedOrder.giftMessage && (
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Gift Message:</p>
+                      <p className="text-sm bg-pink-50 p-2 rounded border border-pink-100">
+                        {selectedOrder.giftMessage}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedOrder.paymentMethod === "online" && selectedOrder.receiptImageUrl && (
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium mb-1">Payment Receipt:</p>
+                      <div className="mt-1">
+                        <img
+                          src={selectedOrder.receiptImageUrl}
+                          alt="Payment Receipt"
+                          className="max-w-full h-auto max-h-60 border rounded cursor-pointer hover:opacity-90"
+                          onClick={() => openReceiptModal(selectedOrder.receiptImageUrl)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 border-t">
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2 text-gray-700">Print Options:</h4>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => printKitchenSlip(selectedOrder)}
+                  className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition flex items-center"
+                >
+                  <Printer className="h-4 w-4 mr-1" />
+                  Kitchen Slip
+                </button>
+                <button
+                  onClick={() => printDeliveryPreBill(selectedOrder)}
+                  className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition flex items-center"
+                >
+                  <Printer className="h-4 w-4 mr-1" />
+                  Pre-Bill
+                </button>
+                <button
+                  onClick={() => printDeliveryPaymentReceipt(selectedOrder)}
+                  className="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition flex items-center"
+                >
+                  <Printer className="h-4 w-4 mr-1" />
+                  Payment Receipt
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium mb-2 text-gray-700">Order Actions:</h4>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => toggleCompletion(String(extractValue(selectedOrder._id)), selectedOrder.isCompleted)}
+                  className={`px-3 py-2 text-sm rounded flex items-center ${
+                    selectedOrder.isCompleted
+                      ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                      : "bg-green-600 hover:bg-green-700 text-white"
+                  }`}
+                >
+                  {selectedOrder.isCompleted ? (
+                    <>
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Mark as Pending
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Mark as Completed
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => deleteOrder(String(extractValue(selectedOrder._id)))}
+                  className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition flex items-center"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete Order
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {receiptModal.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
+          <div className="relative max-w-3xl w-full mx-4">
+            <button
+              onClick={closeReceiptModal}
+              className="absolute top-2 right-2 bg-white rounded-full p-1 text-gray-800 hover:text-gray-600 focus:outline-none"
+              aria-label="Close receipt view"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              src={receiptModal.imageUrl}
+              alt="Payment Receipt"
+              className="max-w-full max-h-[85vh] mx-auto object-contain"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
