@@ -24,6 +24,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const dateFilter = searchParams.get('dateFilter') || 'all';
     const typeFilter = searchParams.get('typeFilter') || 'all';
+    const statusFilter = searchParams.get('statusFilter') || 'all';
     const customDate = searchParams.get('customDate') || '';
     
     const skip = (page - 1) * limit;
@@ -57,12 +58,20 @@ export async function GET(request) {
       filter.orderType = 'delivery';
     }
 
+    if (statusFilter !== 'all') {
+      filter.status = statusFilter;
+    }
+
     const listFields = {
+      orderNo: 1,
       fullName: 1, 
       mobileNumber: 1, 
       orderType: 1, 
       total: 1, 
       isCompleted: 1,
+      status: 1,
+      paymentMethod: 1,
+      branch: 1,
       createdAt: 1
     };
     
@@ -73,12 +82,13 @@ export async function GET(request) {
       .sort({ createdAt: -1 }) 
       .skip(skip)
       .limit(limit)
+      .populate('branch', 'name')
       .lean(); 
     
     const totalPages = Math.ceil(totalCount / limit);
     
     const headers = {
-      'Cache-Control': 'private, max-age=30' // Cache for 30 seconds
+      'Cache-Control': 'private, max-age=30' 
     };
     
     return NextResponse.json({

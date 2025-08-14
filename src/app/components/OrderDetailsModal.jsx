@@ -1,4 +1,5 @@
-import { Eye, Printer, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, Printer, CheckCircle, XCircle, Trash2, Save } from "lucide-react";
 
 const OrderDetailsSkeleton = () => (
   <div className="animate-pulse space-y-4">
@@ -30,7 +31,7 @@ export default function OrderDetailsModal({
   selectedOrder,
   modalLoading,
   closeModal,
-  toggleCompletion,
+  updateOrderStatus,
   deleteOrder,
   printKitchenSlip,
   printDeliveryPreBill,
@@ -43,14 +44,83 @@ export default function OrderDetailsModal({
   parseItemName,
   extractAreaFromAddress,
 }) {
+  const [status, setStatus] = useState("");
+  const [riderName, setRiderName] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [area, setArea] = useState("");
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setStatus(selectedOrder.status || "Pending");
+      setRiderName(selectedOrder.riderName || "");
+      setCancelReason(selectedOrder.cancelReason || "");
+      
+      const extractedArea = selectedOrder.area || 
+        (selectedOrder.deliveryAddress ? extractAreaFromAddress(selectedOrder.deliveryAddress) : null);
+      
+      setArea(extractedArea || "");
+    }
+  }, [selectedOrder, extractAreaFromAddress]);
+
   if (!selectedOrder) return null;
+
+const handleStatusUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      // Create update data object WITHOUT including _id
+      const updateData = { 
+        status
+      };
+      
+      if (status === "Dispatched") {
+        if (!riderName.trim()) {
+          alert("Rider name is required when status is Dispatched");
+          setIsUpdating(false);
+          return;
+        }
+        updateData.riderName = riderName;
+      }
+      
+      if (status === "Cancel") {
+        if (!cancelReason.trim()) {
+          alert("Cancel reason is required when status is Cancel");
+          setIsUpdating(false);
+          return;
+        }
+        updateData.cancelReason = cancelReason;
+      }
+      
+      // Use the ID in the URL path, not in the request body
+      await updateOrderStatus(selectedOrder._id, updateData);
+    } catch (error) {
+      console.error("Failed to update status:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const getStatusBadgeColor = (status) => {
+    switch(status) {
+      case "Pending": return "bg-yellow-100 text-yellow-800";
+      case "In-Process": return "bg-blue-100 text-blue-800";
+      case "Dispatched": return "bg-purple-100 text-purple-800";
+      case "Complete": return "bg-green-100 text-green-800";
+      case "Cancel": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Get delivery fee based on area
+  const deliveryFee = selectedOrder.orderType === 'delivery' && area ? 
+    getDeliveryFeeForArea(area) : 0;
 
   return (
     <>
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
         <div className="bg-white rounded-lg shadow-lg relative max-w-lg w-full mx-4 max-h-[90vh] flex flex-col">
           <div className="p-4 border-b flex justify-between items-center bg-red-600 text-white rounded-t-lg">
-            <h3 className="text-lg font-bold">Order Details</h3>
+            <h3 className="text-lg font-bold">Order #{selectedOrder.orderNo || "N/A"}</h3>
             <button
               onClick={closeModal}
               className="text-white hover:text-gray-200"
@@ -107,6 +177,10 @@ export default function OrderDetailsModal({
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
+                      <p className="text-sm text-gray-600">Order Number:</p>
+                      <p className="font-medium">king-{selectedOrder.orderNo}</p>
+                    </div>
+                    <div>
                       <p className="text-sm text-gray-600">Order Type:</p>
                       <p className="font-medium capitalize">
                         {selectedOrder.orderType || "Delivery"}
@@ -114,9 +188,9 @@ export default function OrderDetailsModal({
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Order Status:</p>
-                      <p className={`font-medium ${selectedOrder.isCompleted ? "text-green-600" : "text-red-600"}`}>
-                        {selectedOrder.isCompleted ? "Completed" : "Pending"}
-                      </p>
+                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.status)}`}>
+                        {selectedOrder.status || "Pending"}
+                      </span>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Payment Method:</p>
@@ -132,6 +206,18 @@ export default function OrderDetailsModal({
                       <div>
                         <p className="text-sm text-gray-600">Order Date:</p>
                         <p className="font-medium">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                      </div>
+                    )}
+                    {selectedOrder.status === "Dispatched" && selectedOrder.riderName && (
+                      <div>
+                        <p className="text-sm text-gray-600">Rider Name:</p>
+                        <p className="font-medium">{selectedOrder.riderName}</p>
+                      </div>
+                    )}
+                    {selectedOrder.status === "Cancel" && selectedOrder.cancelReason && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-600">Cancel Reason:</p>
+                        <p className="font-medium text-red-600">{selectedOrder.cancelReason}</p>
                       </div>
                     )}
                   </div>
@@ -151,12 +237,21 @@ export default function OrderDetailsModal({
                         <p className="text-sm text-gray-600">Delivery Address:</p>
                         <p className="font-medium">{selectedOrder.deliveryAddress}</p>
                       </div>
-                      {selectedOrder.area && (
-                        <div>
+                      
+                      {area && (
+                        <div className="flex flex-col">
                           <p className="text-sm text-gray-600">Area:</p>
-                          <p className="font-medium">{selectedOrder.area}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full font-medium">
+                              {area}
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              (Delivery Fee: Rs. {deliveryFee})
+                            </span>
+                          </div>
                         </div>
                       )}
+                      
                       {selectedOrder.nearestLandmark && (
                         <div>
                           <p className="text-sm text-gray-600">Nearest Landmark:</p>
@@ -182,7 +277,6 @@ export default function OrderDetailsModal({
                   </div>
                 )}
 
-                {/* Order Items */}
                 {selectedOrder.items && (
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
@@ -243,9 +337,9 @@ export default function OrderDetailsModal({
                     </div>
                     {selectedOrder.orderType === "delivery" && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Delivery Fee:</span>
+                        <span className="text-gray-600">Delivery Fee ({area}):</span>
                         <span className="font-medium">
-                          Rs. {getDeliveryFeeForArea(selectedOrder.area || extractAreaFromAddress(selectedOrder.deliveryAddress))}
+                          Rs. {deliveryFee}
                         </span>
                       </div>
                     )}
@@ -287,7 +381,7 @@ export default function OrderDetailsModal({
                   {selectedOrder.paymentMethod === "online" && selectedOrder.receiptImageUrl && (
                     <div>
                       <p className="text-sm text-gray-600 font-medium mb-1">Payment Receipt:</p>
-                      <div className="mt-1">
+                                            <div className="mt-1">
                         <img
                           src={selectedOrder.receiptImageUrl}
                           alt="Payment Receipt"
@@ -297,6 +391,82 @@ export default function OrderDetailsModal({
                       </div>
                     </div>
                   )}
+                </div>
+                
+                {/* Status Update Section */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Update Order Status
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-600 block mb-1">Status:</label>
+                      <select 
+                        value={status} 
+                        onChange={(e) => setStatus(e.target.value)}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="In-Process">In-Process</option>
+                        <option value="Dispatched">Dispatched</option>
+                        <option value="Complete">Complete</option>
+                        <option value="Cancel">Cancel</option>
+                      </select>
+                    </div>
+                    
+                    {status === "Dispatched" && (
+                      <div>
+                        <label className="text-sm text-gray-600 block mb-1">Rider Name: <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          value={riderName} 
+                          onChange={(e) => setRiderName(e.target.value)}
+                          placeholder="Enter rider name"
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          required
+                        />
+                      </div>
+                    )}
+                    
+                    {status === "Cancel" && (
+                      <div>
+                        <label className="text-sm text-gray-600 block mb-1">Cancel Reason: <span className="text-red-500">*</span></label>
+                        <textarea 
+                          value={cancelReason} 
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          placeholder="Enter reason for cancellation"
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          rows="2"
+                          required
+                        ></textarea>
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={handleStatusUpdate}
+                      disabled={isUpdating}
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {isUpdating ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Update Status
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -333,26 +503,6 @@ export default function OrderDetailsModal({
             <div>
               <h4 className="text-sm font-medium mb-2 text-gray-700">Order Actions:</h4>
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => toggleCompletion(String(extractValue(selectedOrder._id)), selectedOrder.isCompleted)}
-                  className={`px-3 py-2 text-sm rounded flex items-center ${
-                    selectedOrder.isCompleted
-                      ? "bg-yellow-500 hover:bg-yellow-600 text-white"
-                      : "bg-green-600 hover:bg-green-700 text-white"
-                  }`}
-                >
-                  {selectedOrder.isCompleted ? (
-                    <>
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Mark as Pending
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Mark as Completed
-                    </>
-                  )}
-                </button>
                 <button
                   onClick={() => deleteOrder(String(extractValue(selectedOrder._id)))}
                   className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition flex items-center"

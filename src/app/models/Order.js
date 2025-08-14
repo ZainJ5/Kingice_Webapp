@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 
+const CounterSchema = new mongoose.Schema({
+  _id: { type: String, required: true },
+  seq: { type: Number, default: 0 }
+});
+
+const Counter = mongoose.models.Counter || mongoose.model('Counter', CounterSchema);
+
 const OrderItemSchema = new mongoose.Schema({
   id: { type: String, required: true },
   name: { type: String, required: true },
@@ -9,6 +16,7 @@ const OrderItemSchema = new mongoose.Schema({
 
 const OrderSchema = new mongoose.Schema(
   {
+    orderNo: { type: Number, unique: true },
     fullName: { type: String, required: true },
     mobileNumber: { type: String, required: true },
     alternateMobile: { type: String },
@@ -20,6 +28,13 @@ const OrderSchema = new mongoose.Schema(
     bankName: { type: String }, 
     receiptImageUrl: { type: String }, 
     changeRequest: { type: String },
+    status: { 
+      type: String, 
+      enum: ["Pending", "In-Process", "Dispatched", "Complete", "Cancel"],
+      default: "Pending"
+    },
+    riderName: { type: String }, 
+    cancelReason: { type: String }, 
     items: [OrderItemSchema],
     subtotal: { type: Number, required: true },
     tax: { type: Number, required: true },
@@ -38,5 +53,38 @@ const OrderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+OrderSchema.pre('save', async function(next) {
+  const doc = this;
+  
+  if (!doc.orderNo) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        { _id: 'orderNo' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      
+      doc.orderNo = counter.seq;
+      next();
+    } catch (error) {
+      return next(error);
+    }
+  } else {
+    next();
+  }
+});
+
+OrderSchema.path('status').validate(function(value) {
+  if (value === 'Dispatched' && !this.riderName) {
+    this.invalidate('riderName', 'Rider name is required when status is Dispatched');
+  }
+  
+  if (value === 'Cancel' && !this.cancelReason) {
+    this.invalidate('cancelReason', 'Cancel reason is required when status is Cancel');
+  }
+  
+  return true;
+});
 
 export default mongoose.models.Order || mongoose.model("Order", OrderSchema);

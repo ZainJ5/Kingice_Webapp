@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Eye, ChevronLeft, ChevronRight, Printer, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { Eye, ChevronLeft, ChevronRight, Printer, ArrowUpDown } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import OrderDetailsModal from "./OrderDetailsModal";
 
 import kitchenSlipTemplate from '../../templates/kitchen-slip';
@@ -71,7 +71,7 @@ const extractAreaFromAddress = (deliveryAddress) => {
 const TableRowSkeleton = () => (
   <tr className="animate-pulse">
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-8"></div></td>
-    <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+    <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
     <td className="p-2 border w-24"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
@@ -84,7 +84,6 @@ const TableRowSkeleton = () => (
 
 export default function OrderList() {
   const [orders, setOrders] = useState([]);
-  const [orderNumbers, setOrderNumbers] = useState({});
   const [loading, setLoading] = useState(true);
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -97,6 +96,7 @@ export default function OrderList() {
   const [dateFilter, setDateFilter] = useState("today");
   const [customDate, setCustomDate] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [pageCache, setPageCache] = useState({});
   const [cacheKey, setCacheKey] = useState("");
@@ -136,8 +136,8 @@ export default function OrderList() {
   }, [deliveryAreas]);
 
   const generateCacheKey = useCallback(() => {
-    return `${dateFilter}-${customDate || 'none'}-${typeFilter}`;
-  }, [dateFilter, customDate, typeFilter]);
+    return `${dateFilter}-${customDate || 'none'}-${typeFilter}-${statusFilter}`;
+  }, [dateFilter, customDate, typeFilter, statusFilter]);
 
   useEffect(() => {
     const newCacheKey = generateCacheKey();
@@ -146,7 +146,7 @@ export default function OrderList() {
       setCacheKey(newCacheKey);
       setCurrentPage(1);
     }
-  }, [dateFilter, customDate, typeFilter, cacheKey, generateCacheKey]);
+  }, [dateFilter, customDate, typeFilter, statusFilter, cacheKey, generateCacheKey]);
 
   useEffect(() => {
     if (latestOrder) {
@@ -172,7 +172,6 @@ export default function OrderList() {
       setOrders(cacheEntry.orders);
       setTotalOrders(cacheEntry.totalCount);
       setTotalPages(cacheEntry.totalPages);
-      setOrderNumbers(cacheEntry.orderNumbers);
       return;
     }
 
@@ -184,6 +183,10 @@ export default function OrderList() {
         dateFilter,
         typeFilter,
       });
+
+      if (statusFilter !== "all") {
+        params.append("statusFilter", statusFilter);
+      }
 
       if (dateFilter === "custom" && customDate) {
         params.append("customDate", customDate);
@@ -203,17 +206,9 @@ export default function OrderList() {
       const data = await res.json();
 
       if (data && Array.isArray(data.orders)) {
-        const mapping = {};
-        data.orders.forEach((order, index) => {
-          const idVal = String(extractValue(order._id));
-          const globalIndex = (page - 1) * ordersPerPage + index;
-          mapping[idVal] = "king-" + (globalIndex + 1).toString().padStart(3, "0");
-        });
-
         setOrders(data.orders);
         setTotalOrders(data.totalCount || data.orders.length);
         setTotalPages(data.totalPages || Math.ceil(data.totalCount / ordersPerPage));
-        setOrderNumbers(mapping);
 
         setPageCache(prev => ({
           ...prev,
@@ -221,7 +216,6 @@ export default function OrderList() {
             orders: data.orders,
             totalCount: data.totalCount || data.orders.length,
             totalPages: data.totalPages || Math.ceil(data.totalCount / ordersPerPage),
-            orderNumbers: mapping,
             timestamp: Date.now()
           }
         }));
@@ -243,7 +237,7 @@ export default function OrderList() {
     } finally {
       setLoading(false);
     }
-  }, [dateFilter, customDate, typeFilter, ordersPerPage, pageCache, generateCacheKey]);
+  }, [dateFilter, customDate, typeFilter, statusFilter, ordersPerPage, pageCache, generateCacheKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -278,27 +272,29 @@ export default function OrderList() {
     }
   }, [orderDetailsCache]);
 
-  const toggleCompletion = useCallback(async (orderId, currentStatus) => {
+  const updateOrderStatus = useCallback(async (orderId, updateData) => {
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isCompleted: !currentStatus }),
+        body: JSON.stringify(updateData),
       });
 
       if (!res.ok) {
-        console.error("Failed to update order completion");
-        return;
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update order (Status: ${res.status})`);
       }
 
       const updatedOrder = await res.json();
 
+      // Update orders in the current view
       setOrders(prev =>
         prev.map(order =>
           String(extractValue(order._id)) === orderId ? updatedOrder : order
         )
       );
 
+      // Update cache
       setPageCache(prevCache => {
         const updatedCache = { ...prevCache };
 
@@ -313,20 +309,31 @@ export default function OrderList() {
         return updatedCache;
       });
 
+      // Update order details cache
       setOrderDetailsCache(prev => ({
         ...prev,
         [orderId]: updatedOrder
       }));
 
+      // Update selected order if it's the current one
       if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
         setSelectedOrder(updatedOrder);
       }
+
+      toast.success("Order status updated successfully");
+      return updatedOrder;
     } catch (error) {
       console.error("Error updating order:", error);
+      toast.error(error.message || "Failed to update order status");
+      throw error;
     }
   }, [selectedOrder]);
 
   const deleteOrder = useCallback(async (orderId) => {
+    if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
+      return;
+    }
+    
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "DELETE",
@@ -334,6 +341,7 @@ export default function OrderList() {
 
       if (!res.ok) {
         console.error("Failed to delete order. Status:", res.status);
+        toast.error("Failed to delete order");
         return;
       }
 
@@ -374,8 +382,11 @@ export default function OrderList() {
       if (currentPage > newTotalPages && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       }
+
+      toast.success("Order deleted successfully");
     } catch (error) {
       console.error("Error deleting order:", error);
+      toast.error("Error deleting order");
     }
   }, [selectedOrder, totalOrders, currentPage, ordersPerPage]);
 
@@ -453,8 +464,7 @@ export default function OrderList() {
       orderToPrint = fullOrder;
     }
 
-    const idVal = String(extractValue(orderToPrint._id));
-    const orderNumber = orderNumbers[idVal] || `king-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`;
+    const orderNumber = orderToPrint.orderNo || "N/A";
     const ticketNumber = Math.floor(10000 + Math.random() * 90000);
     const currentDate = new Date().toLocaleDateString();
     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -488,7 +498,7 @@ export default function OrderList() {
 
     newWindow.document.write(htmlContent);
     newWindow.document.close();
-  }, [fetchOrderDetails, orderNumbers]);
+  }, [fetchOrderDetails]);
 
   const printDeliveryPreBill = useCallback(async (order) => {
     let orderToPrint = order;
@@ -502,8 +512,7 @@ export default function OrderList() {
       orderToPrint = fullOrder;
     }
 
-    const idVal = String(extractValue(orderToPrint._id));
-    const orderNumber = orderNumbers[idVal] || `king-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`;
+    const orderNumber = orderToPrint.orderNo || "N/A";
     const currentDate = new Date().toLocaleDateString();
     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
@@ -563,7 +572,7 @@ export default function OrderList() {
 
     newWindow.document.write(htmlContent);
     newWindow.document.close();
-  }, [fetchOrderDetails, orderNumbers, getDeliveryFeeForArea]);
+  }, [fetchOrderDetails, getDeliveryFeeForArea]);
 
   const printDeliveryPaymentReceipt = useCallback(async (order) => {
     let orderToPrint = order;
@@ -577,8 +586,7 @@ export default function OrderList() {
       orderToPrint = fullOrder;
     }
 
-    const idVal = String(extractValue(orderToPrint._id));
-    const orderNumber = orderNumbers[idVal] || `king-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`;
+    const orderNumber = orderToPrint.orderNo || "N/A";
     const currentDate = new Date().toLocaleDateString();
     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
@@ -636,7 +644,7 @@ export default function OrderList() {
 
     newWindow.document.write(htmlContent);
     newWindow.document.close();
-  }, [fetchOrderDetails, orderNumbers, getDeliveryFeeForArea]);
+  }, [fetchOrderDetails, getDeliveryFeeForArea]);
 
   const printOrderDetails = useCallback(async (order) => {
     printDeliveryPaymentReceipt(order);
@@ -644,6 +652,17 @@ export default function OrderList() {
 
   const refreshOrders = () => {
     fetchOrders(currentPage, true);
+  };
+
+  const getStatusBadgeColor = (status) => {
+    switch(status) {
+      case "Pending": return "bg-yellow-100 text-yellow-800";
+      case "In-Process": return "bg-blue-100 text-blue-800";
+      case "Dispatched": return "bg-purple-100 text-purple-800";
+      case "Complete": return "bg-green-100 text-green-800";
+      case "Cancel": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
   };
 
   return (
@@ -662,10 +681,10 @@ export default function OrderList() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center mb-6">
+      <div className="flex flex-col sm:flex-row gap-4 items-center mb-6 flex-wrap">
         <div className="flex gap-2 items-center">
           <label htmlFor="dateFilter" className="font-medium">
-            Filter by Date:
+            Date:
           </label>
           <select
             id="dateFilter"
@@ -697,7 +716,7 @@ export default function OrderList() {
 
         <div className="flex gap-2 items-center">
           <label htmlFor="typeFilter" className="font-medium">
-            Filter by Type:
+            Type:
           </label>
           <select
             id="typeFilter"
@@ -712,13 +731,34 @@ export default function OrderList() {
             <option value="delivery">Delivery</option>
           </select>
         </div>
+        
+        <div className="flex gap-2 items-center">
+          <label htmlFor="statusFilter" className="font-medium">
+            Status:
+          </label>
+          <select
+            id="statusFilter"
+            className="px-3 py-1 border rounded"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+            }}
+          >
+            <option value="all">All</option>
+            <option value="Pending">Pending</option>
+            <option value="In-Process">In-Process</option>
+            <option value="Dispatched">Dispatched</option>
+            <option value="Complete">Complete</option>
+            <option value="Cancel">Cancel</option>
+          </select>
+        </div>
       </div>
 
       <table className="min-w-full border-collapse">
         <thead className="bg-gray-200">
           <tr>
             <th className="p-2 border text-left">Sr No</th>
-            <th className="p-2 border text-left">Order No</th>
+            <th className="p-2 border text-left">Order #</th>
             <th className="p-2 border text-left">Customer Name</th>
             <th className="p-2 border text-left">Type</th>
             <th className="p-2 border text-left w-24">Area</th>
@@ -745,9 +785,6 @@ export default function OrderList() {
             </tr>
           ) : (
             orders.map((order, index) => {
-              const idVal = String(extractValue(order._id));
-              const orderNumber = orderNumbers[idVal] || "king-000";
-              const status = order.isCompleted ? "Completed" : "Pending";
               const srNo = ((currentPage - 1) * ordersPerPage + index + 1)
                 .toString()
                 .padStart(2, "0");
@@ -756,25 +793,21 @@ export default function OrderList() {
                   order.orderType.slice(1)
                 : "Delivery";
 
-              const area = order.area || extractAreaFromAddress(order.deliveryAddress) || "Clifton";
+              const area = order.area || extractAreaFromAddress(order.deliveryAddress) || "N/A";
 
               return (
-                <tr key={idVal} className="hover:bg-gray-100">
+                <tr key={order._id} className="hover:bg-gray-100">
                   <td className="p-2 border">{srNo}</td>
-                  <td className="p-2 border">{orderNumber}</td>
+                  <td className="p-2 border font-medium">king-{order.orderNo || "N/A"}</td>
                   <td className="p-2 border">{order.fullName}</td>
                   <td className="p-2 border">{orderType}</td>
                   <td className="p-2 border w-24">{area}</td>
                   <td className="p-2 border">
-                    {extractValue(order.total) || 0}/-
+                    Rs. {extractValue(order.total) || 0}
                   </td>
                   <td className="p-2 border">
-                    <span
-                      className={`font-semibold ${
-                        order.isCompleted ? "text-green-600" : "text-red-600"
-                      }`}
-                    >
-                      {status}
+                    <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
+                      {order.status || "Pending"}
                     </span>
                   </td>
                   <td className="p-2 border text-center">
@@ -873,7 +906,7 @@ export default function OrderList() {
         selectedOrder={selectedOrder}
         modalLoading={modalLoading}
         closeModal={closeModal}
-        toggleCompletion={toggleCompletion}
+        updateOrderStatus={updateOrderStatus}
         deleteOrder={deleteOrder}
         printKitchenSlip={printKitchenSlip}
         printDeliveryPreBill={printDeliveryPreBill}

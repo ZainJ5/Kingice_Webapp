@@ -41,7 +41,8 @@ export default function CheckoutPage() {
   const [discountPercentage, setDiscountPercentage] = useState(10);
   const [discountActive, setDiscountActive] = useState(true);
 
-  const [paymentType, setPaymentType] = useState("cod");
+  // This matches the schema's enum values: "cod" or "online"
+  const [paymentMethod, setPaymentMethod] = useState("cod");
   const [onlineOption, setOnlineOption] = useState(null);
   
   const [logoData, setLogoData] = useState({
@@ -292,7 +293,7 @@ export default function CheckoutPage() {
       return false;
     }
     
-    if (paymentType === "online") {
+    if (paymentMethod === "online") {
       if (!onlineOption) {
         toast.error("Please select an online payment method.", {
           style: { background: "#dc2626", color: "#ffffff" },
@@ -311,159 +312,181 @@ export default function CheckoutPage() {
     return true;
   };
 
-  const handlePlaceOrder = async () => {
-    setOrderPlaced(false);
+const handlePlaceOrder = async () => {
+  setOrderPlaced(false);
+  
+  if (!validateForm()) {
+    return;
+  }
+  
+  setIsSubmitting(true);
+
+  try {
+    const orderItems = items.map((item) => ({
+      id: item.id,
+      name: item.title,
+      price: item.price,
+      type: item.type || "",
+    }));
     
-    if (!validateForm()) {
-      return;
+    const subtotalValue = Math.round(subtotal);
+    const taxValue = Math.round(tax);
+    const globalDiscountValue = Math.round(globalDiscount);
+    const promoDiscountValue = Math.round(promoDiscount);
+    const totalDiscountValue = Math.round(totalDiscount);
+    const grandTotalValue = Math.round(grandTotal);
+    
+    const formData = new FormData();
+    formData.append("fullName", fullName);
+    formData.append("mobileNumber", mobileNumber);
+    formData.append("orderType", orderType);
+    formData.append("branch", branch?._id);
+    
+    formData.append("status", "Pending");
+    
+    if (orderType === "delivery") {
+      const completeAddress = deliveryAddress.trim() + ", " + selectedArea.name;
+      formData.append("alternateMobile", alternateMobile);
+      formData.append("deliveryAddress", completeAddress);
+      formData.append("nearestLandmark", nearestLandmark);
     }
     
-    setIsSubmitting(true);
+    formData.append("email", email);
+    formData.append("paymentInstructions", paymentInstructions);
+    formData.append("paymentMethod", paymentMethod);
+    
+    formData.append("subtotal", subtotalValue.toString());
+    formData.append("tax", taxValue.toString());
+    formData.append("discount", totalDiscountValue.toString());
+    formData.append("total", grandTotalValue.toString());
+    
+    if (appliedPromoCode) {
+      formData.append("promoCode", appliedPromoCode.code);
+    }
+    
+    formData.append("isGift", isGift ? "true" : "false");
+    formData.append("giftMessage", giftMessage);
+    formData.append("items", JSON.stringify(orderItems));
+    formData.append("changeRequest", changeRequest);
 
+    if (paymentMethod === "online") {
+      formData.append("receiptImage", receiptFile);
+      let bankNameField = "";
+      if (onlineOption === "easypaisa") bankNameField = "EasyPaisa";
+      else if (onlineOption === "jazzcash") bankNameField = "JazzCash";
+      else if (onlineOption === "bank_transfer")
+        bankNameField = bankTransferDetails.bankName;
+      formData.append("bankName", bankNameField);
+    }
+
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to place order");
+    }
+    
+    const data = await response.json();
+    console.log("Order placed successfully:", data);
+
+    const orderNo = data.orderNo || data._id || `ORD-${Date.now()}`;
+
+    const orderDetails = {
+      orderNo: orderNo,
+      orderId: orderNo,
+      _id: data._id,
+      orderDate: new Date().toISOString(),
+      status: "Pending", // Initial status as per schema default
+      estimatedDelivery: orderType === "delivery" ? "Within 1 hour" : `Ready in ${pickupTime} minutes`,
+      customerName: fullName,
+      fullName: fullName,
+      mobileNumber: mobileNumber,
+      email: email,
+      orderType: orderType,
+      branch: branch?._id || "Main Branch",
+      branchName: branch?.name || "Main Branch", 
+      paymentMethod: paymentMethod,
+      bankName: paymentMethod === "online" ? getBankNameFromOption(onlineOption) : undefined,
+      subtotal: subtotalValue,
+      globalDiscount: globalDiscountValue,
+      promoDiscount: promoDiscountValue,
+      totalDiscount: totalDiscountValue,
+      promoCode: appliedPromoCode ? appliedPromoCode.code : null,
+      globalDiscountPercentage: discountActive ? discountPercentage : 0,
+      promoDiscountPercentage: appliedPromoCode ? appliedPromoCode.discount : 0,
+      total: grandTotalValue,
+      items: orderItems,
+    };
+    
+    if (orderType === "delivery") {
+      orderDetails.deliveryAddress = deliveryAddress + ", " + selectedArea?.name;
+      orderDetails.nearestLandmark = nearestLandmark;
+      orderDetails.area = selectedArea?.name;
+    }
+
+    // Store in session storage for immediate access
+    sessionStorage.setItem("lastOrder", JSON.stringify(orderDetails));
+    
+    // Store in local storage for persistent order history
     try {
-      const orderItems = items.map((item) => ({
-        id: item.id,
-        name: item.title,
-        price: item.price,
-        type: item.type,
-        quantity: item.quantity,
-        title: item.title,
-        imageUrl: item.imageUrl || `/api/placeholder/100/100`,
-      }));
+      // Get existing order history or create a new array
+      const orderHistory = JSON.parse(localStorage.getItem('orderHistory') || '[]');
       
-      const subtotalValue = Math.round(subtotal);
-      const taxValue = Math.round(tax);
-      const deliveryFeeValue = Math.round(deliveryFee);
-      const globalDiscountValue = Math.round(globalDiscount);
-      const promoDiscountValue = Math.round(promoDiscount);
-      const totalDiscountValue = Math.round(totalDiscount);
-      const grandTotalValue = Math.round(grandTotal);
-      
-      const formData = new FormData();
-      formData.append("fullName", fullName);
-      formData.append("mobileNumber", mobileNumber);
-      formData.append("orderType", orderType);
-      formData.append("branch", branch?._id);
-      
-      if (orderType === "delivery") {
-        const completeAddress = deliveryAddress.trim() + ", " + selectedArea.name;
-        formData.append("alternateMobile", alternateMobile);
-        formData.append("deliveryAddress", completeAddress);
-        formData.append("nearestLandmark", nearestLandmark);
-        formData.append("area", selectedArea.name);
-      } else if (orderType === "pickup") {
-        formData.append("pickupTime", pickupTime + " minutes");
+      // Add this order to history if it doesn't exist already
+      if (!orderHistory.some(order => order.orderNo === orderNo)) {
+        // Create a simplified version for history list
+        const orderSummary = {
+          _id: data._id,
+          orderNo: orderNo,
+          date: new Date().toISOString(),
+          status: "Pending",
+          total: grandTotalValue,
+          fullName: fullName,
+          orderType: orderType,
+          branchName: branch?.name || "Main Branch",
+          paymentMethod: paymentMethod,
+        };
+        
+        orderHistory.unshift(orderSummary);
+        
+        const limitedHistory = orderHistory.slice(0, 50);
+        
+        localStorage.setItem('orderHistory', JSON.stringify(limitedHistory));
       }
       
-      formData.append("email", email);
-      formData.append("paymentInstructions", paymentInstructions);
-      formData.append("paymentMethod", paymentType);
+      localStorage.setItem(`order_${orderNo}`, JSON.stringify(orderDetails));
       
-      formData.append("subtotal", subtotalValue.toString());
-      formData.append("tax", taxValue.toString());
-      formData.append("discount", totalDiscountValue.toString());
-      formData.append("total", grandTotalValue.toString());
-      
-      formData.append("globalDiscountActive", discountActive ? "true" : "false");
-      formData.append("globalDiscountPercentage", discountPercentage.toString());
-      formData.append("globalDiscountAmount", globalDiscountValue.toString());
-      
-      if (appliedPromoCode) {
-        formData.append("promoCodeApplied", "true");
-        formData.append("promoCode", appliedPromoCode.code);
-        formData.append("promoDiscountPercentage", appliedPromoCode.discount.toString());
-        formData.append("promoDiscountAmount", promoDiscountValue.toString());
-      } else {
-        formData.append("promoCodeApplied", "false");
-      }
-      
-      formData.append("isGift", isGift ? "true" : "false");
-      formData.append("giftMessage", giftMessage);
-      formData.append("items", JSON.stringify(orderItems));
-      formData.append("changeRequest", changeRequest);
-
-      if (paymentType === "online") {
-        formData.append("receiptImage", receiptFile);
-        let bankNameField = "";
-        if (onlineOption === "easypaisa") bankNameField = "EasyPaisa";
-        else if (onlineOption === "jazzcash") bankNameField = "JazzCash";
-        else if (onlineOption === "bank_transfer")
-          bankNameField = bankTransferDetails.bankName;
-        formData.append("bankName", bankNameField);
-      }
-
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to place order");
-      }
-      
-      const data = await response.json();
-      console.log("Order placed successfully:", data);
-
-      const orderDetails = {
-        orderId: data.orderId || `ORD-${Date.now()}`,
-        orderDate: new Date().toISOString(),
-        status: "Confirmed",
-        estimatedDelivery: orderType === "delivery" ? "Within 1 hour" : `Ready in ${pickupTime} minutes`,
-        customerName: fullName,
-        fullName: fullName,
-        mobileNumber: mobileNumber,
-        email: email,
-        orderType: orderType,
-        branch: branch?.name || "Main Branch",
-        paymentMethod: paymentType === "cod" ? "Cash on Delivery" : "Online Payment",
-        bankName:
-          paymentType === "online"
-            ? onlineOption === "easypaisa"
-              ? "EasyPaisa"
-              : onlineOption === "jazzcash"
-              ? "JazzCash"
-              : "Bank Transfer"
-            : undefined,
-        subtotal: subtotalValue,
-        deliveryFee: deliveryFeeValue,
-        globalDiscount: globalDiscountValue,
-        promoDiscount: promoDiscountValue,
-        totalDiscount: totalDiscountValue,
-        promoCode: appliedPromoCode ? appliedPromoCode.code : null,
-        globalDiscountPercentage: discountActive ? discountPercentage : 0,
-        promoDiscountPercentage: appliedPromoCode ? appliedPromoCode.discount : 0,
-        total: grandTotalValue,
-        items: orderItems,
-      };
-      
-      if (orderType === "delivery") {
-        orderDetails.deliveryAddress = deliveryAddress + ", " + selectedArea?.name;
-        orderDetails.nearestLandmark = nearestLandmark;
-        orderDetails.area = selectedArea?.name;
-      } else if (orderType === "pickup") {
-        orderDetails.pickupTime = pickupTime + " minutes";
-      }
-
-      sessionStorage.setItem("lastOrder", JSON.stringify(orderDetails));
-
-      setOrderPlaced(true);
-      clearCart();
-      resetFormFields();
-
-      router.push("/order");
-
-      toast.success("Your order has been placed successfully!", {
-        style: { background: "#16a34a", color: "#ffffff" },
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error(error.message || "An error occurred while placing your order. Please try again later.", {
-        style: { background: "#dc2626", color: "#ffffff" },
-      });
-    } finally {
-      setIsSubmitting(false);
+    } catch (storageError) {
+      console.error("Error storing order in local storage:", storageError);
     }
+
+    setOrderPlaced(true);
+    clearCart();
+    resetFormFields();
+
+    router.push("/order");
+
+    toast.success("Your order has been placed successfully!", {
+      style: { background: "#16a34a", color: "#ffffff" },
+    });
+  } catch (error) {
+    console.error(error);
+    toast.error(error.message || "An error occurred while placing your order. Please try again later.", {
+      style: { background: "#dc2626", color: "#ffffff" },
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+  const getBankNameFromOption = (option) => {
+    if (option === "easypaisa") return "EasyPaisa";
+    if (option === "jazzcash") return "JazzCash";
+    if (option === "bank_transfer") return bankTransferDetails.bankName;
+    return "";
   };
 
   const resetFormFields = () => {
@@ -475,7 +498,7 @@ export default function CheckoutPage() {
     setNearestLandmark("");
     setEmail("");
     setPaymentInstructions("");
-    setPaymentType("cod");
+    setPaymentMethod("cod");
     setOnlineOption(null);
     setIsGift(false);
     setGiftMessage("");
@@ -700,6 +723,36 @@ export default function CheckoutPage() {
                     rows={3}
                   />
                 </div>
+                
+                {/* Gift option */}
+                <div className="flex items-center space-x-2 py-2">
+                  <input
+                    type="checkbox"
+                    id="isGift"
+                    checked={isGift}
+                    onChange={(e) => setIsGift(e.target.checked)}
+                    className="h-4 w-4 text-red-600 rounded"
+                  />
+                  <label htmlFor="isGift" className="text-sm text-gray-700">
+                    This is a gift
+                  </label>
+                </div>
+                
+                {isGift && (
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">
+                      Gift Message
+                    </label>
+                    <textarea
+                      value={giftMessage}
+                      onChange={(e) => setGiftMessage(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md"
+                      placeholder="Add a message for the gift recipient"
+                      rows={3}
+                    />
+                  </div>
+                )}
+                
                 <div>
                   <label className="block text-sm text-gray-700 mb-2">
                     Payment Information
@@ -708,12 +761,12 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setPaymentType("cod");
+                        setPaymentMethod("cod");
                         setOnlineOption(null);
                         setReceiptFile(null);
                       }}
                       className={`p-4 border rounded-md flex items-center justify-center space-x-2 ${
-                        paymentType === "cod"
+                        paymentMethod === "cod"
                           ? "border-green-500 bg-green-50"
                           : "border-gray-200"
                       }`}
@@ -724,12 +777,12 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setPaymentType("online");
+                        setPaymentMethod("online");
                         setOnlineOption(null);
                         setReceiptFile(null);
                       }}
                       className={`p-4 border rounded-md flex items-center justify-center space-x-2 ${
-                        paymentType === "online"
+                        paymentMethod === "online"
                           ? "border-blue-500 bg-blue-50"
                           : "border-gray-200"
                       }`}
@@ -739,7 +792,7 @@ export default function CheckoutPage() {
                     </button>
                   </div>
                 </div>
-                {paymentType === "online" && (
+                {paymentMethod === "online" && (
                   <div className="mt-4 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <button
@@ -886,7 +939,7 @@ export default function CheckoutPage() {
                     )}
                   </div>
                 )}
-                {paymentType === "cod" && (
+                {paymentMethod === "cod" && (
                   <div>
                     <label className="block text-sm text-gray-700 mb-1">
                       Change Request
