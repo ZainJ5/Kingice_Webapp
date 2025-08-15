@@ -287,6 +287,9 @@ export default function Footer() {
               </a>
             </p>
             <div className="space-x-4">
+              <Link href="/order" className="hover:underline">
+                Orders
+              </Link>
               <Link href="/terms" className="hover:underline">
                 Terms &amp; Conditions
               </Link>
