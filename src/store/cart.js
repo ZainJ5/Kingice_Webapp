@@ -7,11 +7,14 @@ export const useCartStore = create((set, get) => ({
 
   addToCart: (deal) =>
     set((state) => {
+      // Look for an existing item with the same ID and type (if applicable)
       const index = state.items.findIndex(
-        (item) => item.cartItemId && item.cartItemId === deal.cartItemId
+        (item) => item._id === deal._id && 
+                  (!deal.type || item.type === deal.type)
       );
       
       if (index === -1) {
+        // Item not found, add as new
         return {
           items: [
             ...state.items,
@@ -22,6 +25,7 @@ export const useCartStore = create((set, get) => ({
         };
       }
       
+      // Item found, update quantity
       const newItems = [...state.items];
       const currentQuantity = newItems[index].quantity || 1;
       const newQuantity = currentQuantity + 1;
@@ -68,8 +72,8 @@ export const useCartStore = create((set, get) => ({
       const removedItem = newItems.splice(index, 1)[0];
       return {
         items: newItems,
-        total: state.total - Number(removedItem.price) * removedItem.quantity,
-        itemCount: state.itemCount - removedItem.quantity,
+        total: state.total - Number(removedItem.price) * (removedItem.quantity || 1),
+        itemCount: state.itemCount - (removedItem.quantity || 1),
       };
     }),
 
