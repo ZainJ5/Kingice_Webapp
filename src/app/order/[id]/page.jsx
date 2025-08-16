@@ -452,35 +452,47 @@ export default function OrderDetailPage() {
               {/* Order Items */}
               <div className="px-6 py-5">
                 <div className="divide-y divide-gray-200">
-                  {displayOrder.items && displayOrder.items.map((item, index) => (
-                    <div key={index} className="py-4 flex items-center">
-                      {/* <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-                        {item.imageUrl ? (
-                          <img 
-                            src={item.imageUrl} 
-                            alt={item.name || item.title} 
-                            className="h-full w-full object-cover object-center" 
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
-                            <Package className="h-8 w-8" />
+                  {displayOrder.items && displayOrder.items.map((item, index) => {
+                    const rawName = item.name || item.title;
+                    const match = rawName?.match(/(.*) x(\d+)$/);
+                    let displayName = rawName;
+                    let extractedQty = null;
+                    if (match) {
+                      displayName = match[1];
+                      extractedQty = parseInt(match[2], 10);
+                    }
+                    const displayQuantity = item.quantity || extractedQty || 1;
+
+                    return (
+                      <div key={index} className="py-4 flex items-center">
+                        {/* <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                          {item.imageUrl ? (
+                            <img 
+                              src={item.imageUrl} 
+                              alt={item.name || item.title} 
+                              className="h-full w-full object-cover object-center" 
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
+                              <Package className="h-8 w-8" />
+                            </div>
+                          )}
+                        </div> */}
+                        <div className="ml-4 flex-1">
+                          <h4 className="text-base font-medium text-gray-900">{displayName}</h4>
+                          {item.type && <p className="text-sm text-gray-500">{item.type}</p>}
+                          <div className="mt-1 flex justify-between">
+                            <div className="text-sm text-gray-500">
+                              <span className="font-medium">Qty: {displayQuantity}</span>
+                              <span className="mx-2">·</span>
+                              <span>Price: Rs. {item.price}</span>
+                            </div>
+                            <p className="text-sm font-medium text-gray-900">Rs. {item.price * displayQuantity}</p>
                           </div>
-                        )}
-                      </div> */}
-                      <div className="ml-4 flex-1">
-                        <h4 className="text-base font-medium text-gray-900">{item.name || item.title}</h4>
-                        {item.type && <p className="text-sm text-gray-500">{item.type}</p>}
-                        <div className="mt-1 flex justify-between">
-                          <div className="text-sm text-gray-500">
-                            <span className="font-medium">Qty: {item.quantity || 1}</span>
-                            <span className="mx-2">·</span>
-                            <span>Price: Rs. {item.price}</span>
-                          </div>
-                          <p className="text-sm font-medium text-gray-900">Rs. {item.price * (item.quantity || 1)}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               

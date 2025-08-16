@@ -25,6 +25,7 @@ export async function GET(request) {
     const dateFilter = searchParams.get('dateFilter') || 'all';
     const typeFilter = searchParams.get('typeFilter') || 'all';
     const statusFilter = searchParams.get('statusFilter') || 'all';
+    const paymentFilter = searchParams.get('paymentFilter') || 'all';
     const customDate = searchParams.get('customDate') || '';
     
     const skip = (page - 1) * limit;
@@ -60,6 +61,10 @@ export async function GET(request) {
 
     if (statusFilter !== 'all') {
       filter.status = statusFilter;
+    }
+
+    if (paymentFilter !== 'all') {
+      filter.paymentMethod = paymentFilter;
     }
 
     const listFields = {

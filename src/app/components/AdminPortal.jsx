@@ -45,7 +45,7 @@ const ConfirmationDialog = ({ title, message, onConfirm, onCancel }) => (
 export default function AdminPortal({ onLogout }) {
   const { latestOrder } = useSocket();
 
-  const [selectedTab, setSelectedTab] = useState("branch");
+  const [selectedTab, setSelectedTab] = useState("orders");
   const [branches, setBranches] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);

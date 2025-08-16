@@ -41,7 +41,6 @@ export default function CheckoutPage() {
   const [discountPercentage, setDiscountPercentage] = useState(10);
   const [discountActive, setDiscountActive] = useState(true);
 
-  // This matches the schema's enum values: "cod" or "online"
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [onlineOption, setOnlineOption] = useState(null);
   
@@ -399,7 +398,7 @@ const handlePlaceOrder = async () => {
       orderId: orderNo,
       _id: data._id,
       orderDate: new Date().toISOString(),
-      status: "Pending", // Initial status as per schema default
+      status: "Pending", 
       estimatedDelivery: orderType === "delivery" ? "Within 1 hour" : `Ready in ${pickupTime} minutes`,
       customerName: fullName,
       fullName: fullName,
@@ -427,17 +426,12 @@ const handlePlaceOrder = async () => {
       orderDetails.area = selectedArea?.name;
     }
 
-    // Store in session storage for immediate access
     sessionStorage.setItem("lastOrder", JSON.stringify(orderDetails));
     
-    // Store in local storage for persistent order history
     try {
-      // Get existing order history or create a new array
       const orderHistory = JSON.parse(localStorage.getItem('orderHistory') || '[]');
       
-      // Add this order to history if it doesn't exist already
       if (!orderHistory.some(order => order.orderNo === orderNo)) {
-        // Create a simplified version for history list
         const orderSummary = {
           _id: data._id,
           orderNo: orderNo,

@@ -97,6 +97,7 @@ export default function OrderList() {
   const [customDate, setCustomDate] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
 
   const [pageCache, setPageCache] = useState({});
   const [cacheKey, setCacheKey] = useState("");
@@ -136,8 +137,8 @@ export default function OrderList() {
   }, [deliveryAreas]);
 
   const generateCacheKey = useCallback(() => {
-    return `${dateFilter}-${customDate || 'none'}-${typeFilter}-${statusFilter}`;
-  }, [dateFilter, customDate, typeFilter, statusFilter]);
+    return `${dateFilter}-${customDate || 'none'}-${typeFilter}-${statusFilter}-${paymentFilter}`;
+  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter]);
 
   useEffect(() => {
     const newCacheKey = generateCacheKey();
@@ -146,7 +147,7 @@ export default function OrderList() {
       setCacheKey(newCacheKey);
       setCurrentPage(1);
     }
-  }, [dateFilter, customDate, typeFilter, statusFilter, cacheKey, generateCacheKey]);
+  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter, cacheKey, generateCacheKey]);
 
   useEffect(() => {
     if (latestOrder) {
@@ -188,6 +189,10 @@ export default function OrderList() {
         params.append("statusFilter", statusFilter);
       }
 
+      if (paymentFilter !== "all") {
+        params.append("paymentFilter", paymentFilter === "online" ? "online" : paymentFilter);
+      }
+
       if (dateFilter === "custom" && customDate) {
         params.append("customDate", customDate);
       }
@@ -206,15 +211,29 @@ export default function OrderList() {
       const data = await res.json();
 
       if (data && Array.isArray(data.orders)) {
-        setOrders(data.orders);
-        setTotalOrders(data.totalCount || data.orders.length);
+        const processedOrders = await Promise.all(data.orders.map(async (orderRaw) => {
+          const order = { ...orderRaw };
+          const orderId = String(extractValue(order._id));
+          let area = order.area || extractAreaFromAddress(order.deliveryAddress) || null;
+          if (area === null && order.orderType === 'delivery') {
+            const fullOrder = await fetchOrderDetails(orderId);
+            area = fullOrder ? (fullOrder.area || extractAreaFromAddress(fullOrder.deliveryAddress) || "N/A") : "N/A";
+          } else {
+            area = area || "N/A";
+          }
+          order.area = area;
+          return order;
+        }));
+
+        setOrders(processedOrders);
+        setTotalOrders(data.totalCount || processedOrders.length);
         setTotalPages(data.totalPages || Math.ceil(data.totalCount / ordersPerPage));
 
         setPageCache(prev => ({
           ...prev,
           [`${currentCacheKey}-${page}`]: {
-            orders: data.orders,
-            totalCount: data.totalCount || data.orders.length,
+            orders: processedOrders,
+            totalCount: data.totalCount || processedOrders.length,
             totalPages: data.totalPages || Math.ceil(data.totalCount / ordersPerPage),
             timestamp: Date.now()
           }
@@ -237,7 +256,7 @@ export default function OrderList() {
     } finally {
       setLoading(false);
     }
-  }, [dateFilter, customDate, typeFilter, statusFilter, ordersPerPage, pageCache, generateCacheKey]);
+  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter, ordersPerPage, pageCache, generateCacheKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -752,6 +771,24 @@ export default function OrderList() {
             <option value="Cancel">Cancel</option>
           </select>
         </div>
+
+        <div className="flex gap-2 items-center">
+          <label htmlFor="paymentFilter" className="font-medium">
+            Payment:
+          </label>
+          <select
+            id="paymentFilter"
+            className="px-3 py-1 border rounded"
+            value={paymentFilter}
+            onChange={(e) => {
+              setPaymentFilter(e.target.value);
+            }}
+          >
+            <option value="all">All</option>
+            <option value="cod">COD</option>
+            <option value="online">Online</option>
+          </select>
+        </div>
       </div>
 
       <table className="min-w-full border-collapse">
@@ -793,15 +830,13 @@ export default function OrderList() {
                   order.orderType.slice(1)
                 : "Delivery";
 
-              const area = order.area || extractAreaFromAddress(order.deliveryAddress) || "N/A";
-
               return (
                 <tr key={order._id} className="hover:bg-gray-100">
                   <td className="p-2 border">{srNo}</td>
                   <td className="p-2 border font-medium">king-{order.orderNo || "N/A"}</td>
                   <td className="p-2 border">{order.fullName}</td>
                   <td className="p-2 border">{orderType}</td>
-                  <td className="p-2 border w-24">{area}</td>
+                  <td className="p-2 border w-24">{order.area}</td>
                   <td className="p-2 border">
                     Rs. {extractValue(order.total) || 0}
                   </td>
