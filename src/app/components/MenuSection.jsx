@@ -139,13 +139,10 @@ export default function MenuSection({ category, subcategories, items, onSectionV
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-16">
         {!hasActiveSubcategories && (
-          <div className="bg-gradient-to-r from-red-700 to-red-800 text-white rounded-lg overflow-hidden h-48 mb-8 flex items-center justify-center shadow-lg border-2 border-red-400 relative">
+          <div className="bg-gradient-to-r from-red-700 to-red-800 text-white rounded-lg overflow-hidden sm:h-32 h-24 mb-8 flex items-center justify-center shadow-lg border-2 border-red-400 relative">
             <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
             <div className="z-10 text-center px-6">
               <h2 className="text-5xl sm:text-6xl font-bold mb-2">{category.name}</h2>
-              <p className="text-xl opacity-90">
-                {itemCount} {itemCount === 1 ? 'item' : 'items'} available
-              </p>
             </div>
           </div>
         )}
@@ -164,13 +161,10 @@ export default function MenuSection({ category, subcategories, items, onSectionV
                 id={`subcategory-${getId(subcategory._id)}`} 
                 className="mb-12"
               >
-                <div className="bg-gradient-to-r from-red-700 to-red-800 text-white rounded-lg overflow-hidden h-40 mb-8 flex items-center justify-center shadow-lg border-2 border-red-400 relative">
+                <div className="bg-gradient-to-r from-red-700 to-red-800 text-white rounded-lg overflow-hidden h-24 sm:h-32 mb-8 flex items-center justify-center shadow-lg border-2 border-red-400 relative">
                   <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
                   <div className="z-10 text-center px-6">
                     <h3 className="text-4xl sm:text-5xl font-bold mb-2">{subcategory.name}</h3>
-                    <p className="text-lg opacity-90">
-                      {subcategoryItems.length} {subcategoryItems.length === 1 ? 'item' : 'items'} available
-                    </p>
                   </div>
                 </div>
                 
@@ -208,13 +202,10 @@ export default function MenuSection({ category, subcategories, items, onSectionV
             
             return (
               <div className="mt-12">
-                <div className="bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg overflow-hidden h-32 mb-8 flex items-center justify-center shadow-lg border-2 border-gray-500 relative">
+                <div className="bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg overflow-hidden h-24 sm:h-32 mb-8 flex items-center justify-center shadow-lg border-2 border-gray-500 relative">
                   <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
                   <div className="z-10 text-center px-6">
                     <h3 className="text-3xl sm:text-4xl font-bold mb-1">Other Items</h3>
-                    <p className="text-lg opacity-90">
-                      {uncategorizedItems.length} {uncategorizedItems.length === 1 ? 'item' : 'items'} available
-                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
