@@ -707,13 +707,13 @@ const handlePlaceOrder = async () => {
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">
-                    Payment Instructions
+                    Order Instructions
                   </label>
                   <textarea
                     value={paymentInstructions}
                     onChange={(e) => setPaymentInstructions(e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md"
-                    placeholder="Any notes or instructions about payment?"
+                    placeholder="Any notes or instructions about order?"
                     rows={3}
                   />
                 </div>

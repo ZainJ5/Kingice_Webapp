@@ -68,11 +68,29 @@ const extractAreaFromAddress = (deliveryAddress) => {
   return null;
 };
 
+const formatDateTime = (dateString) => {
+  if (!dateString) return "N/A";
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date)) return "Invalid Date";
+    
+    const formattedDate = date.toLocaleDateString();
+    const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    return `${formattedDate} ${formattedTime}`;
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "Error";
+  }
+};
+
 const TableRowSkeleton = () => (
   <tr className="animate-pulse">
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-8"></div></td>
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+    <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
     <td className="p-2 border w-24"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
     <td className="p-2 border"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
@@ -190,7 +208,7 @@ export default function OrderList() {
       }
 
       if (paymentFilter !== "all") {
-        params.append("paymentFilter", paymentFilter === "online" ? "online" : paymentFilter);
+        params.append("paymentFilter", paymentFilter);
       }
 
       if (dateFilter === "custom" && customDate) {
@@ -787,6 +805,9 @@ export default function OrderList() {
             <option value="all">All</option>
             <option value="cod">COD</option>
             <option value="online">Online</option>
+            <option value="easypaisa">Easypaisa</option>
+            <option value="jazzcash">JazzCash</option>
+            <option value="bank">Bank Transfer</option>
           </select>
         </div>
       </div>
@@ -797,6 +818,7 @@ export default function OrderList() {
             <th className="p-2 border text-left">Sr No</th>
             <th className="p-2 border text-left">Order #</th>
             <th className="p-2 border text-left">Customer Name</th>
+            <th className="p-2 border text-left">Date & Time</th>
             <th className="p-2 border text-left">Type</th>
             <th className="p-2 border text-left w-24">Area</th>
             <th className="p-2 border text-left">Amount</th>
@@ -812,13 +834,13 @@ export default function OrderList() {
             ))
           ) : error ? (
             <tr>
-              <td colSpan="9" className="text-center p-4 text-red-500">
+              <td colSpan="10" className="text-center p-4 text-red-500">
                 {error}
               </td>
             </tr>
           ) : orders.length === 0 ? (
             <tr>
-              <td colSpan="9" className="text-center p-4">No orders found.</td>
+              <td colSpan="10" className="text-center p-4">No orders found.</td>
             </tr>
           ) : (
             orders.map((order, index) => {
@@ -835,6 +857,9 @@ export default function OrderList() {
                   <td className="p-2 border">{srNo}</td>
                   <td className="p-2 border font-medium">king-{order.orderNo || "N/A"}</td>
                   <td className="p-2 border">{order.fullName}</td>
+                  <td className="p-2 border text-sm">
+                    {formatDateTime(order.createdAt || null)}
+                  </td>
                   <td className="p-2 border">{orderType}</td>
                   <td className="p-2 border w-24">{order.area}</td>
                   <td className="p-2 border">

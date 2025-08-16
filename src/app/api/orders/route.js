@@ -63,8 +63,19 @@ export async function GET(request) {
       filter.status = statusFilter;
     }
 
-    if (paymentFilter !== 'all') {
-      filter.paymentMethod = paymentFilter;
+    if (paymentFilter === 'cod') {
+      filter.paymentMethod = 'cod';
+    } else if (paymentFilter === 'online') {
+      filter.paymentMethod = 'online';
+    } else if (paymentFilter === 'easypaisa') {
+      filter.paymentMethod = 'online';
+      filter.bankName = { $regex: /easypaisa/i };
+    } else if (paymentFilter === 'jazzcash') {
+      filter.paymentMethod = 'online';
+      filter.bankName = { $regex: /jazzcash/i };
+    } else if (paymentFilter === 'bank') {
+      filter.paymentMethod = 'online';
+      filter.bankName = { $regex: /bank/i };
     }
 
     const listFields = {
@@ -76,6 +87,7 @@ export async function GET(request) {
       isCompleted: 1,
       status: 1,
       paymentMethod: 1,
+      bankName: 1,
       branch: 1,
       createdAt: 1
     };
