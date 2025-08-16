@@ -12,6 +12,8 @@ export default function FoodItemList() {
     title: "",
     description: "",
     price: "",
+    previousPrice: "",
+    applyDiscount: false,
     category: "",
     subcategory: "",
     branch: "",
@@ -25,6 +27,7 @@ export default function FoodItemList() {
     category: "",
     subcategory: "",
     search: "",
+    hasDiscount: false,
   });
   const [branches, setBranches] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -91,7 +94,7 @@ export default function FoodItemList() {
 
   const applyFilters = () => {
     let filtered = [...foodItems];
-    const { branch, category, subcategory, search } = filters;
+    const { branch, category, subcategory, search, hasDiscount } = filters;
 
     if (branch) {
       filtered = filtered.filter(
@@ -117,17 +120,37 @@ export default function FoodItemList() {
           item.description.toLowerCase().includes(searchLower)
       );
     }
+    if (hasDiscount) {
+      filtered = filtered.filter(item => {
+        if (item.previousPrice) return true;
+        
+        if (item.variations && item.variations.length > 0) {
+          return item.variations.some(v => v.previousPrice);
+        }
+        
+        return false;
+      });
+    }
 
     setFilteredItems(filtered);
   };
 
   const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFilters((prev) => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
   const resetFilters = () => {
-    setFilters({ branch: "", category: "", subcategory: "", search: "" });
+    setFilters({ 
+      branch: "", 
+      category: "", 
+      subcategory: "", 
+      search: "",
+      hasDiscount: false 
+    });
   };
 
   const deleteFoodItem = async (id) => {
@@ -159,7 +182,7 @@ export default function FoodItemList() {
   };
 
   const handleEditClick = (item) => {
-    setOriginalItemData(null);
+    setOriginalItemData(item);
     const categoryId =
       typeof item.category === "object" && item.category !== null
         ? extractValue(item.category._id)
@@ -172,24 +195,32 @@ export default function FoodItemList() {
       typeof item.branch === "object" && item.branch !== null
         ? extractValue(item.branch._id)
         : extractValue(item.branch);
+    const variations = item.variations ? item.variations.map(v => ({
+      ...v,
+      price: String(v.price ?? ""),
+      previousPrice: String(v.previousPrice ?? ""),
+      applyDiscount: !!v.previousPrice,
+    })) : [];
     setEditingItemId(extractValue(item._id));
     setEditData({
-      title: item.title || "",
-      description: item.description || "",
-      price: item.price || "",
-      category: categoryId || "",
-      subcategory: subcategoryId || "",
-      branch: branchId || "",
-      variations: item.variations || [],
+      title: item.title ?? "",
+      description: item.description ?? "",
+      price: String(item.price ?? ""),
+      previousPrice: String(item.previousPrice ?? ""),
+      applyDiscount: !!item.previousPrice,
+      category: categoryId ?? "",
+      subcategory: subcategoryId ?? "",
+      branch: branchId ?? "",
+      variations,
     });
     setEditImage(null);
   };
 
   const handleEditChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setEditData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
@@ -204,8 +235,25 @@ export default function FoodItemList() {
       const updatedVariations = [...prev.variations];
       updatedVariations[index] = {
         ...updatedVariations[index],
-        [field]: field === "price" ? Number(value) : value,
+        [field]: value,
       };
+      return {
+        ...prev,
+        variations: updatedVariations,
+      };
+    });
+  };
+
+  const toggleVariationDiscount = (index, checked) => {
+    setEditData((prev) => {
+      const updatedVariations = [...prev.variations];
+      updatedVariations[index].applyDiscount = checked;
+      if (!checked) {
+        updatedVariations[index].previousPrice = "";
+      } else if (checked && updatedVariations[index].previousPrice === "") {
+        const currentPrice = parseFloat(updatedVariations[index].price) || 0;
+        updatedVariations[index].previousPrice = (currentPrice * 1.2).toString();
+      }
       return {
         ...prev,
         variations: updatedVariations,
@@ -216,7 +264,7 @@ export default function FoodItemList() {
   const addVariation = () => {
     setEditData((prev) => ({
       ...prev,
-      variations: [...prev.variations, { name: "", price: 0 }],
+      variations: [...prev.variations, { name: "", price: "", previousPrice: "", applyDiscount: false }],
     }));
   };
 
@@ -231,9 +279,49 @@ export default function FoodItemList() {
     });
   };
 
+  const validatePrices = () => {
+    // Validate main item price if discount is applied
+    if (editData.applyDiscount) {
+      const prevPrice = parseFloat(editData.previousPrice);
+      const price = parseFloat(editData.price);
+      if (isNaN(prevPrice) || isNaN(price) || prevPrice <= price) {
+        toast.error("Original price must be a number higher than discounted price");
+        return false;
+      }
+    }
+
+    // Validate variation prices if they have discounts
+    if (editData.variations && editData.variations.length > 0) {
+      const validVariations = editData.variations.filter(
+        (v) => v.name && v.name.trim() !== "" && v.price !== null && v.price !== undefined
+      );
+      
+      // Check if any variation with discount has invalid prices
+      const invalidVariation = validVariations.find(
+        (v) => v.applyDiscount && (
+          !v.previousPrice ||
+          isNaN(parseFloat(v.previousPrice)) ||
+          isNaN(parseFloat(v.price)) ||
+          parseFloat(v.previousPrice) <= parseFloat(v.price)
+        )
+      );
+      
+      if (invalidVariation) {
+        toast.error(`Original price must be a number higher than discounted price for variation "${invalidVariation.name}"`);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editingItemId) return;
+
+    if (!validatePrices()) {
+      return;
+    }
 
     const formData = new FormData();
     formData.append("title", editData.title);
@@ -241,6 +329,10 @@ export default function FoodItemList() {
 
     if (!editData.variations || editData.variations.length === 0) {
       formData.append("price", editData.price);
+      
+      if (editData.applyDiscount && editData.previousPrice) {
+        formData.append("previousPrice", editData.previousPrice);
+      }
     }
 
     const categoryId =
@@ -270,9 +362,16 @@ export default function FoodItemList() {
     formData.append("branch", branchId);
 
     if (editData.variations && editData.variations.length > 0) {
-      const validVariations = editData.variations.filter(
-        (v) => v.name && v.name.trim() !== "" && v.price !== null && v.price !== undefined
-      );
+      const validVariations = editData.variations
+        .filter((v) => v.name && v.name.trim() !== "" && v.price !== null && v.price !== undefined)
+        .map((v) => {
+          const varData = { name: v.name, price: v.price };
+          if (v.applyDiscount && v.previousPrice) {
+            varData.previousPrice = v.previousPrice;
+          }
+          return varData;
+        });
+      
       if (validVariations.length > 0) {
         formData.append("variations", JSON.stringify(validVariations));
       }
@@ -292,6 +391,8 @@ export default function FoodItemList() {
           title: "",
           description: "",
           price: "",
+          previousPrice: "",
+          applyDiscount: false,
           category: "",
           subcategory: "",
           branch: "",
@@ -316,6 +417,8 @@ export default function FoodItemList() {
       title: "",
       description: "",
       price: "",
+      previousPrice: "",
+      applyDiscount: false,
       category: "",
       subcategory: "",
       branch: "",
@@ -323,6 +426,10 @@ export default function FoodItemList() {
     });
     setOriginalItemData(null);
     setEditImage(null);
+  };
+
+  const hasVariationDiscount = (variation) => {
+    return variation.previousPrice && variation.previousPrice > variation.price;
   };
 
   if (loading) return (
@@ -338,7 +445,6 @@ export default function FoodItemList() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Filters Section */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-3">Filter Items</h2>
         <div className="flex flex-col md:flex-row gap-3 items-center">
@@ -394,6 +500,19 @@ export default function FoodItemList() {
               </option>
             ))}
           </select>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="hasDiscount"
+              name="hasDiscount"
+              checked={filters.hasDiscount}
+              onChange={handleFilterChange}
+              className="mr-2"
+            />
+            <label htmlFor="hasDiscount" className="text-sm text-gray-700">
+              Discounted Items Only
+            </label>
+          </div>
           <button
             onClick={resetFilters}
             className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300 text-sm font-medium"
@@ -403,11 +522,12 @@ export default function FoodItemList() {
         </div>
       </div>
 
-      {/* Food Items List */}
       <div className="space-y-4">
         {filteredItems.map((item) => {
           const id = extractValue(item._id);
           const price = extractValue(item.price);
+          const previousPrice = extractValue(item.previousPrice);
+          const hasDiscount = previousPrice && previousPrice > price;
 
           if (editingItemId === id) {
             return (
@@ -434,19 +554,67 @@ export default function FoodItemList() {
                       className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
                     ></textarea>
                   </div>
+                  
                   {(!editData.variations || editData.variations.length === 0) && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Price</label>
-                      <input
-                        type="number"
-                        name="price"
-                        value={editData.price}
-                        onChange={handleEditChange}
-                        placeholder="Price"
-                        className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                      />
-                    </div>
+                    <>
+                      <div className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id="applyDiscount"
+                          name="applyDiscount"
+                          checked={editData.applyDiscount}
+                          onChange={handleEditChange}
+                          className="mr-2"
+                        />
+                        <label htmlFor="applyDiscount" className="text-sm font-medium text-gray-700">
+                          Apply Discount to Item
+                        </label>
+                      </div>
+                      
+                      {editData.applyDiscount ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Original Price</label>
+                            <input
+                              type="number"
+                              name="previousPrice"
+                              value={editData.previousPrice}
+                              onChange={handleEditChange}
+                              placeholder="Original price before discount"
+                              className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                              required={editData.applyDiscount}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Discounted Price</label>
+                            <input
+                              type="number"
+                              name="price"
+                              value={editData.price}
+                              onChange={handleEditChange}
+                              placeholder="Current discounted price"
+                              className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                              required
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Price</label>
+                          <input
+                            type="number"
+                            name="price"
+                            value={editData.price}
+                            onChange={handleEditChange}
+                            placeholder="Price"
+                            className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                            required
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Category ID (not editable)</label>
                     <input
@@ -489,35 +657,69 @@ export default function FoodItemList() {
                       </button>
                     </div>
                     {editData.variations && editData.variations.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {editData.variations.map((variation, index) => (
                           <div
                             key={index}
-                            className="flex flex-wrap gap-2 items-center p-2 border rounded-lg"
+                            className="p-3 border rounded-lg bg-gray-50"
                           >
-                            <input
-                              type="text"
-                              value={variation.name || ""}
-                              onChange={(e) => handleVariationChange(index, "name", e.target.value)}
-                              placeholder="Variation Name"
-                              className="flex-1 border p-2 rounded-lg min-w-[150px] text-sm"
-                            />
-                            <input
-                              type="number"
-                              value={variation.price || 0}
-                              onChange={(e) =>
-                                handleVariationChange(index, "price", e.target.value)
-                              }
-                              placeholder="Price"
-                              className="w-24 border p-2 rounded-lg text-sm"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeVariation(index)}
-                              className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm"
-                            >
-                              Remove
-                            </button>
+                            <div className="flex items-center mb-2">
+                              <input
+                                type="checkbox"
+                                id={`applyDiscountVar${index}`}
+                                checked={variation.applyDiscount}
+                                onChange={(e) => toggleVariationDiscount(index, e.target.checked)}
+                                className="mr-2"
+                              />
+                              <label htmlFor={`applyDiscountVar${index}`} className="text-sm font-medium text-gray-700">
+                                Apply Discount to Variation
+                              </label>
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-2">
+                              <input
+                                type="text"
+                                value={variation.name || ""}
+                                onChange={(e) => handleVariationChange(index, "name", e.target.value)}
+                                placeholder="Variation Name"
+                                className="flex-1 border p-2 rounded-lg min-w-[150px] text-sm"
+                              />
+                              
+                              {variation.applyDiscount ? (
+                                <>
+                                  <input
+                                    type="number"
+                                    value={variation.previousPrice}
+                                    onChange={(e) => handleVariationChange(index, "previousPrice", e.target.value)}
+                                    placeholder="Original Price"
+                                    className="w-24 border p-2 rounded-lg text-sm"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={variation.price}
+                                    onChange={(e) => handleVariationChange(index, "price", e.target.value)}
+                                    placeholder="Discounted Price"
+                                    className="w-24 border p-2 rounded-lg text-sm"
+                                  />
+                                </>
+                              ) : (
+                                <input
+                                  type="number"
+                                  value={variation.price}
+                                  onChange={(e) => handleVariationChange(index, "price", e.target.value)}
+                                  placeholder="Price"
+                                  className="w-24 border p-2 rounded-lg text-sm"
+                                />
+                              )}
+                              
+                              <button
+                                type="button"
+                                onClick={() => removeVariation(index)}
+                                className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm"
+                              >
+                                Remove
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -559,7 +761,9 @@ export default function FoodItemList() {
           return (
             <div
               key={id}
-              className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col md:flex-row items-start gap-4"
+              className={`bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col md:flex-row items-start gap-4 ${
+                hasDiscount ? 'border-l-4 border-red-500' : ''
+              }`}
             >
               {item.imageUrl ? (
                 <img
@@ -573,11 +777,32 @@ export default function FoodItemList() {
                 </div>
               )}
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {item.title}
+                  {hasDiscount && (
+                    <span className="ml-2 bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                      Discounted
+                    </span>
+                  )}
+                </h3>
                 <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                
                 {(!item.variations || item.variations.length === 0) && (
-                  <p className="font-semibold text-gray-800 mt-2">{price} Rs</p>
+                  <div className="mt-2">
+                    {hasDiscount ? (
+                      <div className="flex items-center gap-2">
+                        <span className="line-through text-gray-500">{previousPrice} Rs</span>
+                        <span className="font-semibold text-red-600">{price} Rs</span>
+                        <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">
+                          {Math.round((1 - (price / previousPrice)) * 100)}% OFF
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-gray-800">{price} Rs</p>
+                    )}
+                  </div>
                 )}
+                
                 {item.branch &&
                 typeof item.branch === "object" &&
                 item.branch.name ? (
@@ -617,11 +842,27 @@ export default function FoodItemList() {
                   <div className="mt-2">
                     <p className="font-semibold text-gray-800 text-sm">Variations:</p>
                     <ul className="list-disc pl-4 text-sm text-gray-600">
-                      {item.variations.map((variation, index) => (
-                        <li key={index}>
-                          {variation.name} - {extractValue(variation.price)} Rs
-                        </li>
-                      ))}
+                      {item.variations.map((variation, index) => {
+                        const varPrice = extractValue(variation.price);
+                        const varPrevPrice = extractValue(variation.previousPrice);
+                        const hasVarDiscount = varPrevPrice && varPrevPrice > varPrice;
+                        
+                        return (
+                          <li key={index} className={hasVarDiscount ? "text-red-600" : ""}>
+                            {variation.name} - {hasVarDiscount ? (
+                              <>
+                                <span className="line-through text-gray-500">{varPrevPrice} Rs</span>{" "}
+                                {varPrice} Rs{" "}
+                                <span className="text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded">
+                                  {Math.round((1 - (varPrice / varPrevPrice)) * 100)}% OFF
+                                </span>
+                              </>
+                            ) : (
+                              `${varPrice} Rs`
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}

@@ -37,6 +37,7 @@ export async function POST(request) {
     const title = formData.get("title");
     const description = formData.get("description");
     const price = formData.get("price");
+    const previousPrice = formData.get("previousPrice"); // Get previousPrice
     const category = formData.get("category");
     const subcategory = formData.get("subcategory");
     const branch = formData.get("branch");
@@ -72,6 +73,11 @@ export async function POST(request) {
     
     if (!variationsParsed.length) {
       foodItemData.price = Number(price);
+      
+      // Add previousPrice if it exists
+      if (previousPrice) {
+        foodItemData.previousPrice = Number(previousPrice);
+      }
     }
     
     const foodItem = await FoodItem.create(foodItemData);

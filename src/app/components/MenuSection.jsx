@@ -259,9 +259,25 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   };
 
   const hasVariations = item.variations && item.variations.length > 0;
-  const lowestPrice = hasVariations ? 
-    Math.min(...item.variations.map(v => Number(getPrice(v.price)))) : 
-    null;
+  
+  // Find lowest current price and any discount among variations
+  const variationPrices = hasVariations 
+    ? item.variations.map(v => {
+        const price = Number(getPrice(v.price));
+        const previousPrice = v.previousPrice ? Number(getPrice(v.previousPrice)) : null;
+        return { price, previousPrice, hasDiscount: previousPrice && previousPrice > price };
+      }) 
+    : [];
+  
+  const lowestPriceVariation = variationPrices.length > 0
+    ? variationPrices.reduce((lowest, current) => 
+        current.price < lowest.price ? current : lowest, 
+        variationPrices[0])
+    : null;
+  
+  // Check if the item has a discount (either main price or at least one variation)
+  const hasMainItemDiscount = item.previousPrice && Number(getPrice(item.previousPrice)) > Number(getPrice(item.price));
+  const hasAnyDiscount = hasMainItemDiscount || (hasVariations && variationPrices.some(v => v.hasDiscount));
 
   const handleCardClick = () => {
     setIsModalOpen(true);
@@ -287,6 +303,7 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
         const itemToAdd = { 
           ...item, 
           price: selectedVar.price, 
+          previousPrice: selectedVar.previousPrice,  // Include previousPrice if available
           type: selectedVar.name,  
           cartItemId 
         };
@@ -308,10 +325,22 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     ? getCacheBustedUrl(item.imageUrl)
     : '';
 
+  // Calculate discount percentage for display
+  const calculateDiscountPercentage = (currentPrice, originalPrice) => {
+    if (!originalPrice || originalPrice <= currentPrice) return null;
+    return Math.round((1 - (currentPrice / originalPrice)) * 100);
+  };
+
+  const mainItemDiscount = calculateDiscountPercentage(
+    Number(getPrice(item.price)), 
+    item.previousPrice ? Number(getPrice(item.previousPrice)) : null
+  );
+
   return (
     <>
       <div 
-        className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+        className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer 
+                    ${hasAnyDiscount ? 'border-2 border-red-500' : ''}`}
         onClick={handleCardClick}
       >
         <div className="h-48 w-full relative">
@@ -328,6 +357,17 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
               <span className="text-gray-500 text-sm">No Image</span>
             </div>
           )}
+          
+          {hasAnyDiscount && (
+            <div className="absolute top-0 right-0 bg-red-600 text-white px-2 py-1 text-xs font-bold">
+              {hasMainItemDiscount ? 
+                `${mainItemDiscount}% OFF` : 
+                `UP TO ${Math.max(...variationPrices.map(v => 
+                  calculateDiscountPercentage(v.price, v.previousPrice) || 0
+                ))}% OFF`
+              }
+            </div>
+          )}
         </div>
         <div className="p-2 sm:p-3 md:p-4">
           <h3 className="text-base sm:text-lg md:text-xl font-semibold">{item.title}</h3>
@@ -342,9 +382,41 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
             </p>
           )}
           <div className="mt-2 sm:mt-4 flex justify-between items-center">
-            <span className="text-lg sm:text-xl md:text-2xl font-bold">
-              {hasVariations ? `Rs.${lowestPrice}` : `Rs.${getPrice(item.price)}`}
-            </span>
+            {hasVariations ? (
+              <div className="flex flex-col">
+                {lowestPriceVariation && lowestPriceVariation.hasDiscount ? (
+                  <>
+                    <span className="text-xs text-gray-500 line-through">
+                      Rs.{lowestPriceVariation.previousPrice}
+                    </span>
+                    <span className="text-lg sm:text-xl font-bold text-red-600">
+                      Rs.{lowestPriceVariation.price}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-lg sm:text-xl font-bold">
+                    From Rs.{lowestPriceVariation ? lowestPriceVariation.price : ''}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {item.previousPrice && Number(getPrice(item.previousPrice)) > Number(getPrice(item.price)) ? (
+                  <>
+                    <span className="text-xs text-gray-500 line-through">
+                      Rs.{getPrice(item.previousPrice)}
+                    </span>
+                    <span className="text-lg sm:text-xl font-bold text-red-600">
+                      Rs.{getPrice(item.price)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-lg sm:text-xl font-bold">
+                    Rs.{getPrice(item.price)}
+                  </span>
+                )}
+              </div>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -368,7 +440,7 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
               ×
             </button>
             <div className="flex flex-col items-center">
-              <div className="w-full h-48 mb-4">
+              <div className="w-full h-48 mb-4 relative">
                 {imageUrl && !imageError ? (
                   <img
                     src={imageUrl}
@@ -381,7 +453,19 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                     <span className="text-gray-500 text-sm">No Image</span>
                   </div>
                 )}
+                
+                {hasAnyDiscount && (
+                  <div className="absolute top-0 right-0 bg-red-600 text-white px-2 py-1 text-sm font-bold rounded-bl-md">
+                    {hasMainItemDiscount ? 
+                      `${mainItemDiscount}% OFF` : 
+                      `UP TO ${Math.max(...variationPrices.map(v => 
+                        calculateDiscountPercentage(v.price, v.previousPrice) || 0
+                      ))}% OFF`
+                    }
+                  </div>
+                )}
               </div>
+              
               <h2 className="text-2xl font-bold mb-2">{item.title}</h2>
               {item.description && (
                 <p className="text-gray-700 mb-4 text-center">{item.description}</p>
@@ -395,16 +479,63 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                     onChange={(e) => setSelectedVariation(e.target.value)}
                     className="w-full border rounded p-2"
                   >
-                    {item.variations.map((variation, index) => (
-                      <option key={index} value={index}>
-                        {variation.name} - Rs.{getPrice(variation.price)}
-                      </option>
-                    ))}
+                    {item.variations.map((variation, index) => {
+                      const price = getPrice(variation.price);
+                      const previousPrice = variation.previousPrice ? getPrice(variation.previousPrice) : null;
+                      const hasDiscount = previousPrice && previousPrice > price;
+                      const discountPercentage = hasDiscount 
+                        ? calculateDiscountPercentage(Number(price), Number(previousPrice)) 
+                        : null;
+                        
+                      return (
+                        <option key={index} value={index}>
+                          {variation.name} - {hasDiscount ? 
+                            `Rs.${price} (${discountPercentage}% OFF)` : 
+                            `Rs.${price}`}
+                        </option>
+                      );
+                    })}
                   </select>
+                  
+                  {(() => {
+                    if (!selectedVariation) return null;
+                    const variation = item.variations[Number(selectedVariation)];
+                    if (!variation) return null;
+                    
+                    const price = getPrice(variation.price);
+                    const previousPrice = variation.previousPrice ? getPrice(variation.previousPrice) : null;
+                    const hasDiscount = previousPrice && previousPrice > price;
+                    
+                    if (hasDiscount) {
+                      return (
+                        <div className="mt-2 text-center">
+                          <span className="text-lg text-gray-500 line-through mr-2">
+                            Rs.{previousPrice}
+                          </span>
+                          <span className="text-xl font-bold text-red-600">
+                            Rs.{price}
+                          </span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               ) : (
                 <div className="w-full mb-4 text-center">
-                  <p className="text-lg font-bold">Price: Rs.{getPrice(item.price)}</p>
+                  {item.previousPrice && Number(getPrice(item.previousPrice)) > Number(getPrice(item.price)) ? (
+                    <div>
+                      <p className="text-lg text-gray-500 line-through">Original Price: Rs.{getPrice(item.previousPrice)}</p>
+                      <p className="text-xl font-bold text-red-600">
+                        Discounted Price: Rs.{getPrice(item.price)} 
+                        <span className="ml-2 text-sm bg-red-100 text-red-800 px-2 py-0.5 rounded">
+                          {mainItemDiscount}% OFF
+                        </span>
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-lg font-bold">Price: Rs.{getPrice(item.price)}</p>
+                  )}
                 </div>
               )}
               

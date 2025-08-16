@@ -16,11 +16,15 @@ export default function AddFoodItemForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [previousPrice, setPreviousPrice] = useState(""); 
+  const [applyDiscount, setApplyDiscount] = useState(false); 
   const [foodImageFile, setFoodImageFile] = useState(null);
 
   const [variations, setVariations] = useState([]);
   const [variationName, setVariationName] = useState("");
   const [variationPrice, setVariationPrice] = useState("");
+  const [variationPreviousPrice, setVariationPreviousPrice] = useState(""); 
+  const [applyVariationDiscount, setApplyVariationDiscount] = useState(false); 
   
   const [categoryHasSubcategories, setCategoryHasSubcategories] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,6 +32,8 @@ export default function AddFoodItemForm({
   useEffect(() => {
     if (variations.length > 0) {
       setPrice("");
+      setPreviousPrice("");
+      setApplyDiscount(false);
     }
   }, [variations]);
 
@@ -81,12 +87,23 @@ export default function AddFoodItemForm({
       toast.error("Please provide both variation name and price.");
       return;
     }
-    setVariations((prev) => [
-      ...prev,
-      { name: variationName.trim(), price: parseFloat(variationPrice) },
-    ]);
+
+    const variation = { 
+      name: variationName.trim(), 
+      price: parseFloat(variationPrice) 
+    };
+
+    // Add previousPrice if discount is applied
+    if (applyVariationDiscount && variationPreviousPrice && 
+        parseFloat(variationPreviousPrice) > parseFloat(variationPrice)) {
+      variation.previousPrice = parseFloat(variationPreviousPrice);
+    }
+
+    setVariations((prev) => [...prev, variation]);
     setVariationName("");
     setVariationPrice("");
+    setVariationPreviousPrice("");
+    setApplyVariationDiscount(false);
   };
 
   const handleSubmit = async (e) => {
@@ -129,9 +146,15 @@ export default function AddFoodItemForm({
     }
     formData.append("title", title.trim());
     formData.append("description", description.trim());
+    
     if (variations.length === 0) {
       formData.append("price", price);
+      // Add previousPrice if discount is applied
+      if (applyDiscount && previousPrice && parseFloat(previousPrice) > parseFloat(price)) {
+        formData.append("previousPrice", previousPrice);
+      }
     }
+    
     formData.append("foodImage", foodImageFile);
     if (variations.length > 0) {
       formData.append("variations", JSON.stringify(variations));
@@ -146,6 +169,8 @@ export default function AddFoodItemForm({
       setTitle("");
       setDescription("");
       setPrice("");
+      setPreviousPrice("");
+      setApplyDiscount(false);
       setFoodImageFile(null);
       setVariations([]);
     } catch (error) {
@@ -246,27 +271,67 @@ export default function AddFoodItemForm({
         ></textarea>
       </div>
 
-      <div>
-        <label className="block font-medium mb-1">
-          Price{" "}
-          {variations.length > 0 &&
-            "(Disabled because variations determine the price)"}
-        </label>
-        <input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          className="w-full border rounded p-2"
-          placeholder="Enter price"
-          disabled={variations.length > 0}
-          required={variations.length === 0}
-        />
-        {variations.length > 0 && (
-          <p className="text-sm text-gray-600">
-            Price is determined by the selected variation.
-          </p>
-        )}
-      </div>
+      {variations.length === 0 && (
+        <>
+          <div className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              id="applyDiscount"
+              checked={applyDiscount}
+              onChange={(e) => setApplyDiscount(e.target.checked)}
+              className="mr-2"
+            />
+            <label htmlFor="applyDiscount" className="font-medium">
+              Apply Discount to Item
+            </label>
+          </div>
+
+          {applyDiscount ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium mb-1">Original Price</label>
+                <input
+                  type="number"
+                  value={previousPrice}
+                  onChange={(e) => setPreviousPrice(e.target.value)}
+                  className="w-full border rounded p-2"
+                  placeholder="Original price before discount"
+                  required={applyDiscount}
+                />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Discounted Price</label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="w-full border rounded p-2"
+                  placeholder="Current discounted price"
+                  required
+                />
+                {applyDiscount && previousPrice && price && 
+                 parseFloat(previousPrice) <= parseFloat(price) && (
+                  <p className="text-sm text-red-600">
+                    Discounted price should be lower than the original price
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block font-medium mb-1">Price</label>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="w-full border rounded p-2"
+                placeholder="Enter price"
+                required={variations.length === 0}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       <div>
         <label className="block font-medium mb-1">Upload Image</label>
@@ -281,34 +346,85 @@ export default function AddFoodItemForm({
 
       <div>
         <label className="block font-medium mb-1">Variations (optional)</label>
-        <div className="flex gap-2 mb-2">
-          <input
-            type="text"
-            value={variationName}
-            onChange={(e) => setVariationName(e.target.value)}
-            placeholder="Variation Name (e.g., Small)"
-            className="w-1/2 border rounded p-2"
-          />
-          <input
-            type="number"
-            value={variationPrice}
-            onChange={(e) => setVariationPrice(e.target.value)}
-            placeholder="Price"
-            className="w-1/2 border rounded p-2"
-          />
-          <button
-            type="button"
-            onClick={addVariation}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-          >
-            Add Variation
-          </button>
+        
+        <div className="mb-2">
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              id="applyVariationDiscount"
+              checked={applyVariationDiscount}
+              onChange={(e) => setApplyVariationDiscount(e.target.checked)}
+              className="mr-2"
+            />
+            <label htmlFor="applyVariationDiscount" className="font-medium">
+              Apply Discount to Variation
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-2">
+            <input
+              type="text"
+              value={variationName}
+              onChange={(e) => setVariationName(e.target.value)}
+              placeholder="Variation Name (e.g., Small)"
+              className="flex-1 border rounded p-2"
+            />
+            
+            {applyVariationDiscount ? (
+              <>
+                <input
+                  type="number"
+                  value={variationPreviousPrice}
+                  onChange={(e) => setVariationPreviousPrice(e.target.value)}
+                  placeholder="Original Price"
+                  className="w-24 border rounded p-2"
+                />
+                <input
+                  type="number"
+                  value={variationPrice}
+                  onChange={(e) => setVariationPrice(e.target.value)}
+                  placeholder="Discounted Price"
+                  className="w-24 border rounded p-2"
+                />
+              </>
+            ) : (
+              <input
+                type="number"
+                value={variationPrice}
+                onChange={(e) => setVariationPrice(e.target.value)}
+                placeholder="Price"
+                className="w-24 border rounded p-2"
+              />
+            )}
+            
+            <button
+              type="button"
+              onClick={addVariation}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+            >
+              Add
+            </button>
+          </div>
+          {applyVariationDiscount && 
+           variationPreviousPrice && variationPrice && 
+           parseFloat(variationPreviousPrice) <= parseFloat(variationPrice) && (
+            <p className="text-sm text-red-600">
+              Discounted price should be lower than the original price
+            </p>
+          )}
         </div>
+
         {variations.length > 0 && (
           <ul className="list-disc pl-5">
             {variations.map((v, index) => (
               <li key={index}>
-                {v.name}: {v.price} Rs
+                {v.name}: {v.previousPrice ? (
+                  <>
+                    <span className="line-through text-gray-500">{v.previousPrice} Rs</span> {v.price} Rs
+                  </>
+                ) : (
+                  `${v.price} Rs`
+                )}
               </li>
             ))}
           </ul>

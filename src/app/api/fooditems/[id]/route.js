@@ -75,6 +75,7 @@ export async function PATCH(request, context) {
     const title = formData.get("title");
     const description = formData.get("description");
     const price = formData.get("price");
+    const previousPrice = formData.get("previousPrice"); // Get previousPrice
     const category = formData.get("category");
     const subcategory = formData.get("subcategory");
     const branch = formData.get("branch");
@@ -131,6 +132,19 @@ export async function PATCH(request, context) {
     
     if (!variationsParsed.length) {
       updateData.price = Number(price);
+      
+      if (previousPrice) {
+        updateData.previousPrice = Number(previousPrice);
+      } else {
+        // If no previousPrice is provided in the update, check if we should:
+        
+        // Option 1: Keep the existing previousPrice
+        // Do nothing here, MongoDB won't update the field
+        
+        // Option 2: Remove previousPrice if not provided in update
+        // Uncomment the next line to implement this behavior
+        // updateData.previousPrice = null;
+      }
     }
     
     const updatedFoodItem = await FoodItem.findByIdAndUpdate(id, updateData, {

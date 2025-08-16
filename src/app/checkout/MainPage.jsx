@@ -970,7 +970,8 @@ const handlePlaceOrder = async () => {
                       className="flex justify-between text-sm text-gray-700"
                     >
                       <span>
-                        {item.title} x {item.quantity}
+                        {item.title}
+                         {/* x {item.quantity} */}
                       </span>
                       <span>Rs. {(item.price * item.quantity).toLocaleString()}</span>
                     </div>

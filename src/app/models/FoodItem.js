@@ -4,6 +4,7 @@ const VariationSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     price: { type: Number, required: true },
+    previousPrice: { type: Number }, 
   },
   { _id: false }
 );
@@ -18,6 +19,7 @@ const FoodItemSchema = new mongoose.Schema(
         return !this.variations || this.variations.length === 0;
       },
     },
+    previousPrice: { type: Number },
     imageUrl: { type: String },
     category: {
       type: mongoose.Schema.Types.ObjectId,
