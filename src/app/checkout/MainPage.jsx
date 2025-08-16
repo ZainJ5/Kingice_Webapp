@@ -6,6 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { useOrderTypeStore } from "../../store/orderTypeStore";
 import { useCartStore } from "../../store/cart";
 import { useBranchStore } from "../../store/branchStore";
+import { useDeliveryAreaStore } from "../../store/deliveryAreaStore"; // Import the delivery area store
 import DeliveryPickupModal from "../components/DeliveryPickupModal";
 import { useRouter } from "next/navigation";
 
@@ -51,6 +52,7 @@ export default function CheckoutPage() {
   const [isLogoLoading, setIsLogoLoading] = useState(true);
 
   const { orderType } = useOrderTypeStore();
+  const { deliveryArea } = useDeliveryAreaStore(); // Get the selected delivery area from the global store
   const { branch } = useBranchStore();
   const { items, total, clearCart } = useCartStore();
   const subtotal = total;
@@ -59,6 +61,13 @@ export default function CheckoutPage() {
   
   const globalDiscount = discountActive ? Math.round(subtotal * (discountPercentage / 100)) : 0;
   
+  // Pre-select the delivery area from the global state
+  useEffect(() => {
+    if (orderType === "delivery" && deliveryArea) {
+      setSelectedArea(deliveryArea);
+    }
+  }, [orderType, deliveryArea]);
+
   useEffect(() => {
     // Load saved user data from localStorage if available
     const savedUserData = localStorage.getItem('checkoutUserData');

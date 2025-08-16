@@ -4,11 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { MapPin, Phone, ChevronDown } from 'lucide-react'
 import StickyCartButton from './CartButton' 
+import { useBranchStore } from '../../store/branchStore' 
 
 function Header() {
   const [logo, setLogo] = useState('/logo.png')
   const [branches, setBranches] = useState([])
-  const [currentBranch, setCurrentBranch] = useState(null)
+  const { branch, setBranch } = useBranchStore()
   const [loading, setLoading] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -32,8 +33,8 @@ function Header() {
         const data = await response.json()
         setBranches(data)
         
-        if (data && data.length > 0) {
-          setCurrentBranch(data[0])
+        if (!branch && data && data.length > 0) {
+          setBranch(data[0])
         }
       } catch (err) {
         console.error('Error fetching branches:', err)
@@ -44,7 +45,7 @@ function Header() {
 
     fetchLogo()
     fetchBranches()
-  }, [])
+  }, [branch, setBranch]) 
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -59,8 +60,8 @@ function Header() {
     }
   }, [])
 
-  const handleBranchChange = (branch) => {
-    setCurrentBranch(branch)
+  const handleBranchChange = (selectedBranch) => {
+    setBranch(selectedBranch) 
     setDropdownOpen(false)
   }
 
@@ -74,7 +75,7 @@ function Header() {
           >
             <MapPin className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
             <span className="font-medium mr-1  text-xs sm:text-sm">
-              {currentBranch ? currentBranch.name : 'Select Branch'}
+              {branch ? branch.name : 'Select Branch'}
             </span>
             <ChevronDown className="h-3 w-3 sm:h-4 w-4 text-white" />
           </button>
@@ -82,15 +83,15 @@ function Header() {
           {dropdownOpen && (
             <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded shadow-lg z-20">
               <div className="py-1 max-h-56 overflow-y-auto">
-                {branches.map((branch) => (
+                {branches.map((b) => (
                   <button
-                    key={branch._id}
+                    key={b._id}
                     className={`block px-4 py-2 text-sm w-full text-left  ${
-                      currentBranch && currentBranch._id === branch._id ? 'bg-gray-200' : ''
+                      branch && branch._id === b._id ? 'bg-gray-200' : ''
                     }`}
-                    onClick={() => handleBranchChange(branch)}
+                    onClick={() => handleBranchChange(b)}
                   >
-                    {branch.name}
+                    {b.name}
                   </button>
                 ))}
                 {branches.length === 0 && (
@@ -101,11 +102,11 @@ function Header() {
           )}
 
           <a 
-            href={`tel:${currentBranch?.phone || '03320222845'}`}
+            href={`tel:${branch?.phone || '03320222845'}`}
             className="hidden sm:flex items-center bg-black text-white rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
           >
             <Phone className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
-            <span className="font-medium text-xs sm:text-sm">{currentBranch?.phone || '03320222845'}</span>
+            <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03320222845'}</span>
           </a>
         </div>
 
@@ -115,18 +116,17 @@ function Header() {
               src={logo}
               alt="Restaurant Logo" 
               className="rounded-full object-contain"
-              priority
             />
           </div>
         </div>
 
         <div className="flex items-center space-x-1 sm:space-x-2">
           <a 
-            href={`tel:${currentBranch?.phone || '03320222845'}`}
+            href={`tel:${branch?.phone || '03320222845'}`}
             className="flex sm:hidden items-center bg-black text-white rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
           >
             <Phone className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
-            <span className="font-medium text-xs sm:text-sm">{currentBranch?.phone || '03320222845'}</span>
+            <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03320222845'}</span>
           </a>
           <div className="fixed top-11 right-3 z-[500]">
             <StickyCartButton className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm" />
@@ -200,23 +200,19 @@ export default function Hero() {
     }, 1000)
   }
 
-  // Set up auto rotation
   useEffect(() => {
     if (images.length <= 1) return;
 
-    // Clear any existing interval
     if (autoRotateRef.current) {
       clearInterval(autoRotateRef.current);
     }
 
-    // Set new interval for auto rotation
     autoRotateRef.current = setInterval(() => {
       if (!isAnimatingRef.current) {
         nextImage();
       }
     }, heroData.settings.imageRotationSpeed);
 
-    // Clean up on component unmount
     return () => {
       if (autoRotateRef.current) {
         clearInterval(autoRotateRef.current);
