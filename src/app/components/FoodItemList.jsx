@@ -12,10 +12,13 @@ export default function FoodItemList() {
     title: "",
     description: "",
     price: "",
+    previousPrice: "",
     category: "",
     subcategory: "",
     branch: "",
     variations: [],
+    extras: [],
+    sideOrders: []
   });
   const [editImage, setEditImage] = useState(null);
   const [originalItemData, setOriginalItemData] = useState(null);
@@ -177,10 +180,13 @@ export default function FoodItemList() {
       title: item.title || "",
       description: item.description || "",
       price: item.price || "",
+      previousPrice: item.previousPrice || "",
       category: categoryId || "",
       subcategory: subcategoryId || "",
       branch: branchId || "",
       variations: item.variations || [],
+      extras: item.extras || [],
+      sideOrders: item.sideOrders || []
     });
     setEditImage(null);
   };
@@ -199,12 +205,13 @@ export default function FoodItemList() {
     }
   };
 
+  // Variation handlers
   const handleVariationChange = (index, field, value) => {
     setEditData((prev) => {
       const updatedVariations = [...prev.variations];
       updatedVariations[index] = {
         ...updatedVariations[index],
-        [field]: field === "price" ? Number(value) : value,
+        [field]: field.includes("price") ? Number(value) : value,
       };
       return {
         ...prev,
@@ -216,7 +223,7 @@ export default function FoodItemList() {
   const addVariation = () => {
     setEditData((prev) => ({
       ...prev,
-      variations: [...prev.variations, { name: "", price: 0 }],
+      variations: [...prev.variations, { name: "", price: 0, previousPrice: null }],
     }));
   };
 
@@ -231,6 +238,110 @@ export default function FoodItemList() {
     });
   };
 
+  // Extra handlers
+  const handleExtraChange = (index, field, value) => {
+    setEditData((prev) => {
+      const updatedExtras = [...prev.extras];
+      updatedExtras[index] = {
+        ...updatedExtras[index],
+        [field]: field === "price" ? Number(value) : value,
+      };
+      return {
+        ...prev,
+        extras: updatedExtras,
+      };
+    });
+  };
+
+  const addExtra = () => {
+    setEditData((prev) => ({
+      ...prev,
+      extras: [...prev.extras, { name: "", description: "", price: 0, imageUrl: "" }],
+    }));
+  };
+
+  const removeExtra = (index) => {
+    setEditData((prev) => {
+      const updatedExtras = [...prev.extras];
+      updatedExtras.splice(index, 1);
+      return {
+        ...prev,
+        extras: updatedExtras,
+      };
+    });
+  };
+
+  // Side Order handlers
+  const handleSideOrderChange = (index, field, value) => {
+    setEditData((prev) => {
+      const updatedSideOrders = [...prev.sideOrders];
+      updatedSideOrders[index] = {
+        ...updatedSideOrders[index],
+        [field]: field === "price" ? Number(value) : value,
+      };
+      return {
+        ...prev,
+        sideOrders: updatedSideOrders,
+      };
+    });
+  };
+
+  const addSideOrder = () => {
+    setEditData((prev) => ({
+      ...prev,
+      sideOrders: [...prev.sideOrders, { name: "", description: "", price: 0, imageUrl: "", category: "other" }],
+    }));
+  };
+
+  const removeSideOrder = (index) => {
+    setEditData((prev) => {
+      const updatedSideOrders = [...prev.sideOrders];
+      updatedSideOrders.splice(index, 1);
+      return {
+        ...prev,
+        sideOrders: updatedSideOrders,
+      };
+    });
+  };
+
+  const handleExtraImageChange = (index, e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Handle the file upload visually for now, will be sent in form data later
+      setEditData((prev) => {
+        const updatedExtras = [...prev.extras];
+        updatedExtras[index] = {
+          ...updatedExtras[index],
+          _tempFile: file,
+          _tempFileName: file.name
+        };
+        return {
+          ...prev,
+          extras: updatedExtras,
+        };
+      });
+    }
+  };
+
+  const handleSideOrderImageChange = (index, e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Handle the file upload visually for now, will be sent in form data later
+      setEditData((prev) => {
+        const updatedSideOrders = [...prev.sideOrders];
+        updatedSideOrders[index] = {
+          ...updatedSideOrders[index],
+          _tempFile: file,
+          _tempFileName: file.name
+        };
+        return {
+          ...prev,
+          sideOrders: updatedSideOrders,
+        };
+      });
+    }
+  };
+
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editingItemId) return;
@@ -241,6 +352,9 @@ export default function FoodItemList() {
 
     if (!editData.variations || editData.variations.length === 0) {
       formData.append("price", editData.price);
+      if (editData.previousPrice) {
+        formData.append("previousPrice", editData.previousPrice);
+      }
     }
 
     const categoryId =
@@ -269,12 +383,51 @@ export default function FoodItemList() {
     if (subcategoryId) formData.append("subcategory", subcategoryId);
     formData.append("branch", branchId);
 
+    // Process variations
     if (editData.variations && editData.variations.length > 0) {
       const validVariations = editData.variations.filter(
         (v) => v.name && v.name.trim() !== "" && v.price !== null && v.price !== undefined
       );
       if (validVariations.length > 0) {
         formData.append("variations", JSON.stringify(validVariations));
+      }
+    }
+
+    // Process extras
+    if (editData.extras && editData.extras.length > 0) {
+      const validExtras = editData.extras.filter(
+        (e) => e.name && e.name.trim() !== "" && e.price !== null && e.price !== undefined
+      );
+      if (validExtras.length > 0) {
+        // Remove temp file references before JSON conversion
+        const cleanExtras = validExtras.map(({_tempFile, _tempFileName, ...rest}) => rest);
+        formData.append("extras", JSON.stringify(cleanExtras));
+        
+        // Handle extra images
+        validExtras.forEach((extra, index) => {
+          if (extra._tempFile) {
+            formData.append(`extraImage_${index}`, extra._tempFile);
+          }
+        });
+      }
+    }
+
+    // Process side orders
+    if (editData.sideOrders && editData.sideOrders.length > 0) {
+      const validSideOrders = editData.sideOrders.filter(
+        (s) => s.name && s.name.trim() !== "" && s.price !== null && s.price !== undefined
+      );
+      if (validSideOrders.length > 0) {
+        // Remove temp file references before JSON conversion
+        const cleanSideOrders = validSideOrders.map(({_tempFile, _tempFileName, ...rest}) => rest);
+        formData.append("sideOrders", JSON.stringify(cleanSideOrders));
+        
+        // Handle side order images
+        validSideOrders.forEach((sideOrder, index) => {
+          if (sideOrder._tempFile) {
+            formData.append(`sideOrderImage_${index}`, sideOrder._tempFile);
+          }
+        });
       }
     }
 
@@ -292,10 +445,13 @@ export default function FoodItemList() {
           title: "",
           description: "",
           price: "",
+          previousPrice: "",
           category: "",
           subcategory: "",
           branch: "",
           variations: [],
+          extras: [],
+          sideOrders: []
         });
         setOriginalItemData(null);
         setEditImage(null);
@@ -316,10 +472,13 @@ export default function FoodItemList() {
       title: "",
       description: "",
       price: "",
+      previousPrice: "",
       category: "",
       subcategory: "",
       branch: "",
       variations: [],
+      extras: [],
+      sideOrders: []
     });
     setOriginalItemData(null);
     setEditImage(null);
@@ -337,7 +496,7 @@ export default function FoodItemList() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 p-4">
       {/* Filters Section */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-3">Filter Items</h2>
@@ -408,78 +567,115 @@ export default function FoodItemList() {
         {filteredItems.map((item) => {
           const id = extractValue(item._id);
           const price = extractValue(item.price);
+          const previousPrice = extractValue(item.previousPrice);
 
           if (editingItemId === id) {
             return (
               <div key={id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <form onSubmit={handleEditSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Title</label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={editData.title}
-                      onChange={handleEditChange}
-                      placeholder="Title"
-                      className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea
-                      name="description"
-                      value={editData.description}
-                      onChange={handleEditChange}
-                      placeholder="Description"
-                      className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                    ></textarea>
-                  </div>
-                  {(!editData.variations || editData.variations.length === 0) && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Price</label>
-                      <input
-                        type="number"
-                        name="price"
-                        value={editData.price}
-                        onChange={handleEditChange}
-                        placeholder="Price"
-                        className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                      />
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Edit Food Item</h2>
+                  
+                  {/* Basic Info Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-md font-semibold text-gray-700 mb-3">Basic Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Title</label>
+                        <input
+                          type="text"
+                          name="title"
+                          value={editData.title}
+                          onChange={handleEditChange}
+                          placeholder="Title"
+                          className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea
+                          name="description"
+                          value={editData.description}
+                          onChange={handleEditChange}
+                          placeholder="Description"
+                          className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                        ></textarea>
+                      </div>
+                      
+                      {(!editData.variations || editData.variations.length === 0) && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Price</label>
+                            <input
+                              type="number"
+                              name="price"
+                              value={editData.price}
+                              onChange={handleEditChange}
+                              placeholder="Price"
+                              className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Previous Price (Optional)</label>
+                            <input
+                              type="number"
+                              name="previousPrice"
+                              value={editData.previousPrice}
+                              onChange={handleEditChange}
+                              placeholder="Previous Price"
+                              className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                            />
+                          </div>
+                        </>
+                      )}
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Category ID (not editable)</label>
+                        <input
+                          type="text"
+                          name="category"
+                          value={editData.category}
+                          disabled
+                          className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Subcategory ID (not editable)</label>
+                        <input
+                          type="text"
+                          name="subcategory"
+                          value={editData.subcategory}
+                          disabled
+                          className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Branch ID (not editable)</label>
+                        <input
+                          type="text"
+                          name="branch"
+                          value={editData.branch}
+                          disabled
+                          className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Update Image (optional)
+                        </label>
+                        <input
+                          type="file"
+                          name="foodImage"
+                          onChange={handleImageChange}
+                          className="mt-1 block w-full rounded-lg border-gray-200 text-sm"
+                        />
+                      </div>
                     </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Category ID (not editable)</label>
-                    <input
-                      type="text"
-                      name="category"
-                      value={editData.category}
-                      disabled
-                      className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                    />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Subcategory ID (not editable)</label>
-                    <input
-                      type="text"
-                      name="subcategory"
-                      value={editData.subcategory}
-                      disabled
-                      className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Branch ID (not editable)</label>
-                    <input
-                      type="text"
-                      name="branch"
-                      value={editData.branch}
-                      disabled
-                      className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-semibold text-gray-800">Variations</h3>
+                  
+                  {/* Variations Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-md font-semibold text-gray-700">Variations</h3>
                       <button
                         type="button"
                         onClick={addVariation}
@@ -493,7 +689,7 @@ export default function FoodItemList() {
                         {editData.variations.map((variation, index) => (
                           <div
                             key={index}
-                            className="flex flex-wrap gap-2 items-center p-2 border rounded-lg"
+                            className="flex flex-wrap gap-2 items-center p-3 border rounded-lg bg-white"
                           >
                             <input
                               type="text"
@@ -511,6 +707,15 @@ export default function FoodItemList() {
                               placeholder="Price"
                               className="w-24 border p-2 rounded-lg text-sm"
                             />
+                            <input
+                              type="number"
+                              value={variation.previousPrice || ""}
+                              onChange={(e) =>
+                                handleVariationChange(index, "previousPrice", e.target.value)
+                              }
+                              placeholder="Previous Price"
+                              className="w-28 border p-2 rounded-lg text-sm"
+                            />
                             <button
                               type="button"
                               onClick={() => removeVariation(index)}
@@ -525,17 +730,182 @@ export default function FoodItemList() {
                       <p className="text-gray-500 text-sm">No variations added</p>
                     )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Update Image (optional)
-                    </label>
-                    <input
-                      type="file"
-                      name="foodImage"
-                      onChange={handleImageChange}
-                      className="mt-1 block w-full rounded-lg border-gray-200 text-sm"
-                    />
+                  
+                  {/* Extras Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-md font-semibold text-gray-700">Extras</h3>
+                      <button
+                        type="button"
+                        onClick={addExtra}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm"
+                      >
+                        Add Extra
+                      </button>
+                    </div>
+                    {editData.extras && editData.extras.length > 0 ? (
+                      <div className="space-y-3">
+                        {editData.extras.map((extra, index) => (
+                          <div
+                            key={index}
+                            className="p-3 border rounded-lg bg-white"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                                <input
+                                  type="text"
+                                  value={extra.name || ""}
+                                  onChange={(e) => handleExtraChange(index, "name", e.target.value)}
+                                  placeholder="Extra Name"
+                                  className="w-full border p-2 rounded-lg text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Price</label>
+                                <input
+                                  type="number"
+                                  value={extra.price || 0}
+                                  onChange={(e) => handleExtraChange(index, "price", e.target.value)}
+                                  placeholder="Price"
+                                  className="w-full border p-2 rounded-lg text-sm"
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                                <textarea
+                                  value={extra.description || ""}
+                                  onChange={(e) => handleExtraChange(index, "description", e.target.value)}
+                                  placeholder="Description"
+                                  className="w-full border p-2 rounded-lg text-sm"
+                                  rows={2}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Image</label>
+                                <input
+                                  type="file"
+                                  onChange={(e) => handleExtraImageChange(index, e)}
+                                  className="w-full text-sm"
+                                />
+                                {(extra.imageUrl || extra._tempFileName) && (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    Current: {extra._tempFileName || extra.imageUrl}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => removeExtra(index)}
+                                className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm"
+                              >
+                                Remove Extra
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">No extras added</p>
+                    )}
                   </div>
+                  
+                  {/* Side Orders Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-md font-semibold text-gray-700">Side Orders</h3>
+                      <button
+                        type="button"
+                        onClick={addSideOrder}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm"
+                      >
+                        Add Side Order
+                      </button>
+                    </div>
+                    {editData.sideOrders && editData.sideOrders.length > 0 ? (
+                      <div className="space-y-3">
+                        {editData.sideOrders.map((sideOrder, index) => (
+                          <div
+                            key={index}
+                            className="p-3 border rounded-lg bg-white"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                                <input
+                                  type="text"
+                                  value={sideOrder.name || ""}
+                                  onChange={(e) => handleSideOrderChange(index, "name", e.target.value)}
+                                  placeholder="Side Order Name"
+                                  className="w-full border p-2 rounded-lg text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Price</label>
+                                <input
+                                  type="number"
+                                  value={sideOrder.price || 0}
+                                  onChange={(e) => handleSideOrderChange(index, "price", e.target.value)}
+                                  placeholder="Price"
+                                  className="w-full border p-2 rounded-lg text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                                <select
+                                  value={sideOrder.category || "other"}
+                                  onChange={(e) => handleSideOrderChange(index, "category", e.target.value)}
+                                  className="w-full border p-2 rounded-lg text-sm"
+                                >
+                                  <option value="drinks">Drinks</option>
+                                  <option value="appetizers">Appetizers</option>
+                                  <option value="desserts">Desserts</option>
+                                  <option value="other">Other</option>
+                                </select>
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                                <textarea
+                                  value={sideOrder.description || ""}
+                                  onChange={(e) => handleSideOrderChange(index, "description", e.target.value)}
+                                  placeholder="Description"
+                                  className="w-full border p-2 rounded-lg text-sm"
+                                  rows={2}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Image</label>
+                                <input
+                                  type="file"
+                                  onChange={(e) => handleSideOrderImageChange(index, e)}
+                                  className="w-full text-sm"
+                                />
+                                {(sideOrder.imageUrl || sideOrder._tempFileName) && (
+                                  <p className="mt-1 text-xs text-gray-500">
+                                    Current: {sideOrder._tempFileName || sideOrder.imageUrl}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => removeSideOrder(index)}
+                                className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm"
+                              >
+                                Remove Side Order
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">No side orders added</p>
+                    )}
+                  </div>
+                  
                   <div className="flex gap-2">
                     <button
                       type="submit"
@@ -575,9 +945,18 @@ export default function FoodItemList() {
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
                 <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                
+                {/* Price display with optional previous price */}
                 {(!item.variations || item.variations.length === 0) && (
-                  <p className="font-semibold text-gray-800 mt-2">{price} Rs</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">{price} Rs</span>
+                    {previousPrice && (
+                      <span className="text-sm text-gray-500 line-through">{previousPrice} Rs</span>
+                    )}
+                  </div>
                 )}
+                
+                {/* Branch, Category, Subcategory */}
                 {item.branch &&
                 typeof item.branch === "object" &&
                 item.branch.name ? (
@@ -589,6 +968,7 @@ export default function FoodItemList() {
                     </p>
                   )
                 )}
+                
                 {item.category &&
                 typeof item.category === "object" &&
                 item.category.name ? (
@@ -600,6 +980,7 @@ export default function FoodItemList() {
                     </p>
                   )
                 )}
+                
                 {item.subcategory &&
                 typeof item.subcategory === "object" &&
                 item.subcategory.name ? (
@@ -613,13 +994,51 @@ export default function FoodItemList() {
                     </p>
                   )
                 )}
+                
+                {/* Display variations */}
                 {item.variations && item.variations.length > 0 && (
                   <div className="mt-2">
                     <p className="font-semibold text-gray-800 text-sm">Variations:</p>
                     <ul className="list-disc pl-4 text-sm text-gray-600">
                       {item.variations.map((variation, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <span>{variation.name} - {extractValue(variation.price)} Rs</span>
+                          {variation.previousPrice && (
+                            <span className="text-xs text-gray-500 line-through">
+                              {extractValue(variation.previousPrice)} Rs
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* Display extras */}
+                {item.extras && item.extras.length > 0 && (
+                  <div className="mt-2">
+                    <p className="font-semibold text-gray-800 text-sm">Extras:</p>
+                    <ul className="list-disc pl-4 text-sm text-gray-600">
+                      {item.extras.map((extra, index) => (
                         <li key={index}>
-                          {variation.name} - {extractValue(variation.price)} Rs
+                          {extra.name} - {extractValue(extra.price)} Rs
+                          {extra.description && <span className="text-xs text-gray-500"> ({extra.description})</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* Display side orders */}
+                {item.sideOrders && item.sideOrders.length > 0 && (
+                  <div className="mt-2">
+                    <p className="font-semibold text-gray-800 text-sm">Side Orders:</p>
+                    <ul className="list-disc pl-4 text-sm text-gray-600">
+                      {item.sideOrders.map((sideOrder, index) => (
+                        <li key={index}>
+                          {sideOrder.name} - {extractValue(sideOrder.price)} Rs
+                          <span className="text-xs text-gray-500"> ({sideOrder.category})</span>
+                          {sideOrder.description && <span className="text-xs text-gray-500"> - {sideOrder.description}</span>}
                         </li>
                       ))}
                     </ul>
