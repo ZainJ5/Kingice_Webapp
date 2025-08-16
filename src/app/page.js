@@ -6,16 +6,13 @@ import "react-toastify/dist/ReactToastify.css";
 
 import Navbar from "./components/NavBar";
 import Hero from "./components/Hero";
-import StickyCartButton from "./components/CartButton";
 import MenuTabs from "./components/MenuTabs";
 import Footer from "./components/Footer";
-import SearchBar from "./components/SearchBar";
 import DeliveryPickupModal from "./components/DeliveryPickupModal";
 import MenuSection from "./components/MenuSection";
 import { useBranchStore } from "../store/branchStore";
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [items, setItems] = useState([]);
@@ -36,7 +33,6 @@ export default function Home() {
     return idField;
   };
 
-  // Fetch data when branch changes
   useEffect(() => {
     if (!branch) return;
     
@@ -44,7 +40,6 @@ export default function Home() {
 
     const fetchData = async () => {
       try {
-        // Fetch all data in parallel
         const [categoriesRes, subcategoriesRes, itemsRes] = await Promise.all([
           fetch('/api/categories'),
           fetch('/api/subcategories'),
@@ -57,7 +52,6 @@ export default function Home() {
           itemsRes.json()
         ]);
 
-        // Filter categories by branch
         const filteredCategories = categoriesData.filter((cat) => {
           if (cat.branch) {
             const catBranch = typeof cat.branch === 'object' ? getId(cat.branch) : cat.branch;
@@ -66,7 +60,6 @@ export default function Home() {
           return false;
         });
         
-        // Filter subcategories by branch
         const filteredSubcategories = subcategoriesData.filter((sub) => {
           if (sub.branch) {
             const subBranch = typeof sub.branch === 'object' ? getId(sub.branch) : sub.branch;
@@ -94,22 +87,8 @@ export default function Home() {
     fetchData();
   }, [branch]);
 
-  // Filter items by search query
-  const filteredItems = items.filter((item) => {
-    if (!searchQuery) return true;
-    
-    const lowerQuery = searchQuery.toLowerCase();
-    const titleMatch = item.title?.toLowerCase().includes(lowerQuery);
-    const descriptionMatch = item.description?.toLowerCase().includes(lowerQuery);
-    const itemsMatch =
-      item.items &&
-      Array.isArray(item.items) &&
-      item.items.some((i) => i?.toLowerCase().includes(lowerQuery));
-    
-    return titleMatch || descriptionMatch || itemsMatch;
-  });
+  const filteredItems = items;
 
-  // Get subcategories by category
   const getSubcategoriesByCategory = (categoryId) => {
     return subcategories.filter((sub) => {
       let subCatId = null;
@@ -122,7 +101,6 @@ export default function Home() {
     });
   };
 
-  // Get items by category
   const getItemsByCategory = (categoryId) => {
     return filteredItems.filter((item) => {
       let itemCatId = null;
@@ -135,10 +113,8 @@ export default function Home() {
     });
   };
 
-  // Enhanced section visibility handler
   const handleSectionVisible = (category) => {
     setVisibleCategory((prev) => {
-      // Only update if the category is actually different
       if (!prev || getId(prev._id) !== getId(category._id)) {
         return category;
       }
@@ -150,15 +126,13 @@ export default function Home() {
     <>
       <DeliveryPickupModal />
 
-      <main className="min-h-screen bg-white text-black relative pb-20 sm:pb-0">
-        <StickyCartButton className="fixed" />
+      <main className="min-h-screen bg-white text-black relative pb-0">
         <Hero />
         <Navbar />
         <MenuTabs 
           categories={categories} 
           visibleCategory={visibleCategory}
         />
-        <SearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         
         {loading ? (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">

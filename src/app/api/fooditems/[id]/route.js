@@ -57,6 +57,24 @@ export async function DELETE(request, context) {
       deleteImageFile(foodItem.imageUrl);
     }
     
+    if (foodItem.variations) {
+      foodItem.variations.forEach(variation => {
+        if (variation.imageUrl) deleteImageFile(variation.imageUrl);
+      });
+    }
+    
+    if (foodItem.extras) {
+      foodItem.extras.forEach(extra => {
+        if (extra.imageUrl) deleteImageFile(extra.imageUrl);
+      });
+    }
+    
+    if (foodItem.sideOrders) {
+      foodItem.sideOrders.forEach(sideOrder => {
+        if (sideOrder.imageUrl) deleteImageFile(sideOrder.imageUrl);
+      });
+    }
+    
     await FoodItem.findByIdAndDelete(id);
     return NextResponse.json({ message: "Item deleted successfully" }, { status: 200 });
   } catch (error) {
@@ -75,7 +93,7 @@ export async function PATCH(request, context) {
     const title = formData.get("title");
     const description = formData.get("description");
     const price = formData.get("price");
-    const previousPrice = formData.get("previousPrice"); // Get previousPrice
+    const previousPrice = formData.get("previousPrice");
     const category = formData.get("category");
     const subcategory = formData.get("subcategory");
     const branch = formData.get("branch");
@@ -91,20 +109,104 @@ export async function PATCH(request, context) {
       }
     }
     
+    const existingItem = await FoodItem.findById(id);
+    if (!existingItem) {
+      return NextResponse.json({ message: "Item not found" }, { status: 404 });
+    }
+    
     let variationsParsed = [];
     const variations = formData.get("variations");
     if (variations) {
       try {
-        variationsParsed = JSON.parse(variations);
+        const parsedData = JSON.parse(variations);
+        variationsParsed = [...parsedData];
+        
+        for (let i = 0; i < variationsParsed.length; i++) {
+          const variationImageField = `variationImage_${i}`;
+          if (formData.has(variationImageField)) {
+            const imageUrl = await processFileUpload(formData, variationImageField);
+            if (imageUrl) {
+              variationsParsed[i].imageUrl = imageUrl;
+            }
+          }
+        }
+        
+        if (existingItem.variations) {
+          const newVariationIds = new Set(variationsParsed.map(v => v.name));
+          existingItem.variations.forEach(oldVar => {
+            if (oldVar.imageUrl && !newVariationIds.has(oldVar.name)) {
+              deleteImageFile(oldVar.imageUrl);
+            }
+          });
+        }
       } catch (err) {
         console.error("Error parsing variations:", err);
+      }
+    }
+    
+    let extrasParsed = [];
+    const extras = formData.get("extras");
+    if (extras) {
+      try {
+        const parsedData = JSON.parse(extras);
+        extrasParsed = [...parsedData];
+        
+        for (let i = 0; i < extrasParsed.length; i++) {
+          const extraImageField = `extraImage_${i}`;
+          if (formData.has(extraImageField)) {
+            const imageUrl = await processFileUpload(formData, extraImageField);
+            if (imageUrl) {
+              extrasParsed[i].imageUrl = imageUrl;
+            }
+          }
+        }
+        
+        if (existingItem.extras) {
+          const newExtraIds = new Set(extrasParsed.map(e => e.name));
+          existingItem.extras.forEach(oldExtra => {
+            if (oldExtra.imageUrl && !newExtraIds.has(oldExtra.name)) {
+              deleteImageFile(oldExtra.imageUrl);
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing extras:", err);
+      }
+    }
+    
+    let sideOrdersParsed = [];
+    const sideOrders = formData.get("sideOrders");
+    if (sideOrders) {
+      try {
+        const parsedData = JSON.parse(sideOrders);
+        sideOrdersParsed = [...parsedData];
+        
+        for (let i = 0; i < sideOrdersParsed.length; i++) {
+          const sideOrderImageField = `sideOrderImage_${i}`;
+          if (formData.has(sideOrderImageField)) {
+            const imageUrl = await processFileUpload(formData, sideOrderImageField);
+            if (imageUrl) {
+              sideOrdersParsed[i].imageUrl = imageUrl;
+            }
+          }
+        }
+        
+        if (existingItem.sideOrders) {
+          const newSideOrderIds = new Set(sideOrdersParsed.map(so => so.name));
+          existingItem.sideOrders.forEach(oldSideOrder => {
+            if (oldSideOrder.imageUrl && !newSideOrderIds.has(oldSideOrder.name)) {
+              deleteImageFile(oldSideOrder.imageUrl);
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing sideOrders:", err);
       }
     }
     
     let imageUrl;
     const file = formData.get("foodImage");
     if (file && file.size > 0) {
-      const existingItem = await FoodItem.findById(id);
       if (existingItem && existingItem.imageUrl) {
         deleteImageFile(existingItem.imageUrl);
       }
@@ -118,6 +220,8 @@ export async function PATCH(request, context) {
       category,
       branch,
       variations: variationsParsed,
+      extras: extrasParsed,
+      sideOrders: sideOrdersParsed
     };
     
     if (subcategory && subcategory !== "") {
@@ -136,24 +240,13 @@ export async function PATCH(request, context) {
       if (previousPrice) {
         updateData.previousPrice = Number(previousPrice);
       } else {
-        // If no previousPrice is provided in the update, check if we should:
-        
-        // Option 1: Keep the existing previousPrice
-        // Do nothing here, MongoDB won't update the field
-        
-        // Option 2: Remove previousPrice if not provided in update
-        // Uncomment the next line to implement this behavior
-        // updateData.previousPrice = null;
+        updateData.previousPrice = undefined;
       }
     }
     
     const updatedFoodItem = await FoodItem.findByIdAndUpdate(id, updateData, {
       new: true,
     });
-    
-    if (!updatedFoodItem) {
-      return NextResponse.json({ message: "Item not found" }, { status: 404 });
-    }
     
     return NextResponse.json(updatedFoodItem, { status: 200 });
   } catch (error) {

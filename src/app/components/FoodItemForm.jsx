@@ -24,7 +24,23 @@ export default function AddFoodItemForm({
   const [variationName, setVariationName] = useState("");
   const [variationPrice, setVariationPrice] = useState("");
   const [variationPreviousPrice, setVariationPreviousPrice] = useState(""); 
-  const [applyVariationDiscount, setApplyVariationDiscount] = useState(false); 
+  const [applyVariationDiscount, setApplyVariationDiscount] = useState(false);
+  const [variationImageFile, setVariationImageFile] = useState(null);
+  
+  // New state for extras
+  const [extras, setExtras] = useState([]);
+  const [extraName, setExtraName] = useState("");
+  const [extraDescription, setExtraDescription] = useState("");
+  const [extraPrice, setExtraPrice] = useState("");
+  const [extraImageFile, setExtraImageFile] = useState(null);
+
+  // New state for side orders
+  const [sideOrders, setSideOrders] = useState([]);
+  const [sideOrderName, setSideOrderName] = useState("");
+  const [sideOrderDescription, setSideOrderDescription] = useState("");
+  const [sideOrderPrice, setSideOrderPrice] = useState("");
+  const [sideOrderCategory, setSideOrderCategory] = useState("other");
+  const [sideOrderImageFile, setSideOrderImageFile] = useState(null);
   
   const [categoryHasSubcategories, setCategoryHasSubcategories] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +97,24 @@ export default function AddFoodItemForm({
       setFoodImageFile(e.target.files[0]);
     }
   };
+  
+  const handleVariationImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setVariationImageFile(e.target.files[0]);
+    }
+  };
+  
+  const handleExtraImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setExtraImageFile(e.target.files[0]);
+    }
+  };
+  
+  const handleSideOrderImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSideOrderImageFile(e.target.files[0]);
+    }
+  };
 
   const addVariation = () => {
     if (!variationName.trim() || !variationPrice) {
@@ -98,12 +132,111 @@ export default function AddFoodItemForm({
         parseFloat(variationPreviousPrice) > parseFloat(variationPrice)) {
       variation.previousPrice = parseFloat(variationPreviousPrice);
     }
+    
+    // Process variation image if available
+    if (variationImageFile) {
+      // We're storing the file object directly in the state
+      // It will be processed during the form submission
+      variation.imageFile = variationImageFile;
+    }
 
     setVariations((prev) => [...prev, variation]);
     setVariationName("");
     setVariationPrice("");
     setVariationPreviousPrice("");
     setApplyVariationDiscount(false);
+    setVariationImageFile(null);
+  };
+
+  // Function to add an extra item (topping)
+  const addExtra = () => {
+    if (!extraName.trim() || !extraPrice) {
+      toast.error("Please provide both extra name and price.");
+      return;
+    }
+
+    const extra = {
+      name: extraName.trim(),
+      price: parseFloat(extraPrice),
+      description: extraDescription.trim() || undefined,
+    };
+    
+    // Process extra image if available
+    if (extraImageFile) {
+      extra.imageFile = extraImageFile;
+    }
+
+    setExtras((prev) => [...prev, extra]);
+    setExtraName("");
+    setExtraDescription("");
+    setExtraPrice("");
+    setExtraImageFile(null);
+  };
+
+  // Function to add a side order
+  const addSideOrder = () => {
+    if (!sideOrderName.trim() || !sideOrderPrice) {
+      toast.error("Please provide both side order name and price.");
+      return;
+    }
+
+    const sideOrder = {
+      name: sideOrderName.trim(),
+      price: parseFloat(sideOrderPrice),
+      description: sideOrderDescription.trim() || undefined,
+      category: sideOrderCategory,
+    };
+    
+    // Process side order image if available
+    if (sideOrderImageFile) {
+      sideOrder.imageFile = sideOrderImageFile;
+    }
+
+    setSideOrders((prev) => [...prev, sideOrder]);
+    setSideOrderName("");
+    setSideOrderDescription("");
+    setSideOrderPrice("");
+    setSideOrderCategory("other");
+    setSideOrderImageFile(null);
+  };
+
+  // Function to remove an extra item
+  const removeExtra = (index) => {
+    setExtras((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Function to remove a side order
+  const removeSideOrder = (index) => {
+    setSideOrders((prev) => prev.filter((_, i) => i !== index));
+  };
+  
+  // Function to remove a variation
+  const removeVariation = (index) => {
+    setVariations((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Function to process and upload files for variations, extras and side orders
+  const processAdditionalFiles = async (formData) => {
+    // Process variation files
+    for (let i = 0; i < variations.length; i++) {
+      if (variations[i].imageFile) {
+        formData.append(`variationImage_${i}`, variations[i].imageFile);
+      }
+    }
+    
+    // Process extra files
+    for (let i = 0; i < extras.length; i++) {
+      if (extras[i].imageFile) {
+        formData.append(`extraImage_${i}`, extras[i].imageFile);
+      }
+    }
+    
+    // Process side order files
+    for (let i = 0; i < sideOrders.length; i++) {
+      if (sideOrders[i].imageFile) {
+        formData.append(`sideOrderImage_${i}`, sideOrders[i].imageFile);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -156,9 +289,38 @@ export default function AddFoodItemForm({
     }
     
     formData.append("foodImage", foodImageFile);
+    
+    // Process variations
     if (variations.length > 0) {
-      formData.append("variations", JSON.stringify(variations));
+      // Filter out the imageFile property before JSON stringify
+      const variationsForSubmission = variations.map(variation => {
+        const { imageFile, ...rest } = variation;
+        return rest;
+      });
+      formData.append("variations", JSON.stringify(variationsForSubmission));
     }
+    
+    // Add extras and side orders if they exist
+    if (extras.length > 0) {
+      // Filter out the imageFile property before JSON stringify
+      const extrasForSubmission = extras.map(extra => {
+        const { imageFile, ...rest } = extra;
+        return rest;
+      });
+      formData.append("extras", JSON.stringify(extrasForSubmission));
+    }
+    
+    if (sideOrders.length > 0) {
+      // Filter out the imageFile property before JSON stringify
+      const sideOrdersForSubmission = sideOrders.map(sideOrder => {
+        const { imageFile, ...rest } = sideOrder;
+        return rest;
+      });
+      formData.append("sideOrders", JSON.stringify(sideOrdersForSubmission));
+    }
+    
+    // Process all additional image files
+    await processAdditionalFiles(formData);
 
     try {
       await addFoodItem(formData);
@@ -173,6 +335,8 @@ export default function AddFoodItemForm({
       setApplyDiscount(false);
       setFoodImageFile(null);
       setVariations([]);
+      setExtras([]);
+      setSideOrders([]);
     } catch (error) {
       toast.error("Error adding food item: " + error.message);
       console.error("Form submission error:", error);
@@ -334,7 +498,7 @@ export default function AddFoodItemForm({
       )}
 
       <div>
-        <label className="block font-medium mb-1">Upload Image</label>
+        <label className="block font-medium mb-1">Upload Item Image</label>
         <input
           type="file"
           required
@@ -344,8 +508,9 @@ export default function AddFoodItemForm({
         />
       </div>
 
-      <div>
-        <label className="block font-medium mb-1">Variations (optional)</label>
+      {/* Variations Section */}
+      <div className="border-t pt-4">
+        <h3 className="text-lg font-medium mb-2">Variations (Optional)</h3>
         
         <div className="mb-2">
           <div className="flex items-center mb-2">
@@ -361,48 +526,48 @@ export default function AddFoodItemForm({
             </label>
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
             <input
               type="text"
               value={variationName}
               onChange={(e) => setVariationName(e.target.value)}
               placeholder="Variation Name (e.g., Small)"
-              className="flex-1 border rounded p-2"
+              className="border rounded p-2"
             />
             
             {applyVariationDiscount ? (
-              <>
+              <div className="grid grid-cols-2 gap-2">
                 <input
                   type="number"
                   value={variationPreviousPrice}
                   onChange={(e) => setVariationPreviousPrice(e.target.value)}
                   placeholder="Original Price"
-                  className="w-24 border rounded p-2"
+                  className="border rounded p-2"
                 />
                 <input
                   type="number"
                   value={variationPrice}
                   onChange={(e) => setVariationPrice(e.target.value)}
                   placeholder="Discounted Price"
-                  className="w-24 border rounded p-2"
+                  className="border rounded p-2"
                 />
-              </>
+              </div>
             ) : (
               <input
                 type="number"
                 value={variationPrice}
                 onChange={(e) => setVariationPrice(e.target.value)}
                 placeholder="Price"
-                className="w-24 border rounded p-2"
+                className="border rounded p-2"
               />
             )}
             
             <button
               type="button"
               onClick={addVariation}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition col-span-1 md:col-span-2"
             >
-              Add
+              Add Variation
             </button>
           </div>
           {applyVariationDiscount && 
@@ -415,39 +580,227 @@ export default function AddFoodItemForm({
         </div>
 
         {variations.length > 0 && (
-          <ul className="list-disc pl-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
             {variations.map((v, index) => (
-              <li key={index}>
-                {v.name}: {v.previousPrice ? (
-                  <>
-                    <span className="line-through text-gray-500">{v.previousPrice} Rs</span> {v.price} Rs
-                  </>
-                ) : (
-                  `${v.price} Rs`
-                )}
-              </li>
+              <div key={index} className="flex justify-between border rounded p-3 bg-gray-50">
+                <div>
+                  <div className="font-medium">{v.name}</div>
+                  <div>
+                    {v.previousPrice ? (
+                      <>
+                        <span className="line-through text-gray-500">{v.previousPrice} Rs</span> {v.price} Rs
+                      </>
+                    ) : (
+                      `${v.price} Rs`
+                    )}
+                  </div>
+                  {v.imageFile && (
+                    <div className="text-xs text-blue-600 mt-1">
+                      Image: {v.imageFile.name}
+                    </div>
+                  )}
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => removeVariation(index)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  ✕
+                </button>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition"
-      >
-        {isSubmitting ? (
-          <div className="flex items-center justify-center">
-            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Adding...
+      {/* Extras Section (Toppings) */}
+      <div className="border-t pt-4">
+        <h3 className="text-lg font-medium mb-2">Extras / Toppings (Optional)</h3>
+        <div className="mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+            <input
+              type="text"
+              value={extraName}
+              onChange={(e) => setExtraName(e.target.value)}
+              placeholder="Extra Name (e.g., Extra Cheese)"
+              className="border rounded p-2"
+            />
+            <input
+              type="number"
+              value={extraPrice}
+              onChange={(e) => setExtraPrice(e.target.value)}
+              placeholder="Price"
+              className="border rounded p-2"
+            />
+            <textarea
+              value={extraDescription}
+              onChange={(e) => setExtraDescription(e.target.value)}
+              placeholder="Description (optional)"
+              className="border rounded p-2 col-span-1 md:col-span-2"
+              rows="2"
+            ></textarea>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Upload Extra Image (Optional)</label>
+              <input
+                type="file"
+                onChange={handleExtraImageChange}
+                className="w-full border rounded p-2"
+                accept="image/*"
+              />
+            </div>
           </div>
-        ) : (
-          "Add Food Item"
+          
+          <button
+            type="button"
+            onClick={addExtra}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+          >
+            Add Extra
+          </button>
+        </div>
+
+        {extras.length > 0 && (
+          <div className="mt-2">
+            <h4 className="font-medium">Added Extras:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+              {extras.map((extra, index) => (
+                <div key={index} className="flex justify-between border rounded p-2 bg-gray-50">
+                  <div>
+                    <div className="font-medium">{extra.name}</div>
+                    <div className="text-gray-700">Price: {extra.price} Rs</div>
+                    {extra.description && (
+                      <div className="text-sm text-gray-600">{extra.description}</div>
+                    )}
+                    {extra.imageFile && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        Image: {extra.imageFile.name}
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => removeExtra(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
-      </button>
+      </div>
+
+      {/* Side Orders Section */}
+      <div className="border-t pt-4">
+        <h3 className="text-lg font-medium mb-2">Side Orders (Optional)</h3>
+        <div className="mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+            <input
+              type="text"
+              value={sideOrderName}
+              onChange={(e) => setSideOrderName(e.target.value)}
+              placeholder="Side Order Name (e.g., Coke)"
+              className="border rounded p-2"
+            />
+            <input
+              type="number"
+              value={sideOrderPrice}
+              onChange={(e) => setSideOrderPrice(e.target.value)}
+              placeholder="Price"
+              className="border rounded p-2"
+            />
+            <textarea
+              value={sideOrderDescription}
+              onChange={(e) => setSideOrderDescription(e.target.value)}
+              placeholder="Description (optional)"
+              className="border rounded p-2"
+              rows="2"
+            ></textarea>
+            <select
+              value={sideOrderCategory}
+              onChange={(e) => setSideOrderCategory(e.target.value)}
+              className="border rounded p-2"
+            >
+              <option value="drinks">Drinks</option>
+              <option value="appetizers">Appetizers</option>
+              <option value="desserts">Desserts</option>
+              <option value="other">Other</option>
+            </select>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Upload Side Order Image (Optional)</label>
+              <input
+                type="file"
+                onChange={handleSideOrderImageChange}
+                className="w-full border rounded p-2"
+                accept="image/*"
+              />
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            onClick={addSideOrder}
+            className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 transition"
+          >
+            Add Side Order
+          </button>
+        </div>
+
+        {sideOrders.length > 0 && (
+          <div className="mt-2">
+            <h4 className="font-medium">Added Side Orders:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+              {sideOrders.map((sideOrder, index) => (
+                <div key={index} className="flex justify-between border rounded p-2 bg-gray-50">
+                  <div>
+                    <div className="font-medium">{sideOrder.name}</div>
+                    <div className="text-gray-700">Price: {sideOrder.price} Rs</div>
+                    <div className="text-sm text-gray-600">
+                      Category: {sideOrder.category.charAt(0).toUpperCase() + sideOrder.category.slice(1)}
+                    </div>
+                    {sideOrder.description && (
+                      <div className="text-sm text-gray-600">{sideOrder.description}</div>
+                    )}
+                    {sideOrder.imageFile && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        Image: {sideOrder.imageFile.name}
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => removeSideOrder(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t pt-4">
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition"
+        >
+          {isSubmitting ? (
+            <div className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Adding...
+            </div>
+          ) : (
+            "Add Food Item"
+          )}
+        </button>
+      </div>
     </form>
   );
 }

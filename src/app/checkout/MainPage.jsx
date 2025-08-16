@@ -60,6 +60,40 @@ export default function CheckoutPage() {
   const globalDiscount = discountActive ? Math.round(subtotal * (discountPercentage / 100)) : 0;
   
   useEffect(() => {
+    // Load saved user data from localStorage if available
+    const savedUserData = localStorage.getItem('checkoutUserData');
+    if (savedUserData) {
+      try {
+        const userData = JSON.parse(savedUserData);
+        if (userData.fullName) setFullName(userData.fullName);
+        if (userData.mobileNumber) setMobileNumber(userData.mobileNumber);
+        if (userData.alternateMobile) setAlternateMobile(userData.alternateMobile);
+        if (userData.email) setEmail(userData.email);
+        if (userData.deliveryAddress) setDeliveryAddress(userData.deliveryAddress);
+        if (userData.nearestLandmark) setNearestLandmark(userData.nearestLandmark);
+      } catch (e) {
+        console.error("Error parsing saved user data", e);
+      }
+    }
+  }, []);
+
+  const saveUserData = () => {
+    try {
+      const userData = {
+        fullName,
+        mobileNumber,
+        alternateMobile,
+        email,
+        deliveryAddress,
+        nearestLandmark
+      };
+      localStorage.setItem('checkoutUserData', JSON.stringify(userData));
+    } catch (e) {
+      console.error("Error saving user data", e);
+    }
+  };
+  
+  useEffect(() => {
     if (appliedPromoCode) {
       const calculatedDiscount = Math.round(subtotal * (appliedPromoCode.discount / 100));
       setPromoDiscount(calculatedDiscount);
@@ -318,15 +352,74 @@ const handlePlaceOrder = async () => {
     return;
   }
   
+  // Save user data to localStorage
+  saveUserData();
   setIsSubmitting(true);
 
   try {
-    const orderItems = items.map((item) => ({
-      id: item.id,
-      name: item.title,
-      price: item.price,
-      type: item.type || "",
-    }));
+    // Format the order items to match the new schema structure
+    const orderItems = items.map((item) => {
+      // Base item structure according to new OrderItemSchema
+      const formattedItem = {
+        id: item._id,
+        title: item.title.split(" x")[0], // Remove "x{quantity}" from title
+        price: item.unitPrice || item.price,
+        quantity: item.quantity || 1,
+        imageUrl: item.imageUrl || null,
+        specialInstructions: item.specialInstructions || ""
+      };
+      
+      // Add selected variation if present
+      if (item.type && item.price) {
+        formattedItem.selectedVariation = {
+          name: item.type,
+          price: item.price
+        };
+      }
+      
+      // Convert selected extras to the new schema format
+      if (item.selectedExtras && item.selectedExtras.length > 0) {
+        formattedItem.selectedExtras = item.selectedExtras.map(extra => ({
+          name: extra.name,
+          price: extra.price
+        }));
+      }
+      
+      // Convert selected side orders to the new schema format
+      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+        formattedItem.selectedSideOrders = item.selectedSideOrders.map(sideOrder => ({
+          name: sideOrder.name,
+          price: sideOrder.price,
+          category: sideOrder.category || 'other'
+        }));
+      }
+      
+      // Handle modifications from newer versions of the cart
+      if (item.modifications && item.modifications.length > 0) {
+        // Process each modification type to map to our new schema
+        for (const mod of item.modifications) {
+          if (mod.type === 'variation') {
+            formattedItem.selectedVariation = {
+              name: mod.items[0].name,
+              price: mod.items[0].price
+            };
+          } else if (mod.type === 'extras') {
+            formattedItem.selectedExtras = mod.items.map(extra => ({
+              name: extra.name,
+              price: extra.price
+            }));
+          } else if (mod.type === 'sideOrders') {
+            formattedItem.selectedSideOrders = mod.items.map(sideOrder => ({
+              name: sideOrder.name,
+              price: sideOrder.price,
+              category: sideOrder.category || 'other'
+            }));
+          }
+        }
+      }
+      
+      return formattedItem;
+    });
     
     const subtotalValue = Math.round(subtotal);
     const taxValue = Math.round(tax);
@@ -348,6 +441,7 @@ const handlePlaceOrder = async () => {
       formData.append("alternateMobile", alternateMobile);
       formData.append("deliveryAddress", completeAddress);
       formData.append("nearestLandmark", nearestLandmark);
+      formData.append("deliveryFee", selectedArea.fee.toString());
     }
     
     formData.append("email", email);
@@ -356,17 +450,25 @@ const handlePlaceOrder = async () => {
     
     formData.append("subtotal", subtotalValue.toString());
     formData.append("tax", taxValue.toString());
+    formData.append("globalDiscount", globalDiscountValue.toString());
+    formData.append("promoDiscount", promoDiscountValue.toString());
     formData.append("discount", totalDiscountValue.toString());
     formData.append("total", grandTotalValue.toString());
     
     if (appliedPromoCode) {
       formData.append("promoCode", appliedPromoCode.code);
+      formData.append("promoDiscountPercentage", appliedPromoCode.discount.toString());
     }
     
+    formData.append("globalDiscountPercentage", discountActive ? discountPercentage.toString() : "0");
     formData.append("isGift", isGift ? "true" : "false");
     formData.append("giftMessage", giftMessage);
     formData.append("items", JSON.stringify(orderItems));
     formData.append("changeRequest", changeRequest);
+    
+    if (orderType === "pickup") {
+      formData.append("pickupTime", pickupTime);
+    }
 
     if (paymentMethod === "online") {
       formData.append("receiptImage", receiptFile);
@@ -424,6 +526,7 @@ const handlePlaceOrder = async () => {
       orderDetails.deliveryAddress = deliveryAddress + ", " + selectedArea?.name;
       orderDetails.nearestLandmark = nearestLandmark;
       orderDetails.area = selectedArea?.name;
+      orderDetails.deliveryFee = selectedArea?.fee || 0;
     }
 
     sessionStorage.setItem("lastOrder", JSON.stringify(orderDetails));
@@ -484,13 +587,7 @@ const handlePlaceOrder = async () => {
   };
 
   const resetFormFields = () => {
-    setTitle("Mr.");
-    setFullName("");
-    setMobileNumber("");
-    setAlternateMobile("");
-    setDeliveryAddress("");
-    setNearestLandmark("");
-    setEmail("");
+    // Don't reset user contact details as they might want to place another order
     setPaymentInstructions("");
     setPaymentMethod("cod");
     setOnlineOption(null);
@@ -503,6 +600,19 @@ const handlePlaceOrder = async () => {
     setReceiptFile(null);
     setChangeRequest("");
     setPickupTime("20");
+  };
+
+  // Format price for display
+  const formatPrice = (price) => {
+    return Number(price).toLocaleString();
+  };
+
+  // Get base title without quantity
+  const getBaseTitle = (fullTitle) => {
+    if (!fullTitle) return '';
+    const parts = fullTitle.split(" x");
+    parts.pop();
+    return parts.join(" x");
   };
 
   return (
@@ -813,11 +923,12 @@ const handlePlaceOrder = async () => {
                         className={`p-4 border rounded-md flex flex-col items-center justify-center space-y-2 ${
                           onlineOption === "jazzcash"
                             ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200"
+                            : "border-gray-200 opacity-50"
                         }`}
                       >
                         <FaCreditCard className="text-blue-500" size={24} />
                         <span>JazzCash</span>
+                        <span className="text-xs text-gray-500">(Coming Soon)</span>
                       </button>
                       <button
                         type="button"
@@ -828,11 +939,12 @@ const handlePlaceOrder = async () => {
                         className={`p-4 border rounded-md flex flex-col items-center justify-center space-y-2 ${
                           onlineOption === "bank_transfer"
                             ? "border-red-500 bg-red-50"
-                            : "border-gray-200"
+                            : "border-gray-200 opacity-50"
                         }`}
                       >
                         <FaCreditCard className="text-red-500" size={24} />
                         <span>Bank Transfer</span>
+                        <span className="text-xs text-gray-500">(Coming Soon)</span>
                       </button>
                     </div>
                     {onlineOption === "easypaisa" && (
@@ -960,22 +1072,57 @@ const handlePlaceOrder = async () => {
                 <div className="flex items-center space-x-4">
                   <h2 className="text-lg sm:text-xl font-semibold">Your Order</h2>
                 </div>
-                <span className="text-lg sm:text-xl font-semibold">Rs. {subtotal}</span>
+                <span className="text-lg sm:text-xl font-semibold">Rs. {formatPrice(subtotal)}</span>
               </div>
               {items.length > 0 ? (
-                <div className="mb-4 space-y-2 max-h-60 overflow-y-auto">
-                  {items.map((item, index) => (
-                    <div
-                      key={`${item.id}-${index}`}
-                      className="flex justify-between text-sm text-gray-700"
-                    >
-                      <span>
-                        {item.title}
-                         {/* x {item.quantity} */}
-                      </span>
-                      <span>Rs. {(item.price * item.quantity).toLocaleString()}</span>
-                    </div>
-                  ))}
+                <div className="mb-4 space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
+                  {items.map((item, index) => {
+                    // Calculate actual price per item (unit price)
+                    const unitPrice = item.unitPrice || Number(item.price);
+                    const totalItemPrice = unitPrice * (item.quantity || 1);
+                    const baseTitle = getBaseTitle(item.title);
+                    
+                    return (
+                      <div
+                        key={`${item._id || index}-${index}`}
+                        className="flex justify-between text-sm text-gray-700"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium">{baseTitle} <span className="font-normal text-xs">x{item.quantity || 1}</span></p>
+                          
+                          {/* Show variation type if exists */}
+                          {item.type && (
+                            <p className="text-xs text-gray-500">Type: {item.type}</p>
+                          )}
+
+                          {/* Display modifications in a compact way */}
+                          {item.modifications && item.modifications.length > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {item.modifications.map((mod, i) => (
+                                <p key={i}>
+                                  {mod.type}: {mod.items.map(m => m.name).join(", ")}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Legacy support for direct extras/side orders */}
+                          {!item.modifications && item.selectedExtras && item.selectedExtras.length > 0 && (
+                            <p className="text-xs text-gray-500">
+                              Extras: {item.selectedExtras.map(e => e.name).join(", ")}
+                            </p>
+                          )}
+                          
+                          {!item.modifications && item.selectedSideOrders && item.selectedSideOrders.length > 0 && (
+                            <p className="text-xs text-gray-500">
+                              Side Orders: {item.selectedSideOrders.map(s => s.name).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-right ml-4">Rs. {formatPrice(totalItemPrice)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="mb-4 py-3 text-center text-red-600 bg-red-50 rounded-md">
@@ -1008,7 +1155,7 @@ const handlePlaceOrder = async () => {
                     <p className="text-sm text-green-600 mt-2 flex items-center">
                       <FaPercent className="mr-1" size={12} />
                       <span>
-                        Additional {appliedPromoCode.discount}% off: Rs. {promoDiscount}
+                        Additional {appliedPromoCode.discount}% off: Rs. {formatPrice(promoDiscount)}
                       </span>
                     </p>
                   </div>
@@ -1051,37 +1198,37 @@ const handlePlaceOrder = async () => {
               <div className="space-y-3 text-sm sm:text-base text-gray-600 border-t border-b border-gray-200 py-4 mb-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>Rs. {subtotal.toLocaleString()}</span>
+                  <span>Rs. {formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (0%)</span>
-                  <span>Rs. {tax}</span>
+                  <span>Rs. {formatPrice(tax)}</span>
                 </div>
                 {orderType === "delivery" && (
                   <div className="flex justify-between">
                     <span>Delivery Fee</span>
-                    <span>Rs. {deliveryFee.toLocaleString()}</span>
+                    <span>Rs. {formatPrice(deliveryFee)}</span>
                   </div>
                 )}
                 
                 {discountActive && globalDiscount > 0 && (
                   <div className="flex justify-between text-yellow-600 font-medium">
                     <span>Global Discount ({discountPercentage}%)</span>
-                    <span>- Rs. {globalDiscount.toLocaleString()}</span>
+                    <span>- Rs. {formatPrice(globalDiscount)}</span>
                   </div>
                 )}
                 
                 {appliedPromoCode && promoDiscount > 0 && (
                   <div className="flex justify-between text-green-600 font-medium">
                     <span>Promo Discount ({appliedPromoCode.discount}%)</span>
-                    <span>- Rs. {promoDiscount.toLocaleString()}</span>
+                    <span>- Rs. {formatPrice(promoDiscount)}</span>
                   </div>
                 )}
 
                 {totalDiscount > 0 && (
                   <div className="flex justify-between text-red-600 font-bold">
                     <span>Total Discount</span>
-                    <span>- Rs. {totalDiscount.toLocaleString()}</span>
+                    <span>- Rs. {formatPrice(totalDiscount)}</span>
                   </div>
                 )}
               </div>
@@ -1089,11 +1236,11 @@ const handlePlaceOrder = async () => {
               <div className="mt-4">
                 <div className="flex justify-between text-base sm:text-lg font-semibold">
                   <span>Grand Total</span>
-                  <span className="text-red-600">Rs. {grandTotal.toLocaleString()}</span>
+                  <span className="text-red-600">Rs. {formatPrice(grandTotal)}</span>
                 </div>
                 {totalDiscount > 0 && (
                   <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded-md text-center">
-                    <span className="font-medium">You saved Rs. {totalDiscount.toLocaleString()} on this order!</span>
+                    <span className="font-medium">You saved Rs. {formatPrice(totalDiscount)} on this order!</span>
                     {discountActive && appliedPromoCode && (
                       <p className="mt-1">Combined discounts: Global ({discountPercentage}%) + Promo ({appliedPromoCode.discount}%)</p>
                     )}

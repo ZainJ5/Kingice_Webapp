@@ -7,11 +7,45 @@ const CounterSchema = new mongoose.Schema({
 
 const Counter = mongoose.models.Counter || mongoose.model('Counter', CounterSchema);
 
+const OrderItemVariationSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    price: { type: Number, required: true }
+  },
+  { _id: false }
+);
+
+const OrderItemExtraSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    price: { type: Number, required: true }
+  },
+  { _id: false }
+);
+
+const OrderItemSideOrderSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    category: { 
+      type: String, 
+      enum: ['drinks', 'appetizers', 'desserts', 'other'],
+      default: 'other' 
+    }
+  },
+  { _id: false }
+);
+
 const OrderItemSchema = new mongoose.Schema({
   id: { type: String, required: true },
-  name: { type: String, required: true },
+  title: { type: String, required: true },
   price: { type: Number, required: true },
-  type: { type: String }
+  quantity: { type: Number, required: true, default: 1 },
+  imageUrl: { type: String },
+  selectedVariation: OrderItemVariationSchema,
+  selectedExtras: [OrderItemExtraSchema],
+  selectedSideOrders: [OrderItemSideOrderSchema],
+  specialInstructions: { type: String }
 });
 
 const OrderSchema = new mongoose.Schema(

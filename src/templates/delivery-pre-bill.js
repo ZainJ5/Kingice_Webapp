@@ -103,6 +103,13 @@ export default `<html lang="en">
       padding: 3px 2px;
       border-bottom: 1px dotted #eee;
     }
+    
+    .item-modifiers {
+      font-size: 7px;
+      font-style: italic;
+      color: #555;
+      padding-left: 4px;
+    }
 
     .item-count {
       margin: 6px 0;

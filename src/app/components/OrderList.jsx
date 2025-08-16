@@ -507,12 +507,42 @@ export default function OrderList() {
     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
 
-    const itemsList = orderToPrint.items.map((item, index) => {
-      const { quantity, cleanName } = parseItemName(item.name);
+    const itemsList = orderToPrint.items.map((item) => {
+      // Get the title/name from new schema structure
+      const itemName = item.title || item.name || "Unknown Item";
+      // Get quantity from new schema
+      const quantity = item.quantity || 1;
+      
+      let modifiersHtml = '';
+      
+      // Check for variation
+      if (item.selectedVariation && item.selectedVariation.name) {
+        modifiersHtml += `<div class="modifiers">Variation: ${item.selectedVariation.name}</div>`;
+      } else if (item.type) {
+        modifiersHtml += `<div class="modifiers">Type: ${item.type}</div>`;
+      }
+      
+      // Check for extras
+      if (item.selectedExtras && item.selectedExtras.length > 0) {
+        modifiersHtml += `<div class="modifiers">Extras: ${item.selectedExtras.map(e => e.name).join(', ')}</div>`;
+      }
+      
+      // Check for side orders
+      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+        modifiersHtml += `<div class="modifiers">Side Orders: ${item.selectedSideOrders.map(s => s.name).join(', ')}</div>`;
+      }
+      
+      // Check for special instructions
+      if (item.specialInstructions) {
+        modifiersHtml += `<div class="modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
+      }
 
       return `
         <tr>
-          <td style="padding: 3px 0; border-top: 1px dashed #aaa;">${cleanName}</td>
+          <td style="padding: 3px 0; border-top: 1px dashed #aaa;">
+            ${itemName}
+            ${modifiersHtml}
+          </td>
           <td style="padding: 3px 0; border-top: 1px dashed #aaa; text-align: center;">${quantity}</td>
         </tr>
       `;
@@ -565,19 +595,52 @@ export default function OrderList() {
     const subtotal = extractValue(orderToPrint.subtotal) || 0;
     const tax = extractValue(orderToPrint.tax) || 0;
     const discount = extractValue(orderToPrint.discount) || 0;
-    const discountPercentage = orderToPrint.discountPercentage || 0;
+    const discountPercentage = orderToPrint.globalDiscountPercentage || orderToPrint.discountPercentage || 0;
     const total = extractValue(orderToPrint.total) || 0;
     const itemCount = orderToPrint.items.length;
 
     const itemRows = orderToPrint.items.map((item, index) => {
-      const { quantity, cleanName } = parseItemName(item.name);
+      // Get item details from new schema
+      const itemName = item.title || item.name || "Unknown Item";
+      const quantity = item.quantity || 1;
       const price = extractValue(item.price) || 0;
       const amount = price * quantity;
+      
+      let modifiersHtml = '';
+      
+      // Add variation info
+      if (item.selectedVariation) {
+        modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+      } else if (item.type) {
+        modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
+      }
+      
+      // Add extras info
+      if (item.selectedExtras && item.selectedExtras.length > 0) {
+        item.selectedExtras.forEach(extra => {
+          modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
+        });
+      }
+      
+      // Add side orders info
+      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+        item.selectedSideOrders.forEach(sideOrder => {
+          modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
+        });
+      }
+      
+      // Add special instructions if any
+      if (item.specialInstructions) {
+        modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
+      }
 
       return `
         <tr>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${cleanName}</td>
+          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
+            ${itemName}
+            ${modifiersHtml}
+          </td>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: center;">${quantity}</td>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${price}</td>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>
@@ -643,14 +706,47 @@ export default function OrderList() {
     const itemCount = orderToPrint.items.length;
 
     const itemRows = orderToPrint.items.map((item, index) => {
-      const { quantity, cleanName } = parseItemName(item.name);
+      // Get item details from new schema
+      const itemName = item.title || item.name || "Unknown Item";
+      const quantity = item.quantity || 1;
       const price = extractValue(item.price) || 0;
       const amount = price * quantity;
+      
+      let modifiersHtml = '';
+      
+      // Add variation info
+      if (item.selectedVariation) {
+        modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+      } else if (item.type) {
+        modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
+      }
+      
+      // Add extras info
+      if (item.selectedExtras && item.selectedExtras.length > 0) {
+        item.selectedExtras.forEach(extra => {
+          modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
+        });
+      }
+      
+      // Add side orders info
+      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+        item.selectedSideOrders.forEach(sideOrder => {
+          modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
+        });
+      }
+      
+      // Add special instructions if any
+      if (item.specialInstructions) {
+        modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
+      }
 
       return `
         <tr>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${cleanName}</td>
+          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
+            ${itemName}
+            ${modifiersHtml}
+          </td>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: center;">${quantity}</td>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${price}</td>
           <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>

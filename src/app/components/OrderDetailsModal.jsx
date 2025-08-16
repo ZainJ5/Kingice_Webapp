@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Eye, Printer, CheckCircle, XCircle, Trash2, Save } from "lucide-react";
 
 const OrderDetailsSkeleton = () => (
@@ -65,7 +65,7 @@ export default function OrderDetailsModal({
 
   if (!selectedOrder) return null;
 
-const handleStatusUpdate = async () => {
+  const handleStatusUpdate = async () => {
     setIsUpdating(true);
     try {
       // Create update data object WITHOUT including _id
@@ -114,6 +114,26 @@ const handleStatusUpdate = async () => {
   // Get delivery fee based on area
   const deliveryFee = selectedOrder.orderType === 'delivery' && area ? 
     getDeliveryFeeForArea(area) : 0;
+
+  // Format price with locale string
+  const formatPrice = (price) => {
+    if (!price && price !== 0) return "0";
+    return Number(price).toLocaleString();
+  };
+
+  // Helper to check if an item has any modifications (considering all possible formats)
+  const hasModifications = (item) => {
+    return (
+      (item.selectedVariation) ||
+      (item.selectedExtras && item.selectedExtras.length > 0) ||
+      (item.selectedSideOrders && item.selectedSideOrders.length > 0) ||
+      // Legacy formats
+      (item.modifications && item.modifications.length > 0) ||
+      (item.extras && item.extras.length > 0) ||
+      (item.sideOrders && item.sideOrders.length > 0) ||
+      (item.type) // Consider type as a simple variation
+    );
+  };
 
   return (
     <>
@@ -297,20 +317,134 @@ const handleStatusUpdate = async () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {selectedOrder.items.map((item, i) => {
-                            const { quantity, cleanName } = parseItemName(item.name);
-                            const price = extractValue(item.price) || 0;
-                            const total = price * quantity;
+                            // Handle item parsing from the updated schema structure
+                            const quantity = item.quantity || 1;
+                            
+                            // Get the title/name (prioritize title from new schema)
+                            const itemName = item.title || item.name || "";
+                            
+                            // Calculate unit price and total
+                            const unitPrice = item.price || 0;
+                            const itemTotal = unitPrice * quantity;
 
                             return (
-                              <tr key={i}>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  <div className="font-medium">{cleanName}</div>
-                                  {item.type && <div className="text-xs text-gray-500">{item.type}</div>}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-500 text-center">{quantity}</td>
-                                <td className="px-3 py-2 text-sm text-gray-500 text-right">Rs. {price}</td>
-                                <td className="px-3 py-2 text-sm font-medium text-gray-900 text-right">Rs. {total}</td>
-                              </tr>
+                              <React.Fragment key={i}>
+                                <tr>
+                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                    <div className="font-medium">{itemName}</div>
+                                    {/* Simple variation (legacy format) */}
+                                    {item.type && !item.selectedVariation && (
+                                      <div className="text-xs text-gray-500">Type: {item.type}</div>
+                                    )}
+                                    {/* New schema variation */}
+                                    {item.selectedVariation && (
+                                      <div className="text-xs text-gray-500">
+                                        Variation: {item.selectedVariation.name} 
+                                        ({item.selectedVariation.price !== unitPrice ? 
+                                          `+Rs. ${formatPrice(item.selectedVariation.price)}` : 'included'}
+                                        )
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-sm text-gray-500 text-center">{quantity}</td>
+                                  <td className="px-3 py-2 text-sm text-gray-500 text-right">Rs. {formatPrice(unitPrice)}</td>
+                                  <td className="px-3 py-2 text-sm font-medium text-gray-900 text-right">Rs. {formatPrice(itemTotal)}</td>
+                                </tr>
+                                
+                                {/* Render modifications based on the new schema */}
+                                {hasModifications(item) && (
+                                  <tr>
+                                    <td colSpan="4" className="px-3 py-2">
+                                      <div className="bg-gray-50 rounded p-2 text-xs">
+                                        {/* Selected Extras (new schema) */}
+                                        {item.selectedExtras && item.selectedExtras.length > 0 && (
+                                          <div className="mb-2">
+                                            <div className="font-medium text-gray-700">Extras:</div>
+                                            <div className="ml-2 space-y-1">
+                                              {item.selectedExtras.map((extra, idx) => (
+                                                <div key={`extra-${idx}`} className="flex justify-between">
+                                                  <span>{extra.name}</span>
+                                                  <span className="text-gray-600">+Rs. {formatPrice(extra.price)}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Selected Side Orders (new schema) */}
+                                        {item.selectedSideOrders && item.selectedSideOrders.length > 0 && (
+                                          <div className="mb-2">
+                                            <div className="font-medium text-gray-700">Side Orders:</div>
+                                            <div className="ml-2 space-y-1">
+                                              {item.selectedSideOrders.map((sideOrder, idx) => (
+                                                <div key={`side-${idx}`} className="flex justify-between">
+                                                  <span>{sideOrder.name}</span>
+                                                  <span className="text-gray-600">+Rs. {formatPrice(sideOrder.price)}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Handle legacy modifications format if present */}
+                                        {item.modifications && item.modifications.length > 0 && (
+                                          item.modifications.map((mod, index) => (
+                                            <div key={`mod-${index}`} className="mb-2">
+                                              <div className="font-medium text-gray-700">{mod.type}:</div>
+                                              <div className="ml-2 space-y-1">
+                                                {mod.items.map((modItem, idx) => (
+                                                  <div key={`mod-${index}-${idx}`} className="flex justify-between">
+                                                    <span>{modItem.name}</span>
+                                                    <span className="text-gray-600">+Rs. {formatPrice(modItem.price)}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          ))
+                                        )}
+                                        
+                                        {/* Handle legacy extras format if present */}
+                                        {!item.modifications && !item.selectedExtras && item.extras && item.extras.length > 0 && (
+                                          <div className="mb-2">
+                                            <div className="font-medium text-gray-700">Extras:</div>
+                                            <div className="ml-2 space-y-1">
+                                              {item.extras.map((extra, idx) => (
+                                                <div key={`legacy-extra-${idx}`} className="flex justify-between">
+                                                  <span>{extra.name}</span>
+                                                  <span className="text-gray-600">+Rs. {formatPrice(extra.price)}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Handle legacy side orders format if present */}
+                                        {!item.modifications && !item.selectedSideOrders && item.sideOrders && item.sideOrders.length > 0 && (
+                                          <div className="mb-2">
+                                            <div className="font-medium text-gray-700">Side Orders:</div>
+                                            <div className="ml-2 space-y-1">
+                                              {item.sideOrders.map((sideOrder, idx) => (
+                                                <div key={`legacy-side-${idx}`} className="flex justify-between">
+                                                  <span>{sideOrder.name}</span>
+                                                  <span className="text-gray-600">+Rs. {formatPrice(sideOrder.price)}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Display special instructions if any */}
+                                        {item.specialInstructions && (
+                                          <div className="mt-2 pt-2 border-t border-gray-200">
+                                            <div className="font-medium text-gray-700">Special Instructions:</div>
+                                            <div className="ml-2 text-gray-600 italic">{item.specialInstructions}</div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             );
                           })}
                         </tbody>
@@ -329,27 +463,47 @@ const handleStatusUpdate = async () => {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal:</span>
-                      <span className="font-medium">Rs. {extractValue(selectedOrder.subtotal)}</span>
+                      <span className="font-medium">Rs. {formatPrice(extractValue(selectedOrder.subtotal))}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Tax:</span>
-                      <span className="font-medium">Rs. {extractValue(selectedOrder.tax)}</span>
+                      <span className="font-medium">Rs. {formatPrice(extractValue(selectedOrder.tax))}</span>
                     </div>
                     {selectedOrder.orderType === "delivery" && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Delivery Fee ({area}):</span>
                         <span className="font-medium">
-                          Rs. {deliveryFee}
+                          Rs. {formatPrice(selectedOrder.deliveryFee || deliveryFee)}
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Discount:</span>
-                      <span className="font-medium text-yellow-600">Rs. {extractValue(selectedOrder.discount)}</span>
-                    </div>
+                    
+                    {/* Display discount breakdowns if available */}
+                    {selectedOrder.globalDiscount > 0 && (
+                      <div className="flex justify-between text-amber-600">
+                        <span>Global Discount ({selectedOrder.globalDiscountPercentage || 0}%):</span>
+                        <span>- Rs. {formatPrice(selectedOrder.globalDiscount)}</span>
+                      </div>
+                    )}
+                    
+                    {selectedOrder.promoDiscount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Promo Discount ({selectedOrder.promoCode || ''} - {selectedOrder.promoDiscountPercentage || 0}%):</span>
+                        <span>- Rs. {formatPrice(selectedOrder.promoDiscount)}</span>
+                      </div>
+                    )}
+                    
+                    {/* Show total discount (for backwards compatibility) */}
+                    {(!selectedOrder.globalDiscount && !selectedOrder.promoDiscount && selectedOrder.discount > 0) && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Discount:</span>
+                        <span className="font-medium text-yellow-600">- Rs. {formatPrice(extractValue(selectedOrder.discount))}</span>
+                      </div>
+                    )}
+                    
                     <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
                       <span className="font-semibold">Total:</span>
-                      <span className="font-bold text-red-600">Rs. {extractValue(selectedOrder.total)}</span>
+                      <span className="font-bold text-red-600">Rs. {formatPrice(extractValue(selectedOrder.total))}</span>
                     </div>
                   </div>
                 </div>
@@ -381,7 +535,7 @@ const handleStatusUpdate = async () => {
                   {selectedOrder.paymentMethod === "online" && selectedOrder.receiptImageUrl && (
                     <div>
                       <p className="text-sm text-gray-600 font-medium mb-1">Payment Receipt:</p>
-                                            <div className="mt-1">
+                      <div className="mt-1">
                         <img
                           src={selectedOrder.receiptImageUrl}
                           alt="Payment Receipt"

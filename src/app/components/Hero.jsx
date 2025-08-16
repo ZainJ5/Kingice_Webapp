@@ -1,28 +1,141 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
+import { MapPin, Phone, ChevronDown } from 'lucide-react'
+import StickyCartButton from './CartButton' 
 
-function BannerSwiper({ banners, rotationSpeed }) {
-  const [currentBanner, setCurrentBanner] = useState(0)
+function Header() {
+  const [logo, setLogo] = useState('/logo.png')
+  const [branches, setBranches] = useState([])
+  const [currentBranch, setCurrentBranch] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
-    if (!banners || banners.length === 0) return;
+    const fetchLogo = async () => {
+      try {
+        const response = await fetch('/api/logo')
+        if (!response.ok) throw new Error('Failed to fetch logo')
+        const data = await response.json()
+        setLogo(data.logo)
+      } catch (err) {
+        console.error('Error fetching logo:', err)
+      }
+    }
 
-    const interval = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % banners.length)
-    }, rotationSpeed || 3000)
+    const fetchBranches = async () => {
+      try {
+        const response = await fetch('/api/branches')
+        if (!response.ok) throw new Error('Failed to fetch branches')
+        const data = await response.json()
+        setBranches(data)
+        
+        if (data && data.length > 0) {
+          setCurrentBranch(data[0])
+        }
+      } catch (err) {
+        console.error('Error fetching branches:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    return () => clearInterval(interval)
-  }, [banners, rotationSpeed])
+    fetchLogo()
+    fetchBranches()
+  }, [])
 
-  if (!banners || banners.length === 0) return null;
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  const handleBranchChange = (branch) => {
+    setCurrentBranch(branch)
+    setDropdownOpen(false)
+  }
 
   return (
-    <div className="bg-white py-1 flex justify-center items-center w-full">
-      <h2 className="text-red-600 text-sm md:text-xl font-semibold px-4 mx-auto max-w-full text-center">
-        {banners[currentBanner]}
-      </h2>
-    </div>
+    <header className="w-full bg-white text-black py-2 sm:py-3 px-2 sm:px-4 relative shadow-sm">
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="flex items-center space-x-1 sm:space-x-2 relative" ref={dropdownRef}>
+          <button 
+            className="flex items-center bg-black rounded-lg text-white px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
+            <MapPin className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
+            <span className="font-medium mr-1  text-xs sm:text-sm">
+              {currentBranch ? currentBranch.name : 'Select Branch'}
+            </span>
+            <ChevronDown className="h-3 w-3 sm:h-4 w-4 text-white" />
+          </button>
+          
+          {dropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded shadow-lg z-20">
+              <div className="py-1 max-h-56 overflow-y-auto">
+                {branches.map((branch) => (
+                  <button
+                    key={branch._id}
+                    className={`block px-4 py-2 text-sm w-full text-left  ${
+                      currentBranch && currentBranch._id === branch._id ? 'bg-gray-200' : ''
+                    }`}
+                    onClick={() => handleBranchChange(branch)}
+                  >
+                    {branch.name}
+                  </button>
+                ))}
+                {branches.length === 0 && (
+                  <div className="px-4 py-2 text-sm text-gray-500">No branches available</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <a 
+            href={`tel:${currentBranch?.phone || '03320222845'}`}
+            className="hidden sm:flex items-center bg-black text-white rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
+          >
+            <Phone className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
+            <span className="font-medium text-xs sm:text-sm">{currentBranch?.phone || '03320222845'}</span>
+          </a>
+        </div>
+
+        <div className="absolute left-1/2 transform -translate-x-1/2 top-0 z-10">
+          <div className="bg-white rounded-full p-2 w-28 h-28 flex items-center justify-center shadow-md">
+            <img 
+              src={logo}
+              alt="Restaurant Logo" 
+              // width={70} 
+              // height={70}
+              className="rounded-full object-contain"
+              priority
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-1 sm:space-x-2">
+          <a 
+            href={`tel:${currentBranch?.phone || '03320222845'}`}
+            className="flex sm:hidden items-center bg-black text-white rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
+          >
+            <Phone className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
+            <span className="font-medium text-xs sm:text-sm">{currentBranch?.phone || '03320222845'}</span>
+          </a>
+          <div className="fixed top-11 right-3 z-[500]">
+            <StickyCartButton className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm" />
+          </div>
+        </div>
+      </div>
+    </header>
   )
 }
 
@@ -109,13 +222,10 @@ export default function Hero() {
 
   return (
     <section className="relative">
-      <BannerSwiper
-        banners={heroData.banners}
-        rotationSpeed={heroData.settings.bannerRotationSpeed}
-      />
+      <Header />
 
       <div
-        className="relative w-full aspect-[750/250] overflow-hidden"
+        className="relative w-full aspect-[750/250] sm:aspect-[16/5] overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -127,7 +237,7 @@ export default function Hero() {
           <img
             src={`${images[current]}?v=${new Date(heroData.updatedAt).getTime()}`}
             alt="Hero"
-            style={{ width: '100%', height: '100%' }}
+            className="w-full h-full object-cover"
           />
         </div>
 
@@ -138,12 +248,11 @@ export default function Hero() {
             <img
               src={`${images[previous]}?v=${new Date(heroData.updatedAt).getTime()}`}
               alt="Previous"
-              style={{ width: '100%', height: '100%' }}
+              className="w-full h-full object-cover"
             />
           </div>
         )}
 
-        {/* Navigation Buttons */}
         {images.length > 1 && (
           <>
             <button 

@@ -150,6 +150,13 @@ export default `<html lang="en">
       letter-spacing: 1px;
       margin: 5px 0;
     }
+    
+    .modifiers {
+      font-size: 9px;
+      font-style: italic;
+      padding-left: 10px;
+      color: #444;
+    }
   </style>
 </head>
 <body>

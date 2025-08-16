@@ -1,915 +1,868 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
-export default function FoodItemList() {
-  const [foodItems, setFoodItems] = useState([]);
-  const [filteredItems, setFilteredItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [editingItemId, setEditingItemId] = useState(null);
-  const [editData, setEditData] = useState({
-    title: "",
-    description: "",
-    price: "",
-    previousPrice: "",
-    applyDiscount: false,
-    category: "",
-    subcategory: "",
-    branch: "",
-    variations: [],
-  });
-  const [editImage, setEditImage] = useState(null);
-  const [originalItemData, setOriginalItemData] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-  const [filters, setFilters] = useState({
-    branch: "",
-    category: "",
-    subcategory: "",
-    search: "",
-    hasDiscount: false,
-  });
-  const [branches, setBranches] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
+export default function AddFoodItemForm({
+  branches,
+  categories,
+  subcategories,
+  addFoodItem,
+}) {
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [filteredCategories, setFilteredCategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [filteredSubcategories, setFilteredSubcategories] = useState([]);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [previousPrice, setPreviousPrice] = useState(""); 
+  const [applyDiscount, setApplyDiscount] = useState(false); 
+  const [foodImageFile, setFoodImageFile] = useState(null);
+  const [foodImagePreview, setFoodImagePreview] = useState(null);
+
+  const [variations, setVariations] = useState([]);
+  const [variationName, setVariationName] = useState("");
+  const [variationPrice, setVariationPrice] = useState("");
+  const [variationPreviousPrice, setVariationPreviousPrice] = useState(""); 
+  const [applyVariationDiscount, setApplyVariationDiscount] = useState(false);
+  const [variationImageFile, setVariationImageFile] = useState(null);
+  const [variationImagePreview, setVariationImagePreview] = useState(null);
+  
+  // State for extras
+  const [extras, setExtras] = useState([]);
+  const [extraName, setExtraName] = useState("");
+  const [extraDescription, setExtraDescription] = useState("");
+  const [extraPrice, setExtraPrice] = useState("");
+  const [extraImageFile, setExtraImageFile] = useState(null);
+  const [extraImagePreview, setExtraImagePreview] = useState(null);
+
+  // State for side orders
+  const [sideOrders, setSideOrders] = useState([]);
+  const [sideOrderName, setSideOrderName] = useState("");
+  const [sideOrderDescription, setSideOrderDescription] = useState("");
+  const [sideOrderPrice, setSideOrderPrice] = useState("");
+  const [sideOrderCategory, setSideOrderCategory] = useState("other");
+  const [sideOrderImageFile, setSideOrderImageFile] = useState(null);
+  const [sideOrderImagePreview, setSideOrderImagePreview] = useState(null);
+  
+  const [categoryHasSubcategories, setCategoryHasSubcategories] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchBranches();
-    fetchCategories();
-    fetchSubcategories();
-    fetchFoodItems();
-  }, []);
+    if (variations.length > 0) {
+      setPrice("");
+      setPreviousPrice("");
+      setApplyDiscount(false);
+    }
+  }, [variations]);
 
   useEffect(() => {
-    applyFilters();
-  }, [filters, foodItems]);
-
-  const fetchBranches = async () => {
-    try {
-      const res = await fetch("/api/branches");
-      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-      const data = await res.json();
-      setBranches(data);
-    } catch (error) {
-      console.error("Error fetching branches:", error);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch("/api/categories");
-      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-      const data = await res.json();
-      setCategories(data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
-
-  const fetchSubcategories = async () => {
-    try {
-      const res = await fetch("/api/subcategories");
-      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-      const data = await res.json();
-      setSubcategories(data);
-    } catch (error) {
-      console.error("Error fetching subcategories:", error);
-    }
-  };
-
-  const fetchFoodItems = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/fooditems");
-      const data = await res.json();
-      setFoodItems(data);
-      setFilteredItems(data);
-    } catch (error) {
-      console.error("Error fetching food items:", error);
-      toast.error("Error fetching food items");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
-    let filtered = [...foodItems];
-    const { branch, category, subcategory, search, hasDiscount } = filters;
-
-    if (branch) {
-      filtered = filtered.filter(
-        (item) => extractValue(item.branch?._id || item.branch) === branch
-      );
-    }
-    if (category) {
-      filtered = filtered.filter(
-        (item) => extractValue(item.category?._id || item.category) === category
-      );
-    }
-    if (subcategory) {
-      filtered = filtered.filter(
-        (item) =>
-          extractValue(item.subcategory?._id || item.subcategory) === subcategory
-      );
-    }
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.title.toLowerCase().includes(searchLower) ||
-          item.description.toLowerCase().includes(searchLower)
-      );
-    }
-    if (hasDiscount) {
-      filtered = filtered.filter(item => {
-        if (item.previousPrice) return true;
-        
-        if (item.variations && item.variations.length > 0) {
-          return item.variations.some(v => v.previousPrice);
-        }
-        
-        return false;
+    if (selectedBranchId) {
+      const filtered = categories.filter((cat) => {
+        const branchId =
+          typeof cat.branch === "object" ? cat.branch._id : cat.branch;
+        return String(branchId) === String(selectedBranchId);
       });
+      setFilteredCategories(filtered);
+      setSelectedCategoryId("");
+      setFilteredSubcategories([]);
+      setSelectedSubcategoryId("");
+      setCategoryHasSubcategories(false);
+    } else {
+      setFilteredCategories([]);
+      setSelectedCategoryId("");
+      setFilteredSubcategories([]);
+      setSelectedSubcategoryId("");
+      setCategoryHasSubcategories(false);
     }
+  }, [selectedBranchId, categories]);
 
-    setFilteredItems(filtered);
-  };
-
-  const handleFilterChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFilters((prev) => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
-  };
-
-  const resetFilters = () => {
-    setFilters({ 
-      branch: "", 
-      category: "", 
-      subcategory: "", 
-      search: "",
-      hasDiscount: false 
-    });
-  };
-
-  const deleteFoodItem = async (id) => {
-    try {
-      const res = await fetch(`/api/fooditems/${id}`, {
-        method: "DELETE",
+  useEffect(() => {
+    if (selectedCategoryId) {
+      const filtered = subcategories.filter((sub) => {
+        const categoryId =
+          typeof sub.category === "object" ? sub.category._id : sub.category;
+        return String(categoryId) === String(selectedCategoryId);
       });
-      if (res.ok) {
-        toast.success("Item deleted successfully");
-        setFoodItems((prev) =>
-          prev.filter((item) => extractValue(item._id) !== id)
-        );
-        setShowDeleteConfirm(null);
-      } else {
-        toast.error("Failed to delete item");
-      }
-    } catch (error) {
-      console.error("Error deleting item:", error);
-      toast.error("Error deleting item");
+      setFilteredSubcategories(filtered);
+      setSelectedSubcategoryId("");
+      
+      setCategoryHasSubcategories(filtered.length > 0);
+    } else {
+      setFilteredSubcategories([]);
+      setSelectedSubcategoryId("");
+      setCategoryHasSubcategories(false);
     }
-  };
+  }, [selectedCategoryId, subcategories]);
 
-  const extractValue = (field) => {
-    if (typeof field === "object" && field !== null) {
-      if (field.$numberInt) return parseInt(field.$numberInt, 10);
-      if (field.$oid) return field.$oid;
-    }
-    return field;
-  };
-
-  const handleEditClick = (item) => {
-    setOriginalItemData(item);
-    const categoryId =
-      typeof item.category === "object" && item.category !== null
-        ? extractValue(item.category._id)
-        : extractValue(item.category);
-    const subcategoryId =
-      typeof item.subcategory === "object" && item.subcategory !== null
-        ? extractValue(item.subcategory._id)
-        : extractValue(item.subcategory);
-    const branchId =
-      typeof item.branch === "object" && item.branch !== null
-        ? extractValue(item.branch._id)
-        : extractValue(item.branch);
-    const variations = item.variations ? item.variations.map(v => ({
-      ...v,
-      price: String(v.price ?? ""),
-      previousPrice: String(v.previousPrice ?? ""),
-      applyDiscount: !!v.previousPrice,
-    })) : [];
-    setEditingItemId(extractValue(item._id));
-    setEditData({
-      title: item.title ?? "",
-      description: item.description ?? "",
-      price: String(item.price ?? ""),
-      previousPrice: String(item.previousPrice ?? ""),
-      applyDiscount: !!item.previousPrice,
-      category: categoryId ?? "",
-      subcategory: subcategoryId ?? "",
-      branch: branchId ?? "",
-      variations,
-    });
-    setEditImage(null);
-  };
-
-  const handleEditChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setEditData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  const handleImageChange = (e) => {
+  const handleFileChange = (e, setFile, setPreview) => {
     if (e.target.files && e.target.files[0]) {
-      setEditImage(e.target.files[0]);
+      const file = e.target.files[0];
+      setFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
-
-  const handleVariationChange = (index, field, value) => {
-    setEditData((prev) => {
-      const updatedVariations = [...prev.variations];
-      updatedVariations[index] = {
-        ...updatedVariations[index],
-        [field]: value,
-      };
-      return {
-        ...prev,
-        variations: updatedVariations,
-      };
-    });
-  };
-
-  const toggleVariationDiscount = (index, checked) => {
-    setEditData((prev) => {
-      const updatedVariations = [...prev.variations];
-      updatedVariations[index].applyDiscount = checked;
-      if (!checked) {
-        updatedVariations[index].previousPrice = "";
-      } else if (checked && updatedVariations[index].previousPrice === "") {
-        const currentPrice = parseFloat(updatedVariations[index].price) || 0;
-        updatedVariations[index].previousPrice = (currentPrice * 1.2).toString();
-      }
-      return {
-        ...prev,
-        variations: updatedVariations,
-      };
-    });
-  };
-
+  
   const addVariation = () => {
-    setEditData((prev) => ({
-      ...prev,
-      variations: [...prev.variations, { name: "", price: "", previousPrice: "", applyDiscount: false }],
-    }));
-  };
-
-  const removeVariation = (index) => {
-    setEditData((prev) => {
-      const updatedVariations = [...prev.variations];
-      updatedVariations.splice(index, 1);
-      return {
-        ...prev,
-        variations: updatedVariations,
-      };
-    });
-  };
-
-  const validatePrices = () => {
-    // Validate main item price if discount is applied
-    if (editData.applyDiscount) {
-      const prevPrice = parseFloat(editData.previousPrice);
-      const price = parseFloat(editData.price);
-      if (isNaN(prevPrice) || isNaN(price) || prevPrice <= price) {
-        toast.error("Original price must be a number higher than discounted price");
-        return false;
-      }
-    }
-
-    // Validate variation prices if they have discounts
-    if (editData.variations && editData.variations.length > 0) {
-      const validVariations = editData.variations.filter(
-        (v) => v.name && v.name.trim() !== "" && v.price !== null && v.price !== undefined
-      );
-      
-      // Check if any variation with discount has invalid prices
-      const invalidVariation = validVariations.find(
-        (v) => v.applyDiscount && (
-          !v.previousPrice ||
-          isNaN(parseFloat(v.previousPrice)) ||
-          isNaN(parseFloat(v.price)) ||
-          parseFloat(v.previousPrice) <= parseFloat(v.price)
-        )
-      );
-      
-      if (invalidVariation) {
-        toast.error(`Original price must be a number higher than discounted price for variation "${invalidVariation.name}"`);
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!editingItemId) return;
-
-    if (!validatePrices()) {
+    if (!variationName.trim() || !variationPrice) {
+      toast.error("Please provide both variation name and price.");
       return;
     }
 
+    const variation = { 
+      name: variationName.trim(), 
+      price: parseFloat(variationPrice) 
+    };
+
+    // Add previousPrice if discount is applied
+    if (applyVariationDiscount && variationPreviousPrice && 
+        parseFloat(variationPreviousPrice) > parseFloat(variationPrice)) {
+      variation.previousPrice = parseFloat(variationPreviousPrice);
+    }
+    
+    // Store the image file in the variation object
+    if (variationImageFile) {
+      variation.imageFile = variationImageFile;
+      variation.imagePreview = variationImagePreview;
+    }
+
+    setVariations((prev) => [...prev, variation]);
+    setVariationName("");
+    setVariationPrice("");
+    setVariationPreviousPrice("");
+    setApplyVariationDiscount(false);
+    setVariationImageFile(null);
+    setVariationImagePreview(null);
+  };
+
+  // Function to add an extra item (topping)
+  const addExtra = () => {
+    if (!extraName.trim() || !extraPrice) {
+      toast.error("Please provide both extra name and price.");
+      return;
+    }
+
+    const extra = {
+      name: extraName.trim(),
+      price: parseFloat(extraPrice),
+      description: extraDescription.trim() || undefined,
+    };
+    
+    // Store the image file in the extra object
+    if (extraImageFile) {
+      extra.imageFile = extraImageFile;
+      extra.imagePreview = extraImagePreview;
+    }
+
+    setExtras((prev) => [...prev, extra]);
+    setExtraName("");
+    setExtraDescription("");
+    setExtraPrice("");
+    setExtraImageFile(null);
+    setExtraImagePreview(null);
+  };
+
+  // Function to add a side order
+  const addSideOrder = () => {
+    if (!sideOrderName.trim() || !sideOrderPrice) {
+      toast.error("Please provide both side order name and price.");
+      return;
+    }
+
+    const sideOrder = {
+      name: sideOrderName.trim(),
+      price: parseFloat(sideOrderPrice),
+      description: sideOrderDescription.trim() || undefined,
+      category: sideOrderCategory,
+    };
+    
+    // Store the image file in the side order object
+    if (sideOrderImageFile) {
+      sideOrder.imageFile = sideOrderImageFile;
+      sideOrder.imagePreview = sideOrderImagePreview;
+    }
+
+    setSideOrders((prev) => [...prev, sideOrder]);
+    setSideOrderName("");
+    setSideOrderDescription("");
+    setSideOrderPrice("");
+    setSideOrderCategory("other");
+    setSideOrderImageFile(null);
+    setSideOrderImagePreview(null);
+  };
+
+  // Function to remove an extra item
+  const removeExtra = (index) => {
+    setExtras((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Function to remove a side order
+  const removeSideOrder = (index) => {
+    setSideOrders((prev) => prev.filter((_, i) => i !== index));
+  };
+  
+  // Function to remove a variation
+  const removeVariation = (index) => {
+    setVariations((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Function to process and append files to formData
+  const processAdditionalFiles = (formData) => {
+    // Process variation files
+    variations.forEach((variation, index) => {
+      if (variation.imageFile) {
+        formData.append(`variationImage_${index}`, variation.imageFile);
+      }
+    });
+    
+    // Process extra files
+    extras.forEach((extra, index) => {
+      if (extra.imageFile) {
+        formData.append(`extraImage_${index}`, extra.imageFile);
+      }
+    });
+    
+    // Process side order files
+    sideOrders.forEach((sideOrder, index) => {
+      if (sideOrder.imageFile) {
+        formData.append(`sideOrderImage_${index}`, sideOrder.imageFile);
+      }
+    });
+  };
+  
+  // Function to prepare data for JSON serialization (removing File objects)
+  const prepareDataForJson = (items) => {
+    return items.map(item => {
+      const { imageFile, imagePreview, ...rest } = item;
+      return rest;
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (isSubmitting) return;
+
+    if (categoryHasSubcategories && !selectedSubcategoryId) {
+      toast.error("This category has subcategories. Please select a subcategory.");
+      return;
+    }
+
+    const missingMandatory = !selectedBranchId || 
+                             !selectedCategoryId || 
+                             !title.trim() || 
+                             !foodImageFile || 
+                             (variations.length === 0 && !price);
+
+    if (missingMandatory) {
+      let errorMsg = "Please fill in all mandatory fields: ";
+      const missing = [];
+      if (!selectedBranchId) missing.push("Branch");
+      if (!selectedCategoryId) missing.push("Category");
+      if (!title.trim()) missing.push("Item Title");
+      if (!foodImageFile) missing.push("Food Image");
+      if (variations.length === 0 && !price) missing.push("Price");
+      
+      errorMsg += missing.join(", ");
+      toast.error(errorMsg);
+      return;
+    }
+
+    setIsSubmitting(true);
+
     const formData = new FormData();
-    formData.append("title", editData.title);
-    formData.append("description", editData.description);
-
-    if (!editData.variations || editData.variations.length === 0) {
-      formData.append("price", editData.price);
-      
-      if (editData.applyDiscount && editData.previousPrice) {
-        formData.append("previousPrice", editData.previousPrice);
+    formData.append("branch", selectedBranchId);
+    formData.append("category", selectedCategoryId);
+    if (selectedSubcategoryId) {
+      formData.append("subcategory", selectedSubcategoryId);
+    }
+    formData.append("title", title.trim());
+    formData.append("description", description.trim());
+    
+    if (variations.length === 0) {
+      formData.append("price", price);
+      // Add previousPrice if discount is applied
+      if (applyDiscount && previousPrice && parseFloat(previousPrice) > parseFloat(price)) {
+        formData.append("previousPrice", previousPrice);
       }
     }
-
-    const categoryId =
-      editData.category ||
-      (originalItemData &&
-      typeof originalItemData.category === "object" &&
-      originalItemData.category?._id
-        ? extractValue(originalItemData.category._id)
-        : extractValue(originalItemData?.category));
-    const subcategoryId =
-      editData.subcategory ||
-      (originalItemData &&
-      typeof originalItemData.subcategory === "object" &&
-      originalItemData.subcategory?._id
-        ? extractValue(originalItemData.subcategory._id)
-        : extractValue(originalItemData?.subcategory));
-    const branchId =
-      editData.branch ||
-      (originalItemData &&
-      typeof originalItemData.branch === "object" &&
-      originalItemData.branch?._id
-        ? extractValue(originalItemData.branch._id)
-        : extractValue(originalItemData?.branch));
-
-    formData.append("category", categoryId);
-    if (subcategoryId) formData.append("subcategory", subcategoryId);
-    formData.append("branch", branchId);
-
-    if (editData.variations && editData.variations.length > 0) {
-      const validVariations = editData.variations
-        .filter((v) => v.name && v.name.trim() !== "" && v.price !== null && v.price !== undefined)
-        .map((v) => {
-          const varData = { name: v.name, price: v.price };
-          if (v.applyDiscount && v.previousPrice) {
-            varData.previousPrice = v.previousPrice;
-          }
-          return varData;
-        });
-      
-      if (validVariations.length > 0) {
-        formData.append("variations", JSON.stringify(validVariations));
-      }
+    
+    formData.append("foodImage", foodImageFile);
+    
+    // Prepare variations data without File objects
+    if (variations.length > 0) {
+      const variationsForSubmission = prepareDataForJson(variations);
+      formData.append("variations", JSON.stringify(variationsForSubmission));
     }
-
-    if (editImage) formData.append("foodImage", editImage);
+    
+    // Prepare extras data without File objects
+    if (extras.length > 0) {
+      const extrasForSubmission = prepareDataForJson(extras);
+      formData.append("extras", JSON.stringify(extrasForSubmission));
+    }
+    
+    // Prepare side orders data without File objects
+    if (sideOrders.length > 0) {
+      const sideOrdersForSubmission = prepareDataForJson(sideOrders);
+      formData.append("sideOrders", JSON.stringify(sideOrdersForSubmission));
+    }
+    
+    // Process and add all additional image files to formData
+    processAdditionalFiles(formData);
 
     try {
-      const res = await fetch(`/api/fooditems/${editingItemId}`, {
-        method: "PATCH",
-        body: formData,
-      });
-      if (res.ok) {
-        toast.success("Item updated successfully");
-        setEditingItemId(null);
-        setEditData({
-          title: "",
-          description: "",
-          price: "",
-          previousPrice: "",
-          applyDiscount: false,
-          category: "",
-          subcategory: "",
-          branch: "",
-          variations: [],
-        });
-        setOriginalItemData(null);
-        setEditImage(null);
-        fetchFoodItems();
-      } else {
-        const errorData = await res.json();
-        toast.error(`Failed to update item: ${errorData.message || "Unknown error"}`);
-      }
+      await addFoodItem(formData);
+      toast.success("Food item added successfully!");
+      
+      // Reset form
+      setSelectedBranchId("");
+      setSelectedCategoryId("");
+      setSelectedSubcategoryId("");
+      setTitle("");
+      setDescription("");
+      setPrice("");
+      setPreviousPrice("");
+      setApplyDiscount(false);
+      setFoodImageFile(null);
+      setFoodImagePreview(null);
+      setVariations([]);
+      setExtras([]);
+      setSideOrders([]);
     } catch (error) {
-      console.error("Error updating item:", error);
-      toast.error("Error updating item");
+      toast.error("Error adding food item: " + error.message);
+      console.error("Form submission error:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingItemId(null);
-    setEditData({
-      title: "",
-      description: "",
-      price: "",
-      previousPrice: "",
-      applyDiscount: false,
-      category: "",
-      subcategory: "",
-      branch: "",
-      variations: [],
-    });
-    setOriginalItemData(null);
-    setEditImage(null);
-  };
-
-  const hasVariationDiscount = (variation) => {
-    return variation.previousPrice && variation.previousPrice > variation.price;
-  };
-
-  if (loading) return (
-    <div className="flex items-center justify-center h-screen">
-      <p className="text-lg text-gray-600 animate-pulse">Loading food items...</p>
-    </div>
-  );
-  if (foodItems.length === 0) return (
-    <div className="flex items-center justify-center h-screen">
-      <p className="text-lg text-gray-600">No food items available.</p>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Filter Items</h2>
-        <div className="flex flex-col md:flex-row gap-3 items-center">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              name="search"
-              value={filters.search}
-              onChange={handleFilterChange}
-              placeholder="Search by title or description"
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-300"
-            />
-            <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <select
-            name="branch"
-            value={filters.branch}
-            onChange={handleFilterChange}
-            className="flex-1 py-2 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-300"
-          >
-            <option value="">All Branches</option>
-            {branches.map((branch) => (
-              <option key={extractValue(branch._id)} value={extractValue(branch._id)}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="category"
-            value={filters.category}
-            onChange={handleFilterChange}
-            className="flex-1 py-2 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-300"
-          >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={extractValue(category._id)} value={extractValue(category._id)}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="subcategory"
-            value={filters.subcategory}
-            onChange={handleFilterChange}
-            className="flex-1 py-2 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-300"
-          >
-            <option value="">All Subcategories</option>
-            {subcategories.map((subcategory) => (
-              <option key={extractValue(subcategory._id)} value={extractValue(subcategory._id)}>
-                {subcategory.name}
-              </option>
-            ))}
-          </select>
-          <div className="flex items-center">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block font-medium mb-1">Select Branch</label>
+        <select
+          required
+          value={selectedBranchId}
+          onChange={(e) => setSelectedBranchId(e.target.value)}
+          className="w-full border rounded p-2"
+        >
+          <option value="">-- Select Branch --</option>
+          {branches.map((b) => (
+            <option key={b._id} value={b._id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Select Category</label>
+        <select
+          required
+          value={selectedCategoryId}
+          onChange={(e) => setSelectedCategoryId(e.target.value)}
+          className="w-full border rounded p-2"
+          disabled={!selectedBranchId}
+        >
+          <option value="">-- Select Category --</option>
+          {filteredCategories.map((cat) => (
+            <option key={cat._id} value={cat._id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">
+          {categoryHasSubcategories 
+            ? "Select Subcategory (Required)" 
+            : "Select Subcategory (Optional)"}
+        </label>
+        <select
+          value={selectedSubcategoryId}
+          onChange={(e) => setSelectedSubcategoryId(e.target.value)}
+          className="w-full border rounded p-2"
+          disabled={!selectedCategoryId}
+          required={categoryHasSubcategories}
+        >
+          <option value="">
+            {categoryHasSubcategories 
+              ? "-- Select Subcategory --" 
+              : "-- Select Subcategory (Optional) --"}
+          </option>
+          {filteredSubcategories.map((sub) => (
+            <option key={sub._id} value={sub._id}>
+              {sub.name}
+            </option>
+          ))}
+        </select>
+        {categoryHasSubcategories && (
+          <p className="text-sm text-red-600">
+            This category has subcategories. You must select one.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Item Title</label>
+        <input
+          type="text"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full border rounded p-2"
+          placeholder="Enter item title"
+        />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full border rounded p-2"
+          placeholder="Enter description (optional)"
+        ></textarea>
+      </div>
+
+      {variations.length === 0 && (
+        <>
+          <div className="flex items-center mb-4">
             <input
               type="checkbox"
-              id="hasDiscount"
-              name="hasDiscount"
-              checked={filters.hasDiscount}
-              onChange={handleFilterChange}
+              id="applyDiscount"
+              checked={applyDiscount}
+              onChange={(e) => setApplyDiscount(e.target.checked)}
               className="mr-2"
             />
-            <label htmlFor="hasDiscount" className="text-sm text-gray-700">
-              Discounted Items Only
+            <label htmlFor="applyDiscount" className="font-medium">
+              Apply Discount to Item
             </label>
           </div>
-          <button
-            onClick={resetFilters}
-            className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-300 text-sm font-medium"
-          >
-            Reset
-          </button>
-        </div>
+
+          {applyDiscount ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium mb-1">Original Price</label>
+                <input
+                  type="number"
+                  value={previousPrice}
+                  onChange={(e) => setPreviousPrice(e.target.value)}
+                  className="w-full border rounded p-2"
+                  placeholder="Original price before discount"
+                  required={applyDiscount}
+                />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Discounted Price</label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="w-full border rounded p-2"
+                  placeholder="Current discounted price"
+                  required
+                />
+                {applyDiscount && previousPrice && price && 
+                 parseFloat(previousPrice) <= parseFloat(price) && (
+                  <p className="text-sm text-red-600">
+                    Discounted price should be lower than the original price
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block font-medium mb-1">Price</label>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="w-full border rounded p-2"
+                placeholder="Enter price"
+                required={variations.length === 0}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      <div>
+        <label className="block font-medium mb-1">Upload Item Image</label>
+        <input
+          type="file"
+          required
+          onChange={(e) => handleFileChange(e, setFoodImageFile, setFoodImagePreview)}
+          className="w-full border rounded p-2"
+          accept="image/*"
+        />
+        {foodImagePreview && (
+          <div className="mt-2">
+            <img 
+              src={foodImagePreview} 
+              alt="Food item preview" 
+              className="h-24 w-auto object-cover rounded"
+            />
+          </div>
+        )}
       </div>
 
-      <div className="space-y-4">
-        {filteredItems.map((item) => {
-          const id = extractValue(item._id);
-          const price = extractValue(item.price);
-          const previousPrice = extractValue(item.previousPrice);
-          const hasDiscount = previousPrice && previousPrice > price;
+      {/* Variations Section */}
+      <div className="border-t pt-4">
+        <h3 className="text-lg font-medium mb-2">Variations (Optional)</h3>
+        
+        <div className="mb-2">
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              id="applyVariationDiscount"
+              checked={applyVariationDiscount}
+              onChange={(e) => setApplyVariationDiscount(e.target.checked)}
+              className="mr-2"
+            />
+            <label htmlFor="applyVariationDiscount" className="font-medium">
+              Apply Discount to Variation
+            </label>
+          </div>
 
-          if (editingItemId === id) {
-            return (
-              <div key={id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <form onSubmit={handleEditSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Title</label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={editData.title}
-                      onChange={handleEditChange}
-                      placeholder="Title"
-                      className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea
-                      name="description"
-                      value={editData.description}
-                      onChange={handleEditChange}
-                      placeholder="Description"
-                      className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                    ></textarea>
-                  </div>
-                  
-                  {(!editData.variations || editData.variations.length === 0) && (
-                    <>
-                      <div className="flex items-center mb-2">
-                        <input
-                          type="checkbox"
-                          id="applyDiscount"
-                          name="applyDiscount"
-                          checked={editData.applyDiscount}
-                          onChange={handleEditChange}
-                          className="mr-2"
-                        />
-                        <label htmlFor="applyDiscount" className="text-sm font-medium text-gray-700">
-                          Apply Discount to Item
-                        </label>
-                      </div>
-                      
-                      {editData.applyDiscount ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Original Price</label>
-                            <input
-                              type="number"
-                              name="previousPrice"
-                              value={editData.previousPrice}
-                              onChange={handleEditChange}
-                              placeholder="Original price before discount"
-                              className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                              required={editData.applyDiscount}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Discounted Price</label>
-                            <input
-                              type="number"
-                              name="price"
-                              value={editData.price}
-                              onChange={handleEditChange}
-                              placeholder="Current discounted price"
-                              className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                              required
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Price</label>
-                          <input
-                            type="number"
-                            name="price"
-                            value={editData.price}
-                            onChange={handleEditChange}
-                            placeholder="Price"
-                            className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
-                            required
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Category ID (not editable)</label>
-                    <input
-                      type="text"
-                      name="category"
-                      value={editData.category}
-                      disabled
-                      className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Subcategory ID (not editable)</label>
-                    <input
-                      type="text"
-                      name="subcategory"
-                      value={editData.subcategory}
-                      disabled
-                      className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Branch ID (not editable)</label>
-                    <input
-                      type="text"
-                      name="branch"
-                      value={editData.branch}
-                      disabled
-                      className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-semibold text-gray-800">Variations</h3>
-                      <button
-                        type="button"
-                        onClick={addVariation}
-                        className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm"
-                      >
-                        Add Variation
-                      </button>
-                    </div>
-                    {editData.variations && editData.variations.length > 0 ? (
-                      <div className="space-y-3">
-                        {editData.variations.map((variation, index) => (
-                          <div
-                            key={index}
-                            className="p-3 border rounded-lg bg-gray-50"
-                          >
-                            <div className="flex items-center mb-2">
-                              <input
-                                type="checkbox"
-                                id={`applyDiscountVar${index}`}
-                                checked={variation.applyDiscount}
-                                onChange={(e) => toggleVariationDiscount(index, e.target.checked)}
-                                className="mr-2"
-                              />
-                              <label htmlFor={`applyDiscountVar${index}`} className="text-sm font-medium text-gray-700">
-                                Apply Discount to Variation
-                              </label>
-                            </div>
-                            
-                            <div className="flex flex-wrap gap-2">
-                              <input
-                                type="text"
-                                value={variation.name || ""}
-                                onChange={(e) => handleVariationChange(index, "name", e.target.value)}
-                                placeholder="Variation Name"
-                                className="flex-1 border p-2 rounded-lg min-w-[150px] text-sm"
-                              />
-                              
-                              {variation.applyDiscount ? (
-                                <>
-                                  <input
-                                    type="number"
-                                    value={variation.previousPrice}
-                                    onChange={(e) => handleVariationChange(index, "previousPrice", e.target.value)}
-                                    placeholder="Original Price"
-                                    className="w-24 border p-2 rounded-lg text-sm"
-                                  />
-                                  <input
-                                    type="number"
-                                    value={variation.price}
-                                    onChange={(e) => handleVariationChange(index, "price", e.target.value)}
-                                    placeholder="Discounted Price"
-                                    className="w-24 border p-2 rounded-lg text-sm"
-                                  />
-                                </>
-                              ) : (
-                                <input
-                                  type="number"
-                                  value={variation.price}
-                                  onChange={(e) => handleVariationChange(index, "price", e.target.value)}
-                                  placeholder="Price"
-                                  className="w-24 border p-2 rounded-lg text-sm"
-                                />
-                              )}
-                              
-                              <button
-                                type="button"
-                                onClick={() => removeVariation(index)}
-                                className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm">No variations added</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Update Image (optional)
-                    </label>
-                    <input
-                      type="file"
-                      name="foodImage"
-                      onChange={handleImageChange}
-                      className="mt-1 block w-full rounded-lg border-gray-200 text-sm"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all duration-300 text-sm font-medium"
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-all duration-300 text-sm font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={id}
-              className={`bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col md:flex-row items-start gap-4 ${
-                hasDiscount ? 'border-l-4 border-red-500' : ''
-              }`}
-            >
-              {item.imageUrl ? (
-                <img
-                  src={item.imageUrl}
-                  alt={item.title}
-                  className="w-24 h-24 object-cover rounded-lg"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+            <input
+              type="text"
+              value={variationName}
+              onChange={(e) => setVariationName(e.target.value)}
+              placeholder="Variation Name (e.g., Small)"
+              className="border rounded p-2"
+            />
+            
+            {applyVariationDiscount ? (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={variationPreviousPrice}
+                  onChange={(e) => setVariationPreviousPrice(e.target.value)}
+                  placeholder="Original Price"
+                  className="border rounded p-2"
                 />
-              ) : (
-                <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500 text-sm">
-                  No Image
+                <input
+                  type="number"
+                  value={variationPrice}
+                  onChange={(e) => setVariationPrice(e.target.value)}
+                  placeholder="Discounted Price"
+                  className="border rounded p-2"
+                />
+              </div>
+            ) : (
+              <input
+                type="number"
+                value={variationPrice}
+                onChange={(e) => setVariationPrice(e.target.value)}
+                placeholder="Price"
+                className="border rounded p-2"
+              />
+            )}
+            
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-medium mb-1">
+                Upload Variation Image (Optional)
+              </label>
+              <input
+                type="file"
+                onChange={(e) => handleFileChange(e, setVariationImageFile, setVariationImagePreview)}
+                className="w-full border rounded p-2"
+                accept="image/*"
+              />
+              {variationImagePreview && (
+                <div className="mt-2">
+                  <img 
+                    src={variationImagePreview} 
+                    alt="Variation preview" 
+                    className="h-16 w-auto object-cover rounded"
+                  />
                 </div>
               )}
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  {item.title}
-                  {hasDiscount && (
-                    <span className="ml-2 bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
-                      Discounted
-                    </span>
-                  )}
-                </h3>
-                <p className="text-gray-600 text-sm mt-1">{item.description}</p>
-                
-                {(!item.variations || item.variations.length === 0) && (
-                  <div className="mt-2">
-                    {hasDiscount ? (
-                      <div className="flex items-center gap-2">
-                        <span className="line-through text-gray-500">{previousPrice} Rs</span>
-                        <span className="font-semibold text-red-600">{price} Rs</span>
-                        <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">
-                          {Math.round((1 - (price / previousPrice)) * 100)}% OFF
-                        </span>
-                      </div>
-                    ) : (
-                      <p className="font-semibold text-gray-800">{price} Rs</p>
-                    )}
-                  </div>
-                )}
-                
-                {item.branch &&
-                typeof item.branch === "object" &&
-                item.branch.name ? (
-                  <p className="text-xs text-gray-500 mt-1">Branch: {item.branch.name}</p>
-                ) : (
-                  item.branch && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Branch: {extractValue(item.branch)}
-                    </p>
-                  )
-                )}
-                {item.category &&
-                typeof item.category === "object" &&
-                item.category.name ? (
-                  <p className="text-xs text-gray-500 mt-1">Category: {item.category.name}</p>
-                ) : (
-                  item.category && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Category: {extractValue(item.category)}
-                    </p>
-                  )
-                )}
-                {item.subcategory &&
-                typeof item.subcategory === "object" &&
-                item.subcategory.name ? (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Subcategory: {item.subcategory.name}
-                  </p>
-                ) : (
-                  item.subcategory && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Subcategory: {extractValue(item.subcategory)}
-                    </p>
-                  )
-                )}
-                {item.variations && item.variations.length > 0 && (
-                  <div className="mt-2">
-                    <p className="font-semibold text-gray-800 text-sm">Variations:</p>
-                    <ul className="list-disc pl-4 text-sm text-gray-600">
-                      {item.variations.map((variation, index) => {
-                        const varPrice = extractValue(variation.price);
-                        const varPrevPrice = extractValue(variation.previousPrice);
-                        const hasVarDiscount = varPrevPrice && varPrevPrice > varPrice;
-                        
-                        return (
-                          <li key={index} className={hasVarDiscount ? "text-red-600" : ""}>
-                            {variation.name} - {hasVarDiscount ? (
-                              <>
-                                <span className="line-through text-gray-500">{varPrevPrice} Rs</span>{" "}
-                                {varPrice} Rs{" "}
-                                <span className="text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded">
-                                  {Math.round((1 - (varPrice / varPrevPrice)) * 100)}% OFF
-                                </span>
-                              </>
-                            ) : (
-                              `${varPrice} Rs`
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEditClick(item)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm font-medium"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(id)}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm font-medium"
-                >
-                  Delete
-                </button>
-              </div>
             </div>
-          );
-        })}
+            
+            <button
+              type="button"
+              onClick={addVariation}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition col-span-1 md:col-span-2"
+            >
+              Add Variation
+            </button>
+          </div>
+          {applyVariationDiscount && 
+           variationPreviousPrice && variationPrice && 
+           parseFloat(variationPreviousPrice) <= parseFloat(variationPrice) && (
+            <p className="text-sm text-red-600">
+              Discounted price should be lower than the original price
+            </p>
+          )}
+        </div>
+
+        {variations.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            {variations.map((v, index) => (
+              <div key={index} className="flex justify-between border rounded p-3 bg-gray-50">
+                <div className="flex items-center gap-2">
+                  {v.imagePreview && (
+                    <img 
+                      src={v.imagePreview} 
+                      alt={v.name} 
+                      className="h-10 w-10 object-cover rounded"
+                    />
+                  )}
+                  <div>
+                    <div className="font-medium">{v.name}</div>
+                    <div>
+                      {v.previousPrice ? (
+                        <>
+                          <span className="line-through text-gray-500">{v.previousPrice} Rs</span> {v.price} Rs
+                        </>
+                      ) : (
+                        `${v.price} Rs`
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => removeVariation(index)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirm Delete</h3>
-            <p className="text-gray-600 mb-6 text-sm">
-              Are you sure you want to delete this item?
-            </p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setShowDeleteConfirm(null)}
-                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-all duration-300 text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => deleteFoodItem(showDeleteConfirm)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 text-sm font-medium"
-              >
-                Delete
-              </button>
+      {/* Extras Section (Toppings) */}
+      <div className="border-t pt-4">
+        <h3 className="text-lg font-medium mb-2">Extras / Toppings (Optional)</h3>
+        <div className="mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+            <input
+              type="text"
+              value={extraName}
+              onChange={(e) => setExtraName(e.target.value)}
+              placeholder="Extra Name (e.g., Extra Cheese)"
+              className="border rounded p-2"
+            />
+            <input
+              type="number"
+              value={extraPrice}
+              onChange={(e) => setExtraPrice(e.target.value)}
+              placeholder="Price"
+              className="border rounded p-2"
+            />
+            <textarea
+              value={extraDescription}
+              onChange={(e) => setExtraDescription(e.target.value)}
+              placeholder="Description (optional)"
+              className="border rounded p-2 col-span-1 md:col-span-2"
+              rows="2"
+            ></textarea>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-medium mb-1">
+                Upload Extra Image (Optional)
+              </label>
+              <input
+                type="file"
+                onChange={(e) => handleFileChange(e, setExtraImageFile, setExtraImagePreview)}
+                className="w-full border rounded p-2"
+                accept="image/*"
+              />
+              {extraImagePreview && (
+                <div className="mt-2">
+                  <img 
+                    src={extraImagePreview} 
+                    alt="Extra preview" 
+                    className="h-16 w-auto object-cover rounded"
+                  />
+                </div>
+              )}
             </div>
           </div>
+          
+          <button
+            type="button"
+            onClick={addExtra}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+          >
+            Add Extra
+          </button>
         </div>
-      )}
-    </div>
+
+        {extras.length > 0 && (
+          <div className="mt-2">
+            <h4 className="font-medium">Added Extras:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+              {extras.map((extra, index) => (
+                <div key={index} className="flex justify-between border rounded p-2 bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    {extra.imagePreview && (
+                      <img 
+                        src={extra.imagePreview} 
+                        alt={extra.name} 
+                        className="h-10 w-10 object-cover rounded"
+                      />
+                    )}
+                    <div>
+                      <div className="font-medium">{extra.name}</div>
+                      <div className="text-gray-700">Price: {extra.price} Rs</div>
+                      {extra.description && (
+                        <div className="text-sm text-gray-600">{extra.description}</div>
+                      )}
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => removeExtra(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Side Orders Section */}
+      <div className="border-t pt-4">
+        <h3 className="text-lg font-medium mb-2">Side Orders (Optional)</h3>
+        <div className="mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+            <input
+              type="text"
+              value={sideOrderName}
+              onChange={(e) => setSideOrderName(e.target.value)}
+              placeholder="Side Order Name (e.g., Coke)"
+              className="border rounded p-2"
+            />
+            <input
+              type="number"
+              value={sideOrderPrice}
+              onChange={(e) => setSideOrderPrice(e.target.value)}
+              placeholder="Price"
+              className="border rounded p-2"
+            />
+            <textarea
+              value={sideOrderDescription}
+              onChange={(e) => setSideOrderDescription(e.target.value)}
+              placeholder="Description (optional)"
+              className="border rounded p-2"
+              rows="2"
+            ></textarea>
+            <select
+              value={sideOrderCategory}
+              onChange={(e) => setSideOrderCategory(e.target.value)}
+              className="border rounded p-2"
+            >
+              <option value="drinks">Drinks</option>
+              <option value="appetizers">Appetizers</option>
+              <option value="desserts">Desserts</option>
+              <option value="other">Other</option>
+            </select>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-medium mb-1">
+                Upload Side Order Image (Optional)
+              </label>
+              <input
+                type="file"
+                onChange={(e) => handleFileChange(e, setSideOrderImageFile, setSideOrderImagePreview)}
+                className="w-full border rounded p-2"
+                accept="image/*"
+              />
+              {sideOrderImagePreview && (
+                <div className="mt-2">
+                  <img 
+                    src={sideOrderImagePreview} 
+                    alt="Side order preview" 
+                    className="h-16 w-auto object-cover rounded"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            onClick={addSideOrder}
+            className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 transition"
+          >
+            Add Side Order
+          </button>
+        </div>
+
+        {sideOrders.length > 0 && (
+          <div className="mt-2">
+            <h4 className="font-medium">Added Side Orders:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+              {sideOrders.map((sideOrder, index) => (
+                <div key={index} className="flex justify-between border rounded p-2 bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    {sideOrder.imagePreview && (
+                      <img 
+                        src={sideOrder.imagePreview} 
+                        alt={sideOrder.name} 
+                        className="h-10 w-10 object-cover rounded"
+                      />
+                    )}
+                    <div>
+                      <div className="font-medium">{sideOrder.name}</div>
+                      <div className="text-gray-700">Price: {sideOrder.price} Rs</div>
+                      <div className="text-sm text-gray-600">
+                        Category: {sideOrder.category.charAt(0).toUpperCase() + sideOrder.category.slice(1)}
+                      </div>
+                      {sideOrder.description && (
+                        <div className="text-sm text-gray-600">{sideOrder.description}</div>
+                      )}
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => removeSideOrder(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t pt-4">
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition"
+        >
+          {isSubmitting ? (
+            <div className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Adding...
+            </div>
+          ) : (
+            "Add Food Item"
+          )}
+        </button>
+      </div>
+    </form>
   );
 }

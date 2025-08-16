@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useBranchStore } from "@/store/branchStore";
 
 export default function Navbar() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [fetchedBranches, setFetchedBranches] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLogoLoading, setIsLogoLoading] = useState(true);
   const [navbarData, setNavbarData] = useState({
     restaurant: {
       name: "Tipu Burger & Broast",
@@ -23,23 +22,6 @@ export default function Navbar() {
     logo: "/logo.png",
     updatedAt: new Date()
   });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLogoLoading, setIsLogoLoading] = useState(true);
-
-  const { branch, setBranch } = useBranchStore();
-
-  useEffect(() => {
-    async function getBranches() {
-      try {
-        const res = await fetch("/api/branches");
-        const data = await res.json();
-        setFetchedBranches(data);
-      } catch (error) {
-        console.error("Error fetching branches:", error);
-      }
-    }
-    getBranches();
-  }, []);
 
   useEffect(() => {
     async function getNavbarData() {
@@ -77,17 +59,10 @@ export default function Navbar() {
     getLogoData();
   }, []);
 
-  const handleLocationChange = (selectedBranch) => {
-    setBranch(selectedBranch);
-    setIsModalOpen(false);
-  };
-
-  // Get timestamp for logo cache busting
   const getLogoTimestamp = () => {
     return logoData?.updatedAt ? new Date(logoData.updatedAt).getTime() : Date.now();
   };
 
-  // Get timestamp for navbar items cache busting
   const getNavbarTimestamp = () => {
     return navbarData?.updatedAt ? new Date(navbarData.updatedAt).getTime() : Date.now();
   };
@@ -108,21 +83,7 @@ export default function Navbar() {
 
   return (
     <div className="relative max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-16">
-      <div className="flex justify-center sm:justify-start">
-        <Link href="/">
-          <div className="relative w-16 h-16 sm:w-24 sm:h-24 md:w-32 md:h-32 overflow-hidden -mt-8 sm:-mt-10 md:-mt-14 rounded-full">
-            {!isLogoLoading && (
-              <img
-                src={`${logoData.logo || "/logo.png"}?v=${getLogoTimestamp()}`}
-                alt="Logo"
-                className="w-full h-full object-cover"
-              />
-            )}
-          </div>
-        </Link>
-      </div>
-
-      <div className="pb-2 md:pb-4">
+      <div className="py-4 sm:py-6">
         <div className="flex flex-col sm:flex-row sm:flex-wrap justify-between items-center gap-4 sm:gap-6">
           <div className="flex flex-col text-center sm:text-left">
             <h1 className="text-xl sm:text-2xl pt-4 md:text-3xl font-bold mb-1 sm:mb-2">
@@ -133,20 +94,6 @@ export default function Navbar() {
                 <span>Open: </span>
                 <span className="font-normal text-black">
                   {navbarData.restaurant.openingHours}
-                </span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-center gap-1 text-red-600 text-xs sm:text-sm md:text-base">
-                <div className="flex items-center gap-1">
-                  <span>Branch:</span>
-                  <span className="font-normal text-black">
-                    {branch?.name || "Select Location"}
-                  </span>
-                </div>
-                <span
-                  className="underline text-[11px] sm:text-xs cursor-pointer"
-                  onClick={() => setIsModalOpen(true)}
-                >
-                  {branch ? "Change Location" : "Choose Location"}
                 </span>
               </div>
             </div>
@@ -214,34 +161,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-72 transform transition-all duration-300 scale-100 mx-4">
-            <h2 className="text-2xl font-semibold mb-4">Select Your Location</h2>
-            <p className="text-gray-600 mb-6">
-              Please choose your preferred branch:
-            </p>
-            <div className="flex flex-col gap-3">
-              {fetchedBranches.map((b) => (
-                <button
-                  key={b._id}
-                  onClick={() => handleLocationChange(b)}
-                  className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                >
-                  {b.name}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="mt-6 text-sm text-gray-600 hover:underline"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

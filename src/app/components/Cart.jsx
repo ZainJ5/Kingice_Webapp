@@ -1,6 +1,6 @@
 'use client'
 import { useEffect } from 'react'
-import { X, Plus, Minus, ChevronRight, Trash } from 'lucide-react'
+import { X, Plus, Minus, ChevronRight, Trash, Info } from 'lucide-react'
 import { toast } from 'react-toastify'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -35,21 +35,34 @@ export default function CartDrawer({ isOpen, onClose }) {
     const newQuantity = (item.quantity || 1) - 1;
     updateItemQuantity(index, newQuantity);
     if (newQuantity <= 0) {
-      toast.info(`Removed ${item.title} from cart`);
+      toast.info(`Removed ${item.title.split(" x")[0]} from cart`);
     } else {
-      toast.info(`Removed one ${item.title}`);
+      toast.info(`Decreased quantity of ${item.title.split(" x")[0]}`);
     }
   }
 
   const handleIncrease = (index, item) => {
     const newQuantity = (item.quantity || 1) + 1;
     updateItemQuantity(index, newQuantity);
-    toast.success(`Added one ${item.title}`);
+    toast.success(`Increased quantity of ${item.title.split(" x")[0]}`);
   }
 
   const handleRemove = (index, item) => {
     removeFromCart(index);
-    toast.info(`Removed ${item.title} from cart`);
+    toast.info(`Removed ${item.title.split(" x")[0]} from cart`);
+  }
+
+  // Format price with locale string
+  const formatPrice = (price) => {
+    return Number(price).toLocaleString();
+  }
+
+  // Get the base title without quantity
+  const getBaseTitle = (fullTitle) => {
+    // Remove the quantity part at the end (e.g. "x2")
+    const parts = fullTitle.split(" x");
+    parts.pop();
+    return parts.join(" x");
   }
 
   return (
@@ -85,18 +98,23 @@ export default function CartDrawer({ isOpen, onClose }) {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {items.map((item, index) => (
-                <div key={`${item.id}-${index}`} className="p-4 group hover:bg-gray-50 transition-colors">
+              {items.map((item, index) => {
+                // Calculate actual price per item (unit price)
+                const unitPrice = item.unitPrice || Number(item.price);
+                const totalItemPrice = unitPrice * (item.quantity || 1);
+                const baseTitle = getBaseTitle(item.title);
+                
+                return (
+                <div key={`${item._id || index}-${index}`} className="p-4 group hover:bg-gray-50 transition-colors">
                   <div className="flex gap-4">
                     <div className="h-24 w-24 rounded-xl overflow-hidden bg-gradient-to-br from-red-50 to-red-100 flex-shrink-0 relative shadow-sm">
                       {item.imageUrl && item.imageUrl !== '' ? (
                         <img
                           src={item.imageUrl}
-                          alt={item.title}
+                          alt={baseTitle}
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />
-
                       ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                           <span className="text-gray-500 text-sm">No Image</span>
@@ -105,13 +123,16 @@ export default function CartDrawer({ isOpen, onClose }) {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                        <div className="flex-1 pr-2">
+                          <h3 className="font-semibold text-gray-900">{baseTitle}</h3>
+                          {item.type && (
+                            <p className="text-sm text-gray-600 font-medium">{item.type}</p>
+                          )}
                           <p className="text-red-700 font-medium mt-1">
-                            Rs. {(item.price * (item.quantity || 1)).toLocaleString()}
+                            Rs. {formatPrice(totalItemPrice)}
                           </p>
                         </div>
-                        <div className="flex items-center border border-gray-200 rounded-full shadow-sm bg-white">
+                        <div className="flex items-center border border-gray-200 rounded-full shadow-sm bg-white flex-shrink-0">
                           <button
                             className="w-8 h-8 flex items-center justify-center text-red-600 rounded-l-full hover:bg-red-50 transition-colors"
                             onClick={() => handleDecrease(index, item)}
@@ -130,14 +151,65 @@ export default function CartDrawer({ isOpen, onClose }) {
                         </div>
                       </div>
 
-                      {/* Render addon list if available */}
-                      {item.addons?.length > 0 && (
-                        <div className="mt-2 space-y-1">
+                      {/* Display modifications (extras and side orders) */}
+                      {item.modifications && (
+                        <div className="mt-2 space-y-1 bg-gray-50 p-2 rounded-md">
+                          {item.modifications.map((mod, i) => (
+                            <div key={i} className="mb-1">
+                              <p className="text-xs font-medium text-gray-600">{mod.type}:</p>
+                              <div className="space-y-0.5 pl-2">
+                                {mod.items.map((modItem, j) => (
+                                  <div key={j} className="flex justify-between text-xs">
+                                    <span className="text-gray-600">• {modItem.name}</span>
+                                    <span className="text-gray-600 font-medium">
+                                      +Rs. {formatPrice(modItem.price)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Legacy: Render addon list if available for backward compatibility */}
+                      {!item.modifications && item.addons?.length > 0 && (
+                        <div className="mt-2 space-y-1 bg-gray-50 p-2 rounded-md">
                           {item.addons.map((addon, i) => (
-                            <div key={i} className="flex justify-between text-sm">
-                              <span className="text-gray-500">+ {addon.name}</span>
-                              <span className="text-gray-600">
-                                Rs. {addon.price?.toLocaleString() || 0}
+                            <div key={i} className="flex justify-between text-xs">
+                              <span className="text-gray-600">+ {addon.name}</span>
+                              <span className="text-gray-600 font-medium">
+                                +Rs. {formatPrice(addon.price || 0)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Selected extras */}
+                      {item.selectedExtras && item.selectedExtras.length > 0 && !item.modifications && (
+                        <div className="mt-2 space-y-1 bg-gray-50 p-2 rounded-md">
+                          <p className="text-xs font-medium text-gray-600">Extras:</p>
+                          {item.selectedExtras.map((extra, i) => (
+                            <div key={i} className="flex justify-between text-xs">
+                              <span className="text-gray-600">• {extra.name}</span>
+                              <span className="text-gray-600 font-medium">
+                                +Rs. {formatPrice(extra.price || 0)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Selected side orders */}
+                      {item.selectedSideOrders && item.selectedSideOrders.length > 0 && !item.modifications && (
+                        <div className="mt-2 space-y-1 bg-gray-50 p-2 rounded-md">
+                          <p className="text-xs font-medium text-gray-600">Side Orders:</p>
+                          {item.selectedSideOrders.map((sideOrder, i) => (
+                            <div key={i} className="flex justify-between text-xs">
+                              <span className="text-gray-600">• {sideOrder.name}</span>
+                              <span className="text-gray-600 font-medium">
+                                +Rs. {formatPrice(sideOrder.price || 0)}
                               </span>
                             </div>
                           ))}
@@ -148,16 +220,16 @@ export default function CartDrawer({ isOpen, onClose }) {
                       <div className="mt-2 flex justify-end">
                         <button
                           onClick={() => handleRemove(index, item)}
-                          aria-label={`Remove ${item.title} from cart`}
+                          aria-label={`Remove ${baseTitle} from cart`}
                           className="flex items-center text-sm text-red-600 hover:text-red-800 transition-colors"
                         >
-                          <Trash className="w-5 h-5 mr-1" /> Remove
+                          <Trash className="w-4 h-4 mr-1" /> Remove
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
 
@@ -177,7 +249,7 @@ export default function CartDrawer({ isOpen, onClose }) {
             <div className="p-4 space-y-3">
               <div className="flex justify-between items-center text-lg">
                 <span className="font-bold text-gray-900">Subtotal</span>
-                <span className="font-bold text-red-800">Rs. {total.toLocaleString()}</span>
+                <span className="font-bold text-red-800">Rs. {formatPrice(total)}</span>
               </div>
               <button
                 onClick={handleCheckout}

@@ -138,19 +138,15 @@ export default function MenuSection({ category, subcategories, items, onSectionV
       className="pt-4 pb-8"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-16">
-        {!hasActiveSubcategories && category.image && (
-          <div className="relative w-full h-auto bg-gray-200 rounded-md overflow-hidden mb-6">
-            <img 
-              src={getCacheBustedUrl(category.image)}
-              alt={category.name}
-              className="w-full h-auto object-contain rounded-md"
-              loading="eager"
-              decoding="async"
-              onError={(e) => {
-                imageCache.current.set(category.image, false);
-                e.target.style.display = 'none';
-              }}
-            />
+        {!hasActiveSubcategories && (
+          <div className="bg-gradient-to-r from-red-700 to-red-800 text-white rounded-lg overflow-hidden h-48 mb-8 flex items-center justify-center shadow-lg border-2 border-red-400 relative">
+            <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
+            <div className="z-10 text-center px-6">
+              <h2 className="text-5xl sm:text-6xl font-bold mb-2">{category.name}</h2>
+              <p className="text-xl opacity-90">
+                {itemCount} {itemCount === 1 ? 'item' : 'items'} available
+              </p>
+            </div>
           </div>
         )}
         
@@ -168,21 +164,15 @@ export default function MenuSection({ category, subcategories, items, onSectionV
                 id={`subcategory-${getId(subcategory._id)}`} 
                 className="mb-12"
               >
-                {subcategory.image && (
-                  <div className="relative w-full h-auto bg-gray-200 rounded-md overflow-hidden mb-6">
-                    <img 
-                      src={getCacheBustedUrl(subcategory.image)}
-                      alt={subcategory.name}
-                      className="w-full h-auto object-contain rounded-md"
-                      loading="eager"
-                      decoding="async"
-                      onError={(e) => {
-                        imageCache.current.set(subcategory.image, false);
-                        e.target.style.display = 'none';
-                      }}
-                    />
+                <div className="bg-gradient-to-r from-red-700 to-red-800 text-white rounded-lg overflow-hidden h-40 mb-8 flex items-center justify-center shadow-lg border-2 border-red-400 relative">
+                  <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
+                  <div className="z-10 text-center px-6">
+                    <h3 className="text-4xl sm:text-5xl font-bold mb-2">{subcategory.name}</h3>
+                    <p className="text-lg opacity-90">
+                      {subcategoryItems.length} {subcategoryItems.length === 1 ? 'item' : 'items'} available
+                    </p>
                   </div>
-                )}
+                </div>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                   {subcategoryItems.map(item => (
@@ -218,6 +208,15 @@ export default function MenuSection({ category, subcategories, items, onSectionV
             
             return (
               <div className="mt-12">
+                <div className="bg-gradient-to-r from-gray-700 to-gray-600 text-white rounded-lg overflow-hidden h-32 mb-8 flex items-center justify-center shadow-lg border-2 border-gray-500 relative">
+                  <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
+                  <div className="z-10 text-center px-6">
+                    <h3 className="text-3xl sm:text-4xl font-bold mb-1">Other Items</h3>
+                    <p className="text-lg opacity-90">
+                      {uncategorizedItems.length} {uncategorizedItems.length === 1 ? 'item' : 'items'} available
+                    </p>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                   {uncategorizedItems.map(item => (
                     <MenuItemCard 
@@ -240,7 +239,10 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   const { addToCart } = useCartStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState("");
+  const [selectedExtras, setSelectedExtras] = useState([]);
+  const [selectedSideOrders, setSelectedSideOrders] = useState([]);
   const [imageError, setImageError] = useState(false);
+  const modalRef = useRef(null);
   
   const getId = (idField) => {
     if (typeof idField === 'object' && idField !== null) {
@@ -259,8 +261,9 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   };
 
   const hasVariations = item.variations && item.variations.length > 0;
+  const hasExtras = item.extras && item.extras.length > 0;
+  const hasSideOrders = item.sideOrders && item.sideOrders.length > 0;
   
-  // Find lowest current price and any discount among variations
   const variationPrices = hasVariations 
     ? item.variations.map(v => {
         const price = Number(getPrice(v.price));
@@ -275,15 +278,60 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
         variationPrices[0])
     : null;
   
-  // Check if the item has a discount (either main price or at least one variation)
   const hasMainItemDiscount = item.previousPrice && Number(getPrice(item.previousPrice)) > Number(getPrice(item.price));
   const hasAnyDiscount = hasMainItemDiscount || (hasVariations && variationPrices.some(v => v.hasDiscount));
+
+  // Close modal when clicking outside
+  useEffect(() => {
+    if (!isModalOpen) return;
+    
+    const handleClickOutside = (event) => {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        setIsModalOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isModalOpen]);
+  
+  // Toggle an extra in the selected extras array
+  const toggleExtra = (extraIndex) => {
+    setSelectedExtras(prev => {
+      const isSelected = prev.includes(extraIndex);
+      if (isSelected) {
+        return prev.filter(idx => idx !== extraIndex);
+      } else {
+        return [...prev, extraIndex];
+      }
+    });
+  };
+
+  // Toggle a side order in the selected side orders array
+  const toggleSideOrder = (sideOrderIndex) => {
+    setSelectedSideOrders(prev => {
+      const isSelected = prev.includes(sideOrderIndex);
+      if (isSelected) {
+        return prev.filter(idx => idx !== sideOrderIndex);
+      } else {
+        return [...prev, sideOrderIndex];
+      }
+    });
+  };
 
   const handleCardClick = () => {
     setIsModalOpen(true);
     if (hasVariations) {
       setSelectedVariation("0");
     }
+    // Reset selections when opening modal
+    setSelectedExtras([]);
+    setSelectedSideOrders([]);
+    
+    // Prevent body scrolling when modal is open
+    document.body.style.overflow = 'hidden';
   };
 
   const handleAddDirectly = (e) => {
@@ -295,37 +343,98 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   };
 
   const handleAddToCart = () => {
-    if (hasVariations) {
+    const cartItemId = `${getId(item._id)}-${Date.now()}`;
+    let itemToAdd = { ...item, cartItemId };
+    let additionalPrice = 0;
+    let selectedModifications = [];
+
+    // Handle variations
+    if (hasVariations && selectedVariation !== "") {
       const variationIndex = Number(selectedVariation);
       const selectedVar = item.variations[variationIndex];
-      if (selectedVar && selectedVar.name && selectedVar.name.trim().length > 0) {
-        const cartItemId = `${getId(item._id)}-${selectedVar.name}-${Date.now()}`;
-        const itemToAdd = { 
-          ...item, 
+      if (selectedVar && selectedVar.name) {
+        itemToAdd = { 
+          ...itemToAdd, 
           price: selectedVar.price, 
-          previousPrice: selectedVar.previousPrice,  // Include previousPrice if available
-          type: selectedVar.name,  
-          cartItemId 
+          previousPrice: selectedVar.previousPrice,
+          type: selectedVar.name
         };
-        addToCart(itemToAdd);
-        toast.success("Item added to cart!", { autoClose: 2000 });
+        selectedModifications.push(`Variation: ${selectedVar.name}`);
       } else {
         toast.error("Please select a valid variation");
+        return;
       }
+    }
+
+    // Handle extras
+    if (selectedExtras.length > 0) {
+      const extrasData = selectedExtras.map(index => {
+        const extra = item.extras[index];
+        additionalPrice += Number(getPrice(extra.price));
+        return {
+          name: extra.name,
+          price: Number(getPrice(extra.price))
+        };
+      });
+      
+      itemToAdd.selectedExtras = extrasData;
+      selectedModifications.push(`Extras: ${extrasData.map(e => e.name).join(', ')}`);
+    }
+
+    // Handle side orders
+    if (selectedSideOrders.length > 0) {
+      const sideOrdersData = selectedSideOrders.map(index => {
+        const sideOrder = item.sideOrders[index];
+        additionalPrice += Number(getPrice(sideOrder.price));
+        return {
+          name: sideOrder.name,
+          price: Number(getPrice(sideOrder.price)),
+          category: sideOrder.category
+        };
+      });
+      
+      itemToAdd.selectedSideOrders = sideOrdersData;
+      selectedModifications.push(`Side Orders: ${sideOrdersData.map(s => s.name).join(', ')}`);
+    }
+
+    // Add total price including extras and side orders
+    if (additionalPrice > 0) {
+      const basePrice = Number(getPrice(itemToAdd.price));
+      itemToAdd.totalPrice = basePrice + additionalPrice;
+    }
+
+    addToCart(itemToAdd);
+    
+    // Show a toast with more details if there are modifications
+    if (selectedModifications.length > 0) {
+      toast.success(
+        <div>
+          <p>Added to cart:</p>
+          <p className="font-bold">{item.title}</p>
+          <ul className="text-xs mt-1">
+            {selectedModifications.map((mod, idx) => (
+              <li key={idx}>{mod}</li>
+            ))}
+          </ul>
+        </div>, 
+        { autoClose: 3000 }
+      );
     } else {
-      const cartItemId = `${getId(item._id)}-${Date.now()}`;
-      const itemToAdd = { ...item, cartItemId };
-      addToCart(itemToAdd);
       toast.success("Item added to cart!", { autoClose: 2000 });
     }
+    
+    closeModal();
+  };
+  
+  const closeModal = () => {
     setIsModalOpen(false);
+    document.body.style.overflow = '';
   };
 
   const imageUrl = item.imageUrl && item.imageUrl !== '' 
     ? getCacheBustedUrl(item.imageUrl)
     : '';
 
-  // Calculate discount percentage for display
   const calculateDiscountPercentage = (currentPrice, originalPrice) => {
     if (!originalPrice || originalPrice <= currentPrice) return null;
     return Math.round((1 - (currentPrice / originalPrice)) * 100);
@@ -336,8 +445,59 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     item.previousPrice ? Number(getPrice(item.previousPrice)) : null
   );
 
+  // Calculate total price based on selections
+  const calculateTotalPrice = () => {
+    let total = 0;
+    
+    // Base price from variation or main item
+    if (hasVariations && selectedVariation !== "") {
+      const variation = item.variations[Number(selectedVariation)];
+      if (variation) {
+        total += Number(getPrice(variation.price));
+      }
+    } else {
+      total += Number(getPrice(item.price));
+    }
+    
+    // Add extras prices
+    selectedExtras.forEach(index => {
+      const extra = item.extras[index];
+      if (extra) {
+        total += Number(getPrice(extra.price));
+      }
+    });
+    
+    // Add side orders prices
+    selectedSideOrders.forEach(index => {
+      const sideOrder = item.sideOrders[index];
+      if (sideOrder) {
+        total += Number(getPrice(sideOrder.price));
+      }
+    });
+    
+    return total;
+  };
+
+  const groupedSideOrders = () => {
+    if (!item.sideOrders || !item.sideOrders.length) return {};
+    
+    return item.sideOrders.reduce((groups, sideOrder, index) => {
+      const category = sideOrder.category || 'other';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push({ ...sideOrder, index });
+      return groups;
+    }, {});
+  };
+
+  const formatCategoryName = (category) => {
+    return category.charAt(0).toUpperCase() + category.slice(1);
+  };
+
   return (
     <>
+      {/* Menu Item Card */}
       <div 
         className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer 
                     ${hasAnyDiscount ? 'border-2 border-red-500' : ''}`}
@@ -420,7 +580,11 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                hasVariations ? handleCardClick() : handleAddDirectly(e);
+                if (hasVariations || hasExtras || hasSideOrders) {
+                  handleCardClick();
+                } else {
+                  handleAddDirectly(e);
+                }
               }}
               className="px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
             >
@@ -430,121 +594,267 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
         </div>
       </div>
 
+      {/* Item Details Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg p-6 relative mx-4">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl"
-            >
-              ×
-            </button>
-            <div className="flex flex-col items-center">
-              <div className="w-full h-48 mb-4 relative">
-                {imageUrl && !imageError ? (
-                  <img
-                    src={imageUrl}
-                    alt={item.title}
-                    className="object-cover w-full h-full rounded"
-                    onError={() => setImageError(true)}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded">
-                    <span className="text-gray-500 text-sm">No Image</span>
-                  </div>
-                )}
-                
-                {hasAnyDiscount && (
-                  <div className="absolute top-0 right-0 bg-red-600 text-white px-2 py-1 text-sm font-bold rounded-bl-md">
-                    {hasMainItemDiscount ? 
-                      `${mainItemDiscount}% OFF` : 
-                      `UP TO ${Math.max(...variationPrices.map(v => 
-                        calculateDiscountPercentage(v.price, v.previousPrice) || 0
-                      ))}% OFF`
-                    }
+        <div className="fixed inset-0 z-[70] overflow-y-auto bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div 
+            ref={modalRef}
+            className="bg-white rounded-xl shadow-xl w-full max-w-md mx-auto overflow-hidden animate-fadeIn"
+          >
+            {/* Header with image */}
+            <div className="relative h-48 sm:h-56 w-full">
+              {imageUrl && !imageError ? (
+                <img
+                  src={imageUrl}
+                  alt={item.title}
+                  className="object-cover w-full h-full"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="flex items-center justify-center w-full h-full bg-gray-100">
+                  <span className="text-gray-500 font-medium">No Image Available</span>
+                </div>
+              )}
+              
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+              
+              {/* Close button */}
+              <button
+                onClick={closeModal}
+                className="absolute top-3 right-3 bg-white/80 hover:bg-white text-gray-800 rounded-full p-1 transition-colors shadow-md"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+              
+              {/* Discount badge */}
+              {hasAnyDiscount && (
+                <div className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 text-xs font-bold rounded-md shadow-md">
+                  {hasMainItemDiscount ? 
+                    `${mainItemDiscount}% OFF` : 
+                    `UP TO ${Math.max(...variationPrices.map(v => 
+                      calculateDiscountPercentage(v.price, v.previousPrice) || 0
+                    ))}% OFF`
+                  }
+                </div>
+              )}
+              
+              {/* Item title & base price */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                <h2 className="text-xl sm:text-2xl font-bold leading-tight">{item.title}</h2>
+                {!hasVariations && (
+                  <div className="mt-1 flex items-center">
+                    {item.previousPrice && Number(getPrice(item.previousPrice)) > Number(getPrice(item.price)) ? (
+                      <>
+                        <span className="text-white/70 line-through mr-2">Rs.{getPrice(item.previousPrice)}</span>
+                        <span className="text-lg font-bold">Rs.{getPrice(item.price)}</span>
+                      </>
+                    ) : (
+                      <span className="text-lg font-bold">Rs.{getPrice(item.price)}</span>
+                    )}
                   </div>
                 )}
               </div>
-              
-              <h2 className="text-2xl font-bold mb-2">{item.title}</h2>
+            </div>
+            
+            {/* Content */}
+            <div className="px-4 py-4 max-h-[calc(75vh-14rem)] overflow-y-auto">
+              {/* Description */}
               {item.description && (
-                <p className="text-gray-700 mb-4 text-center">{item.description}</p>
+                <div className="mb-4">
+                  <p className="text-gray-600 text-sm">{item.description}</p>
+                </div>
               )}
               
-              {hasVariations ? (
-                <div className="w-full mb-4">
-                  <label className="block text-gray-700 mb-1">Select Variation:</label>
-                  <select
-                    value={selectedVariation}
-                    onChange={(e) => setSelectedVariation(e.target.value)}
-                    className="w-full border rounded p-2"
-                  >
+              {/* Variations */}
+              {hasVariations && (
+                <div className="mb-5">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Choose Variation</h4>
+                  <div className="space-y-2">
                     {item.variations.map((variation, index) => {
-                      const price = getPrice(variation.price);
-                      const previousPrice = variation.previousPrice ? getPrice(variation.previousPrice) : null;
+                      const price = Number(getPrice(variation.price));
+                      const previousPrice = variation.previousPrice ? Number(getPrice(variation.previousPrice)) : null;
                       const hasDiscount = previousPrice && previousPrice > price;
-                      const discountPercentage = hasDiscount 
-                        ? calculateDiscountPercentage(Number(price), Number(previousPrice)) 
-                        : null;
-                        
+                      const discountPercentage = hasDiscount ? calculateDiscountPercentage(price, previousPrice) : null;
+
                       return (
-                        <option key={index} value={index}>
-                          {variation.name} - {hasDiscount ? 
-                            `Rs.${price} (${discountPercentage}% OFF)` : 
-                            `Rs.${price}`}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  
-                  {(() => {
-                    if (!selectedVariation) return null;
-                    const variation = item.variations[Number(selectedVariation)];
-                    if (!variation) return null;
-                    
-                    const price = getPrice(variation.price);
-                    const previousPrice = variation.previousPrice ? getPrice(variation.previousPrice) : null;
-                    const hasDiscount = previousPrice && previousPrice > price;
-                    
-                    if (hasDiscount) {
-                      return (
-                        <div className="mt-2 text-center">
-                          <span className="text-lg text-gray-500 line-through mr-2">
-                            Rs.{previousPrice}
-                          </span>
-                          <span className="text-xl font-bold text-red-600">
-                            Rs.{price}
-                          </span>
+                        <div 
+                          key={index}
+                          className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all ${
+                            selectedVariation === String(index)
+                              ? 'border-red-500 bg-red-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          onClick={() => setSelectedVariation(String(index))}
+                        >
+                          <div className="flex items-center">
+                            <div className={`w-4 h-4 rounded-full flex items-center justify-center border ${
+                              selectedVariation === String(index) ? 'border-red-600' : 'border-gray-400'
+                            }`}>
+                              {selectedVariation === String(index) && (
+                                <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                              )}
+                            </div>
+                            <span className="ml-2 text-sm font-medium text-gray-800">{variation.name}</span>
+                          </div>
+                          <div className="text-right">
+                            {hasDiscount ? (
+                              <div>
+                                <span className="text-xs text-gray-400 line-through block">Rs.{previousPrice}</span>
+                                <span className="text-red-600 text-sm font-semibold">Rs.{price}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm font-semibold">Rs.{price}</span>
+                            )}
+                          </div>
                         </div>
                       );
-                    }
-                    return null;
-                  })()}
-                </div>
-              ) : (
-                <div className="w-full mb-4 text-center">
-                  {item.previousPrice && Number(getPrice(item.previousPrice)) > Number(getPrice(item.price)) ? (
-                    <div>
-                      <p className="text-lg text-gray-500 line-through">Original Price: Rs.{getPrice(item.previousPrice)}</p>
-                      <p className="text-xl font-bold text-red-600">
-                        Discounted Price: Rs.{getPrice(item.price)} 
-                        <span className="ml-2 text-sm bg-red-100 text-red-800 px-2 py-0.5 rounded">
-                          {mainItemDiscount}% OFF
-                        </span>
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-lg font-bold">Price: Rs.{getPrice(item.price)}</p>
-                  )}
+                    })}
+                  </div>
                 </div>
               )}
               
-              <button
-                onClick={handleAddToCart}
-                className="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition-colors"
-              >
-                Add to Cart
-              </button>
+              {/* Extras / Toppings */}
+              {hasExtras && (
+                <div className="mb-5">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Extras & Toppings</h4>
+                  <div className="space-y-2">
+                    {item.extras.map((extra, index) => (
+                      <div 
+                        key={index}
+                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all ${
+                          selectedExtras.includes(index)
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => toggleExtra(index)}
+                      >
+                        <div className="flex items-center">
+                          <div className={`w-4 h-4 rounded-sm flex items-center justify-center ${
+                            selectedExtras.includes(index) ? 'bg-red-600' : 'border border-gray-400'
+                          }`}>
+                            {selectedExtras.includes(index) && (
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                            )}
+                          </div>
+                          <div className="ml-2">
+                            <span className="text-sm font-medium text-gray-800">{extra.name}</span>
+                            {extra.description && (
+                              <p className="text-xs text-gray-500">{extra.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium">+Rs.{getPrice(extra.price)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+{/* Side Orders */}
+{hasSideOrders && (
+  <div>
+    <h4 className="text-sm font-semibold text-gray-700 mb-2">Side Orders</h4>
+    {Object.entries(groupedSideOrders()).map(([category, sideOrdersInCategory]) => (
+      <div key={category} className="mb-4">
+        <p className="text-xs font-medium text-gray-500 mb-2">{formatCategoryName(category)}</p>
+        
+        {/* Horizontal scrolling container */}
+        <div className="overflow-x-auto pb-3 -mx-1">
+          <div className="flex space-x-3 px-1">
+            {sideOrdersInCategory.map((sideOrder) => {
+              const isSelected = selectedSideOrders.includes(sideOrder.index);
+              const sideOrderImageUrl = sideOrder.imageUrl 
+                ? getCacheBustedUrl(sideOrder.imageUrl) 
+                : '';
+              
+              return (
+                <div 
+                  key={sideOrder.index}
+                  className={`flex-shrink-0 w-36 border rounded-lg overflow-hidden cursor-pointer transition-all
+                              ${isSelected 
+                                ? 'border-red-500 ring-1 ring-red-500 shadow-md' 
+                                : 'border-gray-200 hover:border-gray-300'}`}
+                  onClick={() => toggleSideOrder(sideOrder.index)}
+                >
+                  {/* Side order image */}
+                  <div className="h-24 w-full relative bg-gray-100">
+                    {sideOrderImageUrl ? (
+                      <img
+                        src={sideOrderImageUrl}
+                        alt={sideOrder.name}
+                        className="object-cover h-full w-full"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                      </div>
+                    )}
+                    
+                    {/* Selection indicator */}
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 bg-red-600 rounded-full w-5 h-5 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Side order details */}
+                  <div className={`p-2 ${isSelected ? 'bg-red-50' : 'bg-white'}`}>
+                    <div className="flex items-center mb-1">
+                      <div className={`w-4 h-4 rounded-sm flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'bg-red-600' : 'border border-gray-400'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        )}
+                      </div>
+                      <span className="ml-1 text-xs font-medium text-gray-800 truncate">{sideOrder.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-medium text-red-600">+Rs.{getPrice(sideOrder.price)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
+            </div>
+            
+            {/* Footer with total and action button */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">Total Price</p>
+                  <p className="text-xl font-bold text-gray-900">Rs.{calculateTotalPrice()}</p>
+                </div>
+                <button
+                  onClick={handleAddToCart}
+                  className="px-5 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm"
+                >
+                  Add to Cart
+                </button>
+              </div>
             </div>
           </div>
         </div>

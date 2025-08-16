@@ -37,25 +37,77 @@ export async function POST(request) {
     const title = formData.get("title");
     const description = formData.get("description");
     const price = formData.get("price");
-    const previousPrice = formData.get("previousPrice"); // Get previousPrice
+    const previousPrice = formData.get("previousPrice");
     const category = formData.get("category");
     const subcategory = formData.get("subcategory");
     const branch = formData.get("branch");
+    
+    const imageUrl = await processFileUpload(formData, "foodImage");
+    if (!imageUrl) {
+      return NextResponse.json(
+        { message: "Food image is required" },
+        { status: 400 }
+      );
+    }
     
     let variationsParsed = [];
     const variations = formData.get("variations");
     if (variations) {
       try {
         variationsParsed = JSON.parse(variations);
+        
+        for (let i = 0; i < variationsParsed.length; i++) {
+          const variationImageField = `variationImage_${i}`;
+          if (formData.has(variationImageField)) {
+            const varImageUrl = await processFileUpload(formData, variationImageField);
+            if (varImageUrl) {
+              variationsParsed[i].imageUrl = varImageUrl;
+            }
+          }
+        }
       } catch (err) {
         console.error("Error parsing variations:", err);
       }
     }
     
-    let imageUrl = null;
-    const file = formData.get("foodImage");
-    if (file && file.size > 0) {
-      imageUrl = await processFileUpload(formData, "foodImage");
+    let extrasParsed = [];
+    const extras = formData.get("extras");
+    if (extras) {
+      try {
+        extrasParsed = JSON.parse(extras);
+        
+        for (let i = 0; i < extrasParsed.length; i++) {
+          const extraImageField = `extraImage_${i}`;
+          if (formData.has(extraImageField)) {
+            const extraImageUrl = await processFileUpload(formData, extraImageField);
+            if (extraImageUrl) {
+              extrasParsed[i].imageUrl = extraImageUrl;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing extras:", err);
+      }
+    }
+    
+    let sideOrdersParsed = [];
+    const sideOrders = formData.get("sideOrders");
+    if (sideOrders) {
+      try {
+        sideOrdersParsed = JSON.parse(sideOrders);
+        
+        for (let i = 0; i < sideOrdersParsed.length; i++) {
+          const sideOrderImageField = `sideOrderImage_${i}`;
+          if (formData.has(sideOrderImageField)) {
+            const sideOrderImageUrl = await processFileUpload(formData, sideOrderImageField);
+            if (sideOrderImageUrl) {
+              sideOrdersParsed[i].imageUrl = sideOrderImageUrl;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing sideOrders:", err);
+      }
     }
     
     const foodItemData = {
@@ -65,6 +117,8 @@ export async function POST(request) {
       category,
       branch,
       variations: variationsParsed,
+      extras: extrasParsed,
+      sideOrders: sideOrdersParsed
     };
     
     if (subcategory) {
@@ -74,7 +128,6 @@ export async function POST(request) {
     if (!variationsParsed.length) {
       foodItemData.price = Number(price);
       
-      // Add previousPrice if it exists
       if (previousPrice) {
         foodItemData.previousPrice = Number(previousPrice);
       }

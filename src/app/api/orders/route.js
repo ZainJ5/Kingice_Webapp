@@ -15,7 +15,7 @@ export async function GET(request) {
         totalCount: 0,
         totalPages: 0,
         currentPage: 1,
-        message: "Error! message code 500 Orders are not avaible"
+        message: "Error! message code 500 Orders are not available"
       }, { status: 500 });
     }
     
@@ -89,7 +89,8 @@ export async function GET(request) {
       paymentMethod: 1,
       bankName: 1,
       branch: 1,
-      createdAt: 1
+      createdAt: 1,
+      itemCount: { $size: "$items" }
     };
     
     const totalCount = await Order.countDocuments(filter);
@@ -121,6 +122,96 @@ export async function GET(request) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
       { message: "Failed to fetch orders" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request) {
+  try {
+    await connectDB();
+    const data = await request.json();
+    
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      return NextResponse.json(
+        { message: "Order must contain at least one item" },
+        { status: 400 }
+      );
+    }
+    
+    for (const item of data.items) {
+      if (!item.title || !item.price || !item.id || item.quantity === undefined) {
+        return NextResponse.json({
+          message: "Each order item must have id, title, price, and quantity",
+          status: 400
+        });
+      }
+      
+      if (item.selectedVariation && 
+          (!item.selectedVariation.name || item.selectedVariation.price === undefined)) {
+        return NextResponse.json({
+          message: "Selected variation must have name and price",
+          status: 400
+        });
+      }
+      
+      if (item.selectedExtras && Array.isArray(item.selectedExtras)) {
+        for (const extra of item.selectedExtras) {
+          if (!extra.name || extra.price === undefined) {
+            return NextResponse.json({
+              message: "Each extra must have name and price",
+              status: 400
+            });
+          }
+        }
+      }
+      
+      if (item.selectedSideOrders && Array.isArray(item.selectedSideOrders)) {
+        for (const sideOrder of item.selectedSideOrders) {
+          if (!sideOrder.name || sideOrder.price === undefined) {
+            return NextResponse.json({
+              message: "Each side order must have name and price",
+              status: 400
+            });
+          }
+        }
+      }
+    }
+    
+    if (!data.fullName || !data.mobileNumber || data.subtotal === undefined || 
+        data.tax === undefined || data.total === undefined) {
+      return NextResponse.json(
+        { message: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+    
+    if (!data.branch) {
+      return NextResponse.json(
+        { message: "Branch ID is required" },
+        { status: 400 }
+      );
+    }
+    
+    const order = new Order(data);
+    await order.save();
+    
+    return NextResponse.json(
+      { message: "Order created successfully", order },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Error creating order:", error);
+    
+    if (error.name === 'ValidationError') {
+      return NextResponse.json(
+        { message: "Validation error", errors: error.errors },
+        { status: 400 }
+      );
+    }
+    
+    return NextResponse.json(
+      { message: "Failed to create order" },
       { status: 500 }
     );
   }

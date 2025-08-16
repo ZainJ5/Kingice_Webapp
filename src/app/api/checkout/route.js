@@ -60,35 +60,74 @@ export async function POST(request) {
     const itemsJson = formData.get("items");
     if (itemsJson) {
       try {
-        items = JSON.parse(itemsJson);
+        const parsedItems = JSON.parse(itemsJson);
+        
+        if (Array.isArray(parsedItems)) {
+          items = parsedItems.map((item, index) => {
+            const id = item.id || 
+                     (item._id ? getId(item._id) : 
+                      (item.cartItemId ? item.cartItemId.split("-")[0] : null));
+            
+            const formattedItem = {
+              id: id,
+              title: item.title || item.name || "",
+              price: Number(item.price) || 0,
+              quantity: Number(item.quantity) || 1,
+              imageUrl: item.imageUrl || null,
+              specialInstructions: item.specialInstructions || ""
+            };
+            
+            if (item.selectedVariation || item.type) {
+              formattedItem.selectedVariation = item.selectedVariation || {
+                name: item.type || "",
+                price: Number(item.price) || 0
+              };
+            }
+            
+            if (item.selectedExtras && Array.isArray(item.selectedExtras) && item.selectedExtras.length > 0) {
+              formattedItem.selectedExtras = item.selectedExtras.map(extra => ({
+                name: extra.name || "",
+                price: Number(extra.price) || 0
+              }));
+            }
+            
+            if (item.selectedSideOrders && Array.isArray(item.selectedSideOrders) && item.selectedSideOrders.length > 0) {
+              formattedItem.selectedSideOrders = item.selectedSideOrders.map(sideOrder => ({
+                name: sideOrder.name || "",
+                price: Number(sideOrder.price) || 0,
+                category: sideOrder.category || "other"
+              }));
+            }
+            
+            if (item.modifications && Array.isArray(item.modifications) && item.modifications.length > 0) {
+              item.modifications.forEach(mod => {
+                if (mod.type === 'variation' && mod.items && mod.items.length > 0) {
+                  formattedItem.selectedVariation = {
+                    name: mod.items[0].name || "",
+                    price: Number(mod.items[0].price) || 0
+                  };
+                } else if (mod.type === 'extras' && mod.items && mod.items.length > 0) {
+                  formattedItem.selectedExtras = mod.items.map(extra => ({
+                    name: extra.name || "",
+                    price: Number(extra.price) || 0
+                  }));
+                } else if ((mod.type === 'sideOrders' || mod.type === 'sideorders') && mod.items && mod.items.length > 0) {
+                  formattedItem.selectedSideOrders = mod.items.map(sideOrder => ({
+                    name: sideOrder.name || "",
+                    price: Number(sideOrder.price) || 0,
+                    category: sideOrder.category || "other"
+                  }));
+                }
+              });
+            }
+            
+            return formattedItem;
+          });
+        }
       } catch (err) {
         console.error("Error parsing items:", err);
+        return NextResponse.json({ message: "Failed to parse order items" }, { status: 400 });
       }
-    }
-
-    if (items && Array.isArray(items)) {
-      items = items.map((item, index) => {
-        const menuId =
-          item.id ||
-          (item._id ? getId(item._id) : item.cartItemId ? item.cartItemId.split("-")[0] : null);
-
-        if (!menuId) {
-          console.error(`Item at index ${index} is missing a menu id:`, item);
-        }
-        const idValue = menuId ? Number(menuId) : 0;
-        if (!idValue) {
-          console.error(
-            `Converted menu id is falsy for item at index ${index}. Original menuId:`,
-            menuId
-          );
-        }
-        return {
-          id: idValue,
-          name: item.name || item.title || "",
-          price: Number(item.price) || 0,
-          type: item.type || ""
-        };
-      });
     }
 
     let receiptImageUrl = null;
@@ -115,7 +154,7 @@ export async function POST(request) {
       paymentInstructions,
       paymentMethod,
       changeRequest,
-      items,
+      items, 
       subtotal,
       tax,
       discount,
@@ -125,7 +164,6 @@ export async function POST(request) {
       giftMessage,
       orderType,
       branch,
-      area,
     };
 
     if (paymentMethod === "online" && receiptImageUrl) {
@@ -147,6 +185,14 @@ export async function POST(request) {
     return NextResponse.json(populatedOrder, { status: 201 });
   } catch (error) {
     console.error("Error creating order:", error);
+    
+    if (error.name === 'ValidationError') {
+      return NextResponse.json({ 
+        message: "Validation error", 
+        details: Object.values(error.errors).map(err => err.message) 
+      }, { status: 400 });
+    }
+    
     return NextResponse.json({ message: "Failed to create order" }, { status: 500 });
   }
 }
