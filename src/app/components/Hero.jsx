@@ -114,8 +114,6 @@ function Header() {
             <img 
               src={logo}
               alt="Restaurant Logo" 
-              // width={70} 
-              // height={70}
               className="rounded-full object-contain"
               priority
             />
@@ -146,7 +144,8 @@ export default function Hero() {
     settings: {
       bannerRotationSpeed: 3000,
       imageRotationSpeed: 5000
-    }
+    },
+    updatedAt: new Date().toISOString()
   });
   const [isLoading, setIsLoading] = useState(true);
   const [current, setCurrent] = useState(0)
@@ -154,6 +153,8 @@ export default function Hero() {
   const [isAnimating, setIsAnimating] = useState(false)
   const [touchStartX, setTouchStartX] = useState(null)
   const [touchEndX, setTouchEndX] = useState(null)
+  const autoRotateRef = useRef(null);
+  const isAnimatingRef = useRef(false);
 
   useEffect(() => {
     const fetchHeroData = async () => {
@@ -176,30 +177,52 @@ export default function Hero() {
   const images = heroData.images.length > 0 ? heroData.images : ['/hero.jpg'];
 
   const nextImage = () => {
-    if (isAnimating || images.length <= 1) return
+    if (isAnimatingRef.current || images.length <= 1) return
+    isAnimatingRef.current = true;
     setIsAnimating(true)
     setPrevious(current)
     setCurrent((prev) => (prev + 1) % images.length)
-    setTimeout(() => setIsAnimating(false), 1000)
+    setTimeout(() => {
+      setIsAnimating(false);
+      isAnimatingRef.current = false;
+    }, 1000)
   }
 
   const prevImage = () => {
-    if (isAnimating || images.length <= 1) return
+    if (isAnimatingRef.current || images.length <= 1) return
+    isAnimatingRef.current = true;
     setIsAnimating(true)
     setPrevious(current)
     setCurrent((prev) => (prev - 1 + images.length) % images.length)
-    setTimeout(() => setIsAnimating(false), 1000)
+    setTimeout(() => {
+      setIsAnimating(false);
+      isAnimatingRef.current = false;
+    }, 1000)
   }
 
+  // Set up auto rotation
   useEffect(() => {
     if (images.length <= 1) return;
 
-    const interval = setInterval(() => {
-      nextImage()
-    }, heroData.settings.imageRotationSpeed)
+    // Clear any existing interval
+    if (autoRotateRef.current) {
+      clearInterval(autoRotateRef.current);
+    }
 
-    return () => clearInterval(interval)
-  }, [current, heroData.settings.imageRotationSpeed])
+    // Set new interval for auto rotation
+    autoRotateRef.current = setInterval(() => {
+      if (!isAnimatingRef.current) {
+        nextImage();
+      }
+    }, heroData.settings.imageRotationSpeed);
+
+    // Clean up on component unmount
+    return () => {
+      if (autoRotateRef.current) {
+        clearInterval(autoRotateRef.current);
+      }
+    };
+  }, [current, heroData.settings.imageRotationSpeed, images.length]);
 
   const handleTouchStart = (e) => {
     setTouchStartX(e.changedTouches[0].clientX)
@@ -235,7 +258,7 @@ export default function Hero() {
             }`}
         >
           <img
-            src={`${images[current]}?v=${new Date(heroData.updatedAt).getTime()}`}
+            src={`${images[current]}${heroData.updatedAt ? `?v=${new Date(heroData.updatedAt).getTime()}` : ''}`}
             alt="Hero"
             className="w-full h-full object-cover"
           />
@@ -246,7 +269,7 @@ export default function Hero() {
             className="absolute w-full h-full transform -translate-x-full transition-transform duration-1000 ease-in-out"
           >
             <img
-              src={`${images[previous]}?v=${new Date(heroData.updatedAt).getTime()}`}
+              src={`${images[previous]}${heroData.updatedAt ? `?v=${new Date(heroData.updatedAt).getTime()}` : ''}`}
               alt="Previous"
               className="w-full h-full object-cover"
             />
@@ -283,11 +306,15 @@ export default function Hero() {
               <button
                 key={idx}
                 onClick={() => {
-                  if (isAnimating) return;
+                  if (isAnimatingRef.current) return;
+                  isAnimatingRef.current = true;
                   setPrevious(current);
                   setCurrent(idx);
                   setIsAnimating(true);
-                  setTimeout(() => setIsAnimating(false), 1000);
+                  setTimeout(() => {
+                    setIsAnimating(false);
+                    isAnimatingRef.current = false;
+                  }, 1000);
                 }}
                 className={`w-3 h-3 rounded-full focus:outline-none ${idx === current ? 'bg-red-600' : 'bg-gray-300'
                   }`}
