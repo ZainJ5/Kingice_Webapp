@@ -21,7 +21,7 @@ export default function DeliveryPickupModal() {
   const [branches, setBranches] = useState([]);
   const [open, setOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const [logoUrl, setLogoUrl] = useState("/logo.png"); // Default fallback
+  const [logoUrl, setLogoUrl] = useState("/logo.png"); 
 
   useEffect(() => {
     async function fetchData() {
@@ -159,10 +159,8 @@ export default function DeliveryPickupModal() {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden animate-fadeIn">
         <div className="relative">
-          {/* Red header section */}
           <div className="bg-gradient-to-r from-red-600 to-red-700 h-16"></div>
           
-          {/* Logo positioned at the center between red and white sections */}
           <div className="absolute left-0 right-0 top-5 flex justify-center">
             <div className="rounded-full bg-white p-1 border-2 border-red-100">
               <img 
@@ -173,7 +171,6 @@ export default function DeliveryPickupModal() {
             </div>
           </div>
           
-          {/* White space for the logo to overlap with */}
           <div className="h-16"></div>
         </div>
 
