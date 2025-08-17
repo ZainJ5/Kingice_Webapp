@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
-import Image from "next/image";
 
 export default function CategoryList() {
   const [categories, setCategories] = useState([]);
@@ -124,7 +123,7 @@ export default function CategoryList() {
           <div className="flex items-center">
             {cat.image && (
               <div className="mr-3">
-                <Image 
+                <img
                   src={cat.image} 
                   alt={cat.name} 
                   width={50} 
@@ -187,7 +186,7 @@ export default function CategoryList() {
                 />
                 {imagePreview && (
                   <div className="mt-2">
-                    <Image
+                    <img
                       src={imagePreview}
                       alt="Category preview"
                       width={100}

@@ -32,6 +32,8 @@ export default function FoodItemList() {
   const [branches, setBranches] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [filteredCategories, setFilteredCategories] = useState([]);
+  const [filteredSubcategories, setFilteredSubcategories] = useState([]);
 
   useEffect(() => {
     fetchBranches();
@@ -43,6 +45,28 @@ export default function FoodItemList() {
   useEffect(() => {
     applyFilters();
   }, [filters, foodItems]);
+
+  useEffect(() => {
+    if (editData.branch) {
+      const filtered = categories.filter(
+        (cat) => extractValue(cat.branch?._id || cat.branch) === editData.branch
+      );
+      setFilteredCategories(filtered);
+    } else {
+      setFilteredCategories([]);
+    }
+  }, [editData.branch, categories]);
+
+  useEffect(() => {
+    if (editData.category) {
+      const filtered = subcategories.filter(
+        (sub) => extractValue(sub.category?._id || sub.category) === editData.category
+      );
+      setFilteredSubcategories(filtered);
+    } else {
+      setFilteredSubcategories([]);
+    }
+  }, [editData.category, subcategories]);
 
   const fetchBranches = async () => {
     try {
@@ -162,7 +186,6 @@ export default function FoodItemList() {
   };
 
   const handleEditClick = (item) => {
-    setOriginalItemData(null);
     const categoryId =
       typeof item.category === "object" && item.category !== null
         ? extractValue(item.category._id)
@@ -188,15 +211,31 @@ export default function FoodItemList() {
       extras: item.extras || [],
       sideOrders: item.sideOrders || []
     });
+    setOriginalItemData(item);
     setEditImage(null);
   };
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (name === "branch") {
+      setEditData((prev) => ({
+        ...prev,
+        branch: value,
+        category: "",
+        subcategory: "",
+      }));
+    } else if (name === "category") {
+      setEditData((prev) => ({
+        ...prev,
+        category: value,
+        subcategory: "",
+      }));
+    } else {
+      setEditData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleImageChange = (e) => {
@@ -357,31 +396,9 @@ export default function FoodItemList() {
       }
     }
 
-    const categoryId =
-      editData.category ||
-      (originalItemData &&
-      typeof originalItemData.category === "object" &&
-      originalItemData.category?._id
-        ? extractValue(originalItemData.category._id)
-        : extractValue(originalItemData?.category));
-    const subcategoryId =
-      editData.subcategory ||
-      (originalItemData &&
-      typeof originalItemData.subcategory === "object" &&
-      originalItemData.subcategory?._id
-        ? extractValue(originalItemData.subcategory._id)
-        : extractValue(originalItemData?.subcategory));
-    const branchId =
-      editData.branch ||
-      (originalItemData &&
-      typeof originalItemData.branch === "object" &&
-      originalItemData.branch?._id
-        ? extractValue(originalItemData.branch._id)
-        : extractValue(originalItemData?.branch));
-
-    formData.append("category", categoryId);
-    if (subcategoryId) formData.append("subcategory", subcategoryId);
-    formData.append("branch", branchId);
+    formData.append("category", editData.category);
+    if (editData.subcategory) formData.append("subcategory", editData.subcategory);
+    formData.append("branch", editData.branch);
 
     // Process variations
     if (editData.variations && editData.variations.length > 0) {
@@ -629,34 +646,52 @@ export default function FoodItemList() {
                       )}
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Category ID (not editable)</label>
-                        <input
-                          type="text"
-                          name="category"
-                          value={editData.category}
-                          disabled
-                          className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Subcategory ID (not editable)</label>
-                        <input
-                          type="text"
-                          name="subcategory"
-                          value={editData.subcategory}
-                          disabled
-                          className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Branch ID (not editable)</label>
-                        <input
-                          type="text"
+                        <label className="block text-sm font-medium text-gray-700">Branch</label>
+                        <select
                           name="branch"
                           value={editData.branch}
-                          disabled
-                          className="mt-1 block w-full rounded-lg border-gray-200 bg-gray-100 text-sm py-2 px-3"
-                        />
+                          onChange={handleEditChange}
+                          className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                        >
+                          <option value="">Select Branch</option>
+                          {branches.map((branch) => (
+                            <option key={extractValue(branch._id)} value={extractValue(branch._id)}>
+                              {branch.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Category</label>
+                        <select
+                          name="category"
+                          value={editData.category}
+                          onChange={handleEditChange}
+                          className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                        >
+                          <option value="">Select Category</option>
+                          {filteredCategories.map((category) => (
+                            <option key={extractValue(category._id)} value={extractValue(category._id)}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Subcategory (if applicable)</label>
+                        <select
+                          name="subcategory"
+                          value={editData.subcategory}
+                          onChange={handleEditChange}
+                          className="mt-1 block w-full rounded-lg border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm py-2 px-3"
+                        >
+                          <option value="">Select Subcategory</option>
+                          {filteredSubcategories.map((subcategory) => (
+                            <option key={extractValue(subcategory._id)} value={extractValue(subcategory._id)}>
+                              {subcategory.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">

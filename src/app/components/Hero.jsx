@@ -110,8 +110,8 @@ function Header() {
           </a>
         </div>
 
-        <div className="absolute left-1/2 transform -translate-x-1/2 top-0 z-10">
-          <div className="bg-white rounded-full p-2 w-28 h-28 flex items-center justify-center shadow-md">
+        <div className="absolute left-1/2 transform -translate-x-1/2 sm:top-0 top-[-6px] z-10">
+          <div className="bg-white rounded-full p-2 sm:w-28 sm:h-28 w-20 h-20 flex items-center justify-center shadow-md">
             <img 
               src={logo}
               alt="Restaurant Logo" 
