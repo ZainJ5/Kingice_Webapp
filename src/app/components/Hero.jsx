@@ -7,7 +7,7 @@ import StickyCartButton from './CartButton'
 import { useBranchStore } from '../../store/branchStore' 
 
 function Header() {
-  const [logo, setLogo] = useState('/logo.png')
+  const [logo, setLogo] = useState('/logo/logo-1753880016916.png')
   const [branches, setBranches] = useState([])
   const { branch, setBranch } = useBranchStore()
   const [loading, setLoading] = useState(true)

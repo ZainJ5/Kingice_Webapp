@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useMenuStore } from '../../store/menu';
 import { useCartStore } from '../../store/cart';
 import { toast } from 'react-toastify';
@@ -230,7 +230,7 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   const { addToCart } = useCartStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState("");
-  const [selectedExtras, setSelectedExtras] = useState([]);
+  const [selectedExtras, setSelectedExtras] = useState({});
   const [selectedSideOrders, setSelectedSideOrders] = useState([]);
   const [imageError, setImageError] = useState(false);
   const modalRef = useRef(null);
@@ -255,6 +255,29 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   const hasExtras = item.extras && item.extras.length > 0;
   const hasSideOrders = item.sideOrders && item.sideOrders.length > 0;
   
+  const groupedExtras = useMemo(() => {
+    if (!item.extras) return {};
+    
+    return item.extras.reduce((groups, extra, index) => {
+      const nameParts = extra.name.split(' - ');
+      const baseName = nameParts.length > 1 ? nameParts[0] : extra.name;
+      const size = nameParts.length > 1 ? nameParts[1] : null;
+      
+      if (!groups[baseName]) {
+        groups[baseName] = [];
+      }
+      
+      groups[baseName].push({
+        ...extra,
+        index,
+        baseName,
+        size
+      });
+      
+      return groups;
+    }, {});
+  }, [item.extras]);
+
   const variationPrices = hasVariations 
     ? item.variations.map(v => {
         const price = Number(getPrice(v.price));
@@ -272,7 +295,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   const hasMainItemDiscount = item.previousPrice && Number(getPrice(item.previousPrice)) > Number(getPrice(item.price));
   const hasAnyDiscount = hasMainItemDiscount || (hasVariations && variationPrices.some(v => v.hasDiscount));
 
-  // Close modal when clicking outside
   useEffect(() => {
     if (!isModalOpen) return;
     
@@ -288,19 +310,19 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     };
   }, [isModalOpen]);
   
-  // Toggle an extra in the selected extras array
-  const toggleExtra = (extraIndex) => {
+  const selectExtra = (baseExtraName, selectedSize) => {
     setSelectedExtras(prev => {
-      const isSelected = prev.includes(extraIndex);
-      if (isSelected) {
-        return prev.filter(idx => idx !== extraIndex);
+      const newExtras = { ...prev };
+      // Toggle the selection - if the same size is clicked again, remove it
+      if (newExtras[baseExtraName] === selectedSize) {
+        delete newExtras[baseExtraName];
       } else {
-        return [...prev, extraIndex];
+        newExtras[baseExtraName] = selectedSize;
       }
+      return newExtras;
     });
   };
 
-  // Toggle a side order in the selected side orders array
   const toggleSideOrder = (sideOrderIndex) => {
     setSelectedSideOrders(prev => {
       const isSelected = prev.includes(sideOrderIndex);
@@ -317,11 +339,9 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     if (hasVariations) {
       setSelectedVariation("0");
     }
-    // Reset selections when opening modal
-    setSelectedExtras([]);
+    setSelectedExtras({});
     setSelectedSideOrders([]);
     
-    // Prevent body scrolling when modal is open
     document.body.style.overflow = 'hidden';
   };
 
@@ -339,7 +359,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     let additionalPrice = 0;
     let selectedModifications = [];
 
-    // Handle variations
     if (hasVariations && selectedVariation !== "") {
       const variationIndex = Number(selectedVariation);
       const selectedVar = item.variations[variationIndex];
@@ -357,22 +376,27 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
       }
     }
 
-    // Handle extras
-    if (selectedExtras.length > 0) {
-      const extrasData = selectedExtras.map(index => {
-        const extra = item.extras[index];
-        additionalPrice += Number(getPrice(extra.price));
-        return {
-          name: extra.name,
-          price: Number(getPrice(extra.price))
-        };
-      });
+    const selectedExtrasList = [];
+    Object.entries(selectedExtras).forEach(([baseName, selectedSize]) => {
+      if (!selectedSize) return;
       
-      itemToAdd.selectedExtras = extrasData;
-      selectedModifications.push(`Extras: ${extrasData.map(e => e.name).join(', ')}`);
+      const extraGroup = groupedExtras[baseName];
+      const selectedExtra = extraGroup.find(extra => extra.size === selectedSize);
+      
+      if (selectedExtra) {
+        additionalPrice += Number(getPrice(selectedExtra.price));
+        selectedExtrasList.push({
+          name: selectedExtra.name,
+          price: Number(getPrice(selectedExtra.price))
+        });
+        selectedModifications.push(`${baseName}: ${selectedSize}`);
+      }
+    });
+    
+    if (selectedExtrasList.length > 0) {
+      itemToAdd.selectedExtras = selectedExtrasList;
     }
 
-    // Handle side orders
     if (selectedSideOrders.length > 0) {
       const sideOrdersData = selectedSideOrders.map(index => {
         const sideOrder = item.sideOrders[index];
@@ -388,7 +412,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
       selectedModifications.push(`Side Orders: ${sideOrdersData.map(s => s.name).join(', ')}`);
     }
 
-    // Add total price including extras and side orders
     if (additionalPrice > 0) {
       const basePrice = Number(getPrice(itemToAdd.price));
       itemToAdd.totalPrice = basePrice + additionalPrice;
@@ -396,7 +419,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
 
     addToCart(itemToAdd);
     
-    // Show a toast with more details if there are modifications
     if (selectedModifications.length > 0) {
       toast.success(
         <div>
@@ -436,11 +458,9 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     item.previousPrice ? Number(getPrice(item.previousPrice)) : null
   );
 
-  // Calculate total price based on selections
   const calculateTotalPrice = () => {
     let total = 0;
     
-    // Base price from variation or main item
     if (hasVariations && selectedVariation !== "") {
       const variation = item.variations[Number(selectedVariation)];
       if (variation) {
@@ -450,15 +470,17 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
       total += Number(getPrice(item.price));
     }
     
-    // Add extras prices
-    selectedExtras.forEach(index => {
-      const extra = item.extras[index];
-      if (extra) {
-        total += Number(getPrice(extra.price));
+    Object.entries(selectedExtras).forEach(([baseName, selectedSize]) => {
+      if (!selectedSize) return;
+      
+      const extraGroup = groupedExtras[baseName];
+      const selectedExtra = extraGroup.find(extra => extra.size === selectedSize);
+      
+      if (selectedExtra) {
+        total += Number(getPrice(selectedExtra.price));
       }
     });
     
-    // Add side orders prices
     selectedSideOrders.forEach(index => {
       const sideOrder = item.sideOrders[index];
       if (sideOrder) {
@@ -488,7 +510,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
 
   return (
     <>
-      {/* Menu Item Card */}
       <div 
         className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer 
                     ${hasAnyDiscount ? 'border-2 border-red-500' : ''}`}
@@ -585,14 +606,12 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
         </div>
       </div>
 
-      {/* Item Details Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[70] overflow-y-auto bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
           <div 
             ref={modalRef}
             className="bg-white rounded-xl shadow-xl w-full max-w-md mx-auto overflow-hidden animate-fadeIn"
           >
-            {/* Header with image */}
             <div className="relative h-48 sm:h-56 w-full">
               {imageUrl && !imageError ? (
                 <img
@@ -607,10 +626,8 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                 </div>
               )}
               
-              {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
               
-              {/* Close button */}
               <button
                 onClick={closeModal}
                 className="absolute top-3 right-3 bg-white/80 hover:bg-white text-gray-800 rounded-full p-1 transition-colors shadow-md"
@@ -620,7 +637,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                 </svg>
               </button>
               
-              {/* Discount badge */}
               {hasAnyDiscount && (
                 <div className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 text-xs font-bold rounded-md shadow-md">
                   {hasMainItemDiscount ? 
@@ -632,7 +648,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                 </div>
               )}
               
-              {/* Item title & base price */}
               <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                 <h2 className="text-xl sm:text-2xl font-bold leading-tight">{item.title}</h2>
                 {!hasVariations && (
@@ -650,16 +665,13 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
               </div>
             </div>
             
-            {/* Content */}
             <div className="px-4 py-4 max-h-[calc(75vh-14rem)] overflow-y-auto">
-              {/* Description */}
               {item.description && (
                 <div className="mb-4">
                   <p className="text-gray-600 text-sm">{item.description}</p>
                 </div>
               )}
               
-              {/* Variations */}
               {hasVariations && (
                 <div className="mb-5">
                   <h4 className="text-sm font-semibold text-gray-700 mb-2">Choose Variation</h4>
@@ -707,135 +719,126 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                 </div>
               )}
               
-              {/* Extras / Toppings */}
+              {/* Extras with size selection */}
               {hasExtras && (
                 <div className="mb-5">
                   <h4 className="text-sm font-semibold text-gray-700 mb-2">Extras & Toppings</h4>
-                  <div className="space-y-2">
-                    {item.extras.map((extra, index) => (
-                      <div 
-                        key={index}
-                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all ${
-                          selectedExtras.includes(index)
-                            ? 'border-red-500 bg-red-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => toggleExtra(index)}
-                      >
-                        <div className="flex items-center">
-                          <div className={`w-4 h-4 rounded-sm flex items-center justify-center ${
-                            selectedExtras.includes(index) ? 'bg-red-600' : 'border border-gray-400'
-                          }`}>
-                            {selectedExtras.includes(index) && (
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                              </svg>
-                            )}
-                          </div>
-                          <div className="ml-2">
-                            <span className="text-sm font-medium text-gray-800">{extra.name}</span>
-                            {extra.description && (
-                              <p className="text-xs text-gray-500">{extra.description}</p>
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-sm font-medium">+Rs.{getPrice(extra.price)}</span>
+                  
+                  {Object.entries(groupedExtras).map(([baseName, extraGroup]) => (
+                    <div key={baseName} className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="text-sm font-medium text-gray-800">{baseName}</h5>
+                        {/* Display selected size if any */}
+                        {selectedExtras[baseName] && (
+                          <span className="text-xs text-red-600 font-medium">
+                            Selected: {selectedExtras[baseName]}
+                          </span>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {/* Show all available sizes for this extra */}
+                        {extraGroup
+                          .filter(extra => extra.size) // Make sure there's a size
+                          .sort((a, b) => {
+                            // Sort by price
+                            return Number(getPrice(a.price)) - Number(getPrice(b.price));
+                          })
+                          .map((extra) => (
+                            <div
+                              key={extra.index}
+                              onClick={() => selectExtra(baseName, extra.size)}
+                              className={`py-3 px-5 border rounded-md cursor-pointer transition text-center ${
+                                selectedExtras[baseName] === extra.size
+                                  ? 'border-red-500 bg-red-50 text-red-700'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="text-xs font-medium">{extra.size}</div>
+                              <div className="text-xs mt-0.5">Rs.{getPrice(extra.price)}</div>
+                            </div>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
               
-{/* Side Orders */}
-{hasSideOrders && (
-  <div>
-    <h4 className="text-sm font-semibold text-gray-700 mb-2">Side Orders</h4>
-    {Object.entries(groupedSideOrders()).map(([category, sideOrdersInCategory]) => (
-      <div key={category} className="mb-4">
-        <p className="text-xs font-medium text-gray-500 mb-2">{formatCategoryName(category)}</p>
-        
-        {/* Horizontal scrolling container */}
-        <div className="overflow-x-auto pb-3 -mx-1">
-          <div className="flex space-x-3 px-1">
-            {sideOrdersInCategory.map((sideOrder) => {
-              const isSelected = selectedSideOrders.includes(sideOrder.index);
-              const sideOrderImageUrl = sideOrder.imageUrl 
-                ? getCacheBustedUrl(sideOrder.imageUrl) 
-                : '';
-              
-              return (
-                <div 
-                  key={sideOrder.index}
-                  className={`flex-shrink-0 w-36 border rounded-lg overflow-hidden cursor-pointer transition-all
-                              ${isSelected 
-                                ? 'border-red-500 ring-1 ring-red-500 shadow-md' 
-                                : 'border-gray-200 hover:border-gray-300'}`}
-                  onClick={() => toggleSideOrder(sideOrder.index)}
-                >
-                  {/* Side order image */}
-                  <div className="h-24 w-full relative bg-gray-100">
-                    {sideOrderImageUrl ? (
-                      <img
-                        src={sideOrderImageUrl}
-                        alt={sideOrder.name}
-                        className="object-cover h-full w-full"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
-                        }}
-                      />
-                    ) 
-                    :
-                     (
-                      <div className="flex items-center justify-center h-full">
-                        <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
+              {hasSideOrders && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Side Orders</h4>
+                  {Object.entries(groupedSideOrders()).map(([category, sideOrdersInCategory]) => (
+                    <div key={category} className="mb-4">
+                      <p className="text-xs font-medium text-gray-500 mb-2">{formatCategoryName(category)}</p>
+                      
+                      <div className="overflow-x-auto pb-3 -mx-1">
+                        <div className="flex space-x-3 px-1">
+                          {sideOrdersInCategory.map((sideOrder) => {
+                            const isSelected = selectedSideOrders.includes(sideOrder.index);
+                            const sideOrderImageUrl = sideOrder.imageUrl 
+                              ? getCacheBustedUrl(sideOrder.imageUrl) 
+                              : '';
+                            
+                            return (
+                              <div 
+                                key={sideOrder.index}
+                                className={`flex-shrink-0 w-36 border rounded-lg overflow-hidden cursor-pointer transition-all
+                                          ${isSelected 
+                                            ? 'border-red-500 ring-1 ring-red-500 shadow-md' 
+                                            : 'border-gray-200 hover:border-gray-300'}`}
+                                onClick={() => toggleSideOrder(sideOrder.index)}
+                              >
+                                <div className="h-24 w-full relative bg-gray-100">
+                                  {sideOrderImageUrl ? (
+                                    <img
+                                      src={sideOrderImageUrl}
+                                      alt={sideOrder.name}
+                                      className="object-cover h-full w-full"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
+                                      }}
+                                    />
+                                  ) 
+                                   : (
+                                    <div className="flex items-center justify-center h-full">
+                                      <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className={`p-2 ${isSelected ? 'bg-red-50' : 'bg-white'}`}>
+                                  <div className="flex items-center mb-1">
+                                    <div className={`w-4 h-4 rounded-sm flex items-center justify-center flex-shrink-0 ${
+                                      isSelected ? 'bg-red-600' : 'border border-gray-400'
+                                    }`}>
+                                      {isSelected && (
+                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                      )}
+                                    </div>
+                                    <span className="ml-1 text-xs font-medium text-gray-800 truncate">{sideOrder.name}</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-xs font-medium text-red-600">+Rs.{getPrice(sideOrder.price)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    )
-                    }
-                    
-                    {/* Selection indicator */}
-                    {/* {isSelected && (
-                      <div className="absolute top-2 right-2 bg-red-600 rounded-full w-5 h-5 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </div>
-                    )} */}
-                  </div>
-                  
-                  {/* Side order details */}
-                  <div className={`p-2 ${isSelected ? 'bg-red-50' : 'bg-white'}`}>
-                    <div className="flex items-center mb-1">
-                      <div className={`w-4 h-4 rounded-sm flex items-center justify-center flex-shrink-0 ${
-                        isSelected ? 'bg-red-600' : 'border border-gray-400'
-                      }`}>
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                        )}
-                      </div>
-                      <span className="ml-1 text-xs font-medium text-gray-800 truncate">{sideOrder.name}</span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-medium text-red-600">+Rs.{getPrice(sideOrder.price)}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+              )}
             </div>
             
-            {/* Footer with total and action button */}
             <div className="p-4 bg-gray-50 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
