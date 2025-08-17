@@ -579,8 +579,8 @@ export default function FoodItemList() {
         </div>
       </div>
 
-      {/* Food Items List */}
-      <div className="space-y-4">
+      {/* Food Items Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredItems.map((item) => {
           const id = extractValue(item._id);
           const price = extractValue(item.price);
@@ -588,7 +588,7 @@ export default function FoodItemList() {
 
           if (editingItemId === id) {
             return (
-              <div key={id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div key={id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 col-span-full">
                 <form onSubmit={handleEditSubmit} className="space-y-4">
                   <h2 className="text-xl font-semibold text-gray-800 mb-4">Edit Food Item</h2>
                   
@@ -964,132 +964,80 @@ export default function FoodItemList() {
           return (
             <div
               key={id}
-              className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col md:flex-row items-start gap-4"
+              className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
             >
               {item.imageUrl ? (
                 <img
                   src={item.imageUrl}
                   alt={item.title}
-                  className="w-24 h-24 object-cover rounded-lg"
+                  className="w-full h-32 object-cover rounded-lg mb-2"
                 />
               ) : (
-                <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500 text-sm">
+                <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500 text-sm mb-2">
                   No Image
                 </div>
               )}
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
-                <p className="text-gray-600 text-sm mt-1">{item.description}</p>
-                
-                {/* Price display with optional previous price */}
-                {(!item.variations || item.variations.length === 0) && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="font-semibold text-gray-800">{price} Rs</span>
-                    {previousPrice && (
-                      <span className="text-sm text-gray-500 line-through">{previousPrice} Rs</span>
-                    )}
-                  </div>
-                )}
-                
-                {/* Branch, Category, Subcategory */}
-                {item.branch &&
-                typeof item.branch === "object" &&
-                item.branch.name ? (
-                  <p className="text-xs text-gray-500 mt-1">Branch: {item.branch.name}</p>
-                ) : (
-                  item.branch && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Branch: {extractValue(item.branch)}
-                    </p>
-                  )
-                )}
-                
-                {item.category &&
-                typeof item.category === "object" &&
-                item.category.name ? (
-                  <p className="text-xs text-gray-500 mt-1">Category: {item.category.name}</p>
-                ) : (
-                  item.category && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Category: {extractValue(item.category)}
-                    </p>
-                  )
-                )}
-                
-                {item.subcategory &&
-                typeof item.subcategory === "object" &&
-                item.subcategory.name ? (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Subcategory: {item.subcategory.name}
+              <h3 className="text-base font-semibold text-gray-800 mb-1">{item.title}</h3>
+              
+              {/* Price display with optional previous price */}
+              {(!item.variations || item.variations.length === 0) && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-gray-800">{price} Rs</span>
+                  {previousPrice && (
+                    <span className="text-xs text-gray-500 line-through">{previousPrice} Rs</span>
+                  )}
+                </div>
+              )}
+              
+              {/* Branch, Category, Subcategory */}
+              {item.branch &&
+              typeof item.branch === "object" &&
+              item.branch.name ? (
+                <p className="text-xs text-gray-500 mb-0.5">Branch: {item.branch.name}</p>
+              ) : (
+                item.branch && (
+                  <p className="text-xs text-gray-500 mb-0.5">
+                    Branch: {extractValue(item.branch)}
                   </p>
-                ) : (
-                  item.subcategory && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Subcategory: {extractValue(item.subcategory)}
-                    </p>
-                  )
-                )}
-                
-                {/* Display variations */}
-                {item.variations && item.variations.length > 0 && (
-                  <div className="mt-2">
-                    <p className="font-semibold text-gray-800 text-sm">Variations:</p>
-                    <ul className="list-disc pl-4 text-sm text-gray-600">
-                      {item.variations.map((variation, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <span>{variation.name} - {extractValue(variation.price)} Rs</span>
-                          {variation.previousPrice && (
-                            <span className="text-xs text-gray-500 line-through">
-                              {extractValue(variation.previousPrice)} Rs
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Display extras */}
-                {item.extras && item.extras.length > 0 && (
-                  <div className="mt-2">
-                    <p className="font-semibold text-gray-800 text-sm">Extras:</p>
-                    <ul className="list-disc pl-4 text-sm text-gray-600">
-                      {item.extras.map((extra, index) => (
-                        <li key={index}>
-                          {extra.name} - {extractValue(extra.price)} Rs
-                          {extra.description && <span className="text-xs text-gray-500"> ({extra.description})</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {/* Display side orders */}
-                {item.sideOrders && item.sideOrders.length > 0 && (
-                  <div className="mt-2">
-                    <p className="font-semibold text-gray-800 text-sm">Side Orders:</p>
-                    <ul className="list-disc pl-4 text-sm text-gray-600">
-                      {item.sideOrders.map((sideOrder, index) => (
-                        <li key={index}>
-                          {sideOrder.name} - {extractValue(sideOrder.price)} Rs
-                          <span className="text-xs text-gray-500"> ({sideOrder.category})</span>
-                          {sideOrder.description && <span className="text-xs text-gray-500"> - {sideOrder.description}</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
+                )
+              )}
+              
+              {item.category &&
+              typeof item.category === "object" &&
+              item.category.name ? (
+                <p className="text-xs text-gray-500 mb-0.5">Category: {item.category.name}</p>
+              ) : (
+                item.category && (
+                  <p className="text-xs text-gray-500 mb-0.5">
+                    Category: {extractValue(item.category)}
+                  </p>
+                )
+              )}
+              
+              {item.subcategory &&
+              typeof item.subcategory === "object" &&
+              item.subcategory.name ? (
+                <p className="text-xs text-gray-500 mb-0.5">
+                  Subcategory: {item.subcategory.name}
+                </p>
+              ) : (
+                item.subcategory && (
+                  <p className="text-xs text-gray-500 mb-0.5">
+                    Subcategory: {extractValue(item.subcategory)}
+                  </p>
+                )
+              )}
+              
+              <div className="mt-auto flex gap-2 pt-2">
                 <button
                   onClick={() => handleEditClick(item)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm font-medium"
+                  className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm font-medium flex-1"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(id)}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm font-medium"
+                  className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-all duration-300 text-sm font-medium flex-1"
                 >
                   Delete
                 </button>
