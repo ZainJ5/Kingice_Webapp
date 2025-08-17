@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
-import Image from "next/image";
 
 export default function SubcategoryList() {
   const [subcategories, setSubcategories] = useState([]);
@@ -127,7 +126,7 @@ export default function SubcategoryList() {
           <div className="flex items-center">
             {sub.image && (
               <div className="mr-3">
-                <Image
+                <img
                   src={sub.image}
                   alt={sub.name}
                   width={50}
@@ -194,7 +193,7 @@ export default function SubcategoryList() {
                 />
                 {imagePreview && (
                   <div className="mt-2">
-                    <Image
+                    <img
                       src={imagePreview}
                       alt="Subcategory preview"
                       width={100}

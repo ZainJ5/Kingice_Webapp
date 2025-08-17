@@ -142,7 +142,7 @@ export default function MenuSection({ category, subcategories, items, onSectionV
           <div className="bg-gradient-to-r from-red-700 to-red-800 text-white rounded-lg overflow-hidden sm:h-32 h-24 mb-8 flex items-center justify-center shadow-lg border-2 border-red-400 relative">
             <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
             <div className="z-10 text-center px-6">
-              <h2 className="text-5xl sm:text-6xl font-bold mb-2">{category.name}</h2>
+              <h2 className="text-3xl sm:text-6xl font-bold mb-2">{category.name}</h2>
             </div>
           </div>
         )}

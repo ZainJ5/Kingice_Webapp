@@ -295,7 +295,7 @@ export default function Hero() {
             </button>
           </>
         )}
-
+{/* 
         {images.length > 1 && (
           <div className="absolute bottom-4 left-0 right-0 hidden md:flex justify-center space-x-2">
             {images.map((_, idx) => (
@@ -317,7 +317,7 @@ export default function Hero() {
               />
             ))}
           </div>
-        )}
+        )} */}
       </div>
     </section>
   )
