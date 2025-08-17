@@ -313,7 +313,6 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   const selectExtra = (baseExtraName, selectedSize) => {
     setSelectedExtras(prev => {
       const newExtras = { ...prev };
-      // Toggle the selection - if the same size is clicked again, remove it
       if (newExtras[baseExtraName] === selectedSize) {
         delete newExtras[baseExtraName];
       } else {
@@ -378,10 +377,13 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
 
     const selectedExtrasList = [];
     Object.entries(selectedExtras).forEach(([baseName, selectedSize]) => {
-      if (!selectedSize) return;
+      if (!selectedSize && selectedSize !== '') return;
       
       const extraGroup = groupedExtras[baseName];
-      const selectedExtra = extraGroup.find(extra => extra.size === selectedSize);
+      // Handle both sized extras and regular extras
+      const selectedExtra = extraGroup.find(extra => 
+        (selectedSize === '' && !extra.size) || extra.size === selectedSize
+      );
       
       if (selectedExtra) {
         additionalPrice += Number(getPrice(selectedExtra.price));
@@ -389,7 +391,13 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
           name: selectedExtra.name,
           price: Number(getPrice(selectedExtra.price))
         });
-        selectedModifications.push(`${baseName}: ${selectedSize}`);
+        
+        // Display appropriate message based on whether it has a size or not
+        if (selectedSize === '') {
+          selectedModifications.push(`${baseName}`);
+        } else {
+          selectedModifications.push(`${baseName}: ${selectedSize}`);
+        }
       }
     });
     
@@ -471,10 +479,12 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     }
     
     Object.entries(selectedExtras).forEach(([baseName, selectedSize]) => {
-      if (!selectedSize) return;
+      if (!selectedSize && selectedSize !== '') return;
       
       const extraGroup = groupedExtras[baseName];
-      const selectedExtra = extraGroup.find(extra => extra.size === selectedSize);
+      const selectedExtra = extraGroup.find(extra => 
+        (selectedSize === '' && !extra.size) || extra.size === selectedSize
+      );
       
       if (selectedExtra) {
         total += Number(getPrice(selectedExtra.price));
@@ -719,49 +729,84 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                 </div>
               )}
               
-              {/* Extras with size selection */}
               {hasExtras && (
                 <div className="mb-5">
                   <h4 className="text-sm font-semibold text-gray-700 mb-2">Extras & Toppings</h4>
                   
-                  {Object.entries(groupedExtras).map(([baseName, extraGroup]) => (
-                    <div key={baseName} className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="text-sm font-medium text-gray-800">{baseName}</h5>
-                        {/* Display selected size if any */}
-                        {selectedExtras[baseName] && (
-                          <span className="text-xs text-red-600 font-medium">
-                            Selected: {selectedExtras[baseName]}
-                          </span>
+                  {Object.entries(groupedExtras).map(([baseName, extraGroup]) => {
+                    const hasSizes = extraGroup.some(extra => extra.size);
+                    
+                    return (
+                      <div key={baseName} className="mb-4">
+                        {/* Only show headers for items with sizes */}
+                        {hasSizes && (
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="text-sm font-medium text-gray-800">{baseName}</h5>
+                            {selectedExtras[baseName] && (
+                              <span className="text-xs text-red-600 font-medium">
+                                Selected: {selectedExtras[baseName]}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {hasSizes ? (
+                          // Display horizontal layout for sized extras
+                          <div className="flex flex-wrap gap-2">
+                            {extraGroup
+                              .filter(extra => extra.size) 
+                              .sort((a, b) => {
+                                return Number(getPrice(a.price)) - Number(getPrice(b.price));
+                              })
+                              .map((extra) => (
+                                <div
+                                  key={extra.index}
+                                  onClick={() => selectExtra(baseName, extra.size)}
+                                  className={`py-3 px-5 border rounded-md cursor-pointer transition text-center ${
+                                    selectedExtras[baseName] === extra.size
+                                      ? 'border-red-500 bg-red-50 text-red-700'
+                                      : 'border-gray-200 hover:border-gray-300'
+                                  }`}
+                                >
+                                  <div className="text-xs font-medium">{extra.size}</div>
+                                  <div className="text-xs mt-0.5">Rs.{getPrice(extra.price)}</div>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        ) : (
+                          // Display original vertical layout for non-sized extras
+                          <div className="space-y-2">
+                            {extraGroup.map((extra) => (
+                              <div 
+                                key={extra.index}
+                                className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all ${
+                                  selectedExtras[baseName] === ''
+                                    ? 'border-red-500 bg-red-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                                onClick={() => selectExtra(baseName, '')}
+                              >
+                                <div className="flex items-center">
+                                  <div className={`w-4 h-4 rounded-sm flex items-center justify-center border ${
+                                    selectedExtras[baseName] === '' ? 'bg-red-600' : 'border-gray-400'
+                                  }`}>
+                                    {selectedExtras[baseName] === '' && (
+                                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                      </svg>
+                                    )}
+                                  </div>
+                                  <span className="ml-2 text-sm font-medium text-gray-800">{extra.name}</span>
+                                </div>
+                                <span className="text-sm font-semibold">+Rs.{getPrice(extra.price)}</span>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {/* Show all available sizes for this extra */}
-                        {extraGroup
-                          .filter(extra => extra.size) // Make sure there's a size
-                          .sort((a, b) => {
-                            // Sort by price
-                            return Number(getPrice(a.price)) - Number(getPrice(b.price));
-                          })
-                          .map((extra) => (
-                            <div
-                              key={extra.index}
-                              onClick={() => selectExtra(baseName, extra.size)}
-                              className={`py-3 px-5 border rounded-md cursor-pointer transition text-center ${
-                                selectedExtras[baseName] === extra.size
-                                  ? 'border-red-500 bg-red-50 text-red-700'
-                                  : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            >
-                              <div className="text-xs font-medium">{extra.size}</div>
-                              <div className="text-xs mt-0.5">Rs.{getPrice(extra.price)}</div>
-                            </div>
-                          ))
-                        }
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               
