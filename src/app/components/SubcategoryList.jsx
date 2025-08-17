@@ -118,53 +118,50 @@ export default function SubcategoryList() {
 
   return (
     <div className="space-y-4">
-      {subcategories.map((sub) => (
-        <div
-          key={sub._id}
-          className="flex items-center justify-between border p-4 rounded"
-        >
-          <div className="flex items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {subcategories.map((sub) => (
+          <div key={sub._id} className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md flex flex-col">
             {sub.image && (
-              <div className="mr-3">
+              <div className="mb-2">
                 <img
                   src={sub.image}
                   alt={sub.name}
-                  width={50}
-                  height={50}
-                  className="rounded object-cover"
+                  width={100}
+                  height={100}
+                  className="w-full h-24 object-contain rounded-lg"
                 />
               </div>
             )}
-            <div>
-              <span className="font-bold">{sub.name}</span>
+            <div className="flex-1">
+              <span className="font-bold text-base">{sub.name}</span>
               {sub.category && typeof sub.category === "object" && (
-                <span className="ml-2 text-sm text-gray-600">
+                <span className="block text-xs text-gray-600 mt-1">
                   (Category: {sub.category.name})
                 </span>
               )}
               {sub.branch && typeof sub.branch === "object" && (
-                <span className="ml-2 text-sm text-gray-600">
+                <span className="block text-xs text-gray-600 mt-1">
                   (Branch: {sub.branch.name})
                 </span>
               )}
             </div>
+            <div className="mt-auto flex gap-2 pt-2">
+              <button
+                onClick={() => openEditModal(sub)}
+                className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition flex-1 text-sm font-medium"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => deleteSubcategory(sub._id)}
+                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition flex-1 text-sm font-medium"
+              >
+                Delete
+              </button>
+            </div>
           </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => openEditModal(sub)}
-              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => deleteSubcategory(sub._id)}
-              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -198,7 +195,7 @@ export default function SubcategoryList() {
                       alt="Subcategory preview"
                       width={100}
                       height={100}
-                      className="rounded object-cover"
+                      className="rounded object-contain"
                     />
                   </div>
                 )}

@@ -118,47 +118,46 @@ export default function CategoryList() {
 
   return (
     <div className="space-y-4">
-      {categories.map((cat) => (
-        <div key={cat._id} className="flex items-center justify-between border p-4 rounded">
-          <div className="flex items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {categories.map((cat) => (
+          <div key={cat._id} className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md flex flex-col">
             {cat.image && (
-              <div className="mr-3">
+              <div className="mb-2">
                 <img
-                  src={cat.image} 
-                  alt={cat.name} 
-                  width={50} 
-                  height={50} 
-                  className="rounded object-cover"
+                  src={cat.image}
+                  alt={cat.name}
+                  width={100}
+                  height={100}
+                  className="w-full h-24 object-contain rounded-lg"
                 />
               </div>
             )}
-            <div>
-              <span className="font-bold">{cat.name}</span>
+            <div className="flex-1">
+              <span className="font-bold text-base">{cat.name}</span>
               {cat.branch && typeof cat.branch === "object" && (
-                <span className="ml-2 text-sm text-gray-600">
+                <span className="block text-xs text-gray-600 mt-1">
                   (Branch: {cat.branch.name})
                 </span>
               )}
             </div>
+            <div className="mt-auto flex gap-2 pt-2">
+              <button
+                onClick={() => openEditModal(cat)}
+                className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition flex-1 text-sm font-medium"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => deleteCategory(cat._id)}
+                className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition flex-1 text-sm font-medium"
+              >
+                Delete
+              </button>
+            </div>
           </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => openEditModal(cat)}
-              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => deleteCategory(cat._id)}
-              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      {/* Edit Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -191,7 +190,7 @@ export default function CategoryList() {
                       alt="Category preview"
                       width={100}
                       height={100}
-                      className="rounded object-cover"
+                      className="rounded object-contain"
                     />
                   </div>
                 )}
