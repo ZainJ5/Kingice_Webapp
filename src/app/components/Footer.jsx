@@ -142,7 +142,7 @@ export default function Footer() {
                 </a> 
                 <span>/</span>
                 <a href={`tel:03122754064`} className="font-bold text-black hover:underline">
-                  {footerData.contact.uanNumber}
+                  0312 2754064
                 </a>
                 </div>
               </p>
