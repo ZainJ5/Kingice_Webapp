@@ -363,7 +363,7 @@ export default function FooterEditor() {
           {activeSection === 'contact' && (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">UAN Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact for Delivery</label>
                 <input 
                   type="text" 
                   value={footerContent.contact.uanNumber}

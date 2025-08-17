@@ -134,11 +134,17 @@ export default function Footer() {
 
           <div className="mt-8 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-12">
             <div>
-              <h3 className="font-semibold">UAN Number</h3>
+              <h3 className="font-semibold">Call for delivery</h3>
               <p>
+                              <div className="flex items-center space-x-1">
                 <a href={`tel:${footerData.contact.uanNumber}`} className="font-bold text-black hover:underline">
                   {footerData.contact.uanNumber}
+                </a> 
+                <span>/</span>
+                <a href={`tel:03122754064`} className="font-bold text-black hover:underline">
+                  {footerData.contact.uanNumber}
                 </a>
+                </div>
               </p>
             </div>
 
