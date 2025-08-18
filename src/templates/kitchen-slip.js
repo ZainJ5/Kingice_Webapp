@@ -9,59 +9,67 @@ export default `<html lang="en">
     body {
       font-family: 'Roboto Condensed', sans-serif;
       margin: 0;
-      padding: 6px;
+      padding: 2px;
       width: 72mm; /* Standard thermal receipt width */
       font-size: 10px;
-      line-height: 1.3;
+      line-height: 1.1;
       background-color: white;
     }
 
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+
     .kot-container {
-      border: 1.5px solid #222;
-      padding: 8px;
-      border-radius: 2px;
+      border: 1px solid #222;
+      padding: 4px;
+      border-radius: 1px;
     }
 
     .header {
       text-align: center;
-      padding: 8px 0;
-      margin-bottom: 5px;
+      padding: 4px 0;
+      margin-bottom: 2px;
       position: relative;
     }
 
     .header-title {
       font-weight: 700;
-      font-size: 16px;
+      font-size: 14px;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       display: inline-block;
-      padding: 3px 10px;
+      padding: 2px 6px;
       background-color: #222;
       color: white;
-      border-radius: 4px;
+      border-radius: 2px;
     }
 
     .priority-marker {
       position: absolute;
       right: 0;
-      top: 5px;
+      top: 3px;
       background-color: #e74c3c;
       color: white;
       font-weight: 700;
-      padding: 2px 6px;
-      font-size: 8px;
-      border-radius: 10px;
+      padding: 1px 4px;
+      font-size: 7px;
+      border-radius: 8px;
       text-transform: uppercase;
     }
 
     .order-info {
       display: flex;
       justify-content: space-between;
-      margin: 5px 0;
-      padding: 6px 0;
+      margin: 2px 0;
+      padding: 3px 0;
       border-top: 1px dashed #444;
       border-bottom: 1px dashed #444;
       font-family: 'Roboto Mono', monospace;
+      font-size: 9px;
     }
 
     .order-info div {
@@ -69,49 +77,49 @@ export default `<html lang="en">
     }
 
     .order-type-section {
-      margin: 8px 0;
-      padding: 5px;
+      margin: 4px 0;
+      padding: 3px;
       background-color: #f5f5f5;
-      border-left: 4px solid #222;
-      font-size: 11px;
+      border-left: 3px solid #222;
+      font-size: 10px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 5px;
     }
 
     th {
       text-align: left;
-      padding: 6px 4px;
-      font-size: 9px;
+      padding: 3px 2px;
+      font-size: 8px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 2px solid #222;
+      letter-spacing: 0.3px;
+      border-bottom: 1px solid #222;
     }
 
     td {
-      padding: 6px 4px;
+      padding: 3px 2px;
       border-bottom: 1px dotted #ccc;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .qty-col {
       text-align: center;
       font-weight: 700;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .item-name {
       font-weight: 700;
-      font-size: 12px;
+      font-size: 11px;
     }
 
     .item-modifier {
-      font-size: 9px;
+      font-size: 8px;
       font-style: italic;
-      padding-left: 8px;
+      padding-left: 4px;
       color: #444;
     }
 
@@ -129,33 +137,38 @@ export default `<html lang="en">
     }
 
     .footer {
-      margin-top: 10px;
+      margin-top: 5px;
       text-align: center;
-      font-size: 9px;
-      padding-top: 5px;
+      font-size: 8px;
+      padding-top: 3px;
       border-top: 1px dashed #444;
     }
 
     .timestamp {
       font-family: 'Roboto Mono', monospace;
-      font-size: 8px;
+      font-size: 7px;
       color: #666;
-      margin-top: 5px;
+      margin-top: 2px;
     }
 
     .ticket-number {
       font-family: 'Roboto Mono', monospace;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 1px;
-      margin: 5px 0;
+      letter-spacing: 0.5px;
+      margin: 2px 0;
     }
     
     .modifiers {
-      font-size: 9px;
+      font-size: 8px;
       font-style: italic;
-      padding-left: 10px;
+      padding-left: 5px;
       color: #444;
+    }
+
+    /* Prevent breaks and minimize height */
+    .kot-container, table, .header, .order-info, .order-type-section, .footer {
+      page-break-inside: avoid;
     }
   </style>
 </head>
@@ -202,14 +215,12 @@ export default `<html lang="en">
 
     <div class="footer">
       <div>PREPARE IMMEDIATELY</div>
-      <div class="timestamp">Printed: {{currentDate}} {{currentTime}} by ZainJ5</div>
-    </div>
   </div>
 
   <script>
     window.onload = function() {
       window.print();
-      setTimeout(() => window.close(), 500);
+      setTimeout(() => window.close(), 2000); 
     }
   </script>
 </body>
