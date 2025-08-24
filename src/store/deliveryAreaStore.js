@@ -3,15 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export const useDeliveryAreaStore = create(
-  persist(
-    (set) => ({
-      deliveryArea: null,
-      setDeliveryArea: (deliveryArea) => set({ deliveryArea }),
-      clearDeliveryArea: () => set({ deliveryArea: null }),
-    }),
-    {
-      name: "delivery-area-storage",
-    }
-  )
-);
+export const useDeliveryAreaStore = create((set) => ({
+  deliveryArea: null,
+  setDeliveryArea: (deliveryArea) => set({ deliveryArea }),
+  clearDeliveryArea: () => set({ deliveryArea: null }),
+}));
