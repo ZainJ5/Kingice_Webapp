@@ -24,8 +24,8 @@ export default `<!DOCTYPE html>
       line-height: 1.1;
       background-color: white;
       font-weight: bold;
-      margin: 5px;
-      padding: 0;
+      margin: 0px;
+      padding: 4px;
     }
 
     @media print {
@@ -147,12 +147,10 @@ export default `<!DOCTYPE html>
     <div class="order-info">
       <div>
         <div>ORDER #: {{orderNumber}}</div>
-        <div>TABLE #: ----</div>
       </div>
       <div class="right-align">
         <div><span class="bold">DATE:</span> {{currentDate}}</div>
         <div><span class="bold">TIME:</span> {{currentTime}}</div>
-        <div>WAITER: General</div>
       </div>
     </div>
 
