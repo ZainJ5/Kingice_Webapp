@@ -14,7 +14,6 @@ export default `<!DOCTYPE html>
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-weight: bold;
     }
 
     body {
@@ -22,10 +21,10 @@ export default `<!DOCTYPE html>
       margin: 0;
       padding: 8px;
       width: 72mm; /* Standard thermal receipt width */
-      font-size: 11px;
-      line-height: 1.2;
+      font-size: 10px;
+      line-height: 1.1;
       color: #000;
-      font-weight: 900;
+      font-weight: bold;
     }
 
     @media print {
@@ -39,7 +38,7 @@ export default `<!DOCTYPE html>
       }
       
       * {
-        font-weight: 900 !important;
+        font-weight: bold !important;
       }
     }
 
@@ -56,19 +55,20 @@ export default `<!DOCTYPE html>
       text-align: center;
       margin-bottom: 8px;
       padding-bottom: 8px;
-      border-bottom: 1px dashed #000;
+      border-bottom: 2px dashed #000;
     }
 
     .restaurant-name {
       font-weight: 900;
-      font-size: 16px;
+      font-size: 14px;
       letter-spacing: 1px;
       margin-bottom: 4px;
     }
 
     .restaurant-info {
-      font-size: 10px;
+      font-size: 9px;
       color: #000;
+      font-weight: bold;
     }
 
     .title-container {
@@ -94,7 +94,7 @@ export default `<!DOCTYPE html>
       margin: 8px 0;
       padding: 6px 0;
       border-bottom: 1px solid #000;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .order-details div {
@@ -103,7 +103,7 @@ export default `<!DOCTYPE html>
 
     .section-title {
       font-weight: 900;
-      font-size: 12px;
+      font-size: 11px;
       margin-top: 8px;
       margin-bottom: 4px;
       color: #000;
@@ -113,31 +113,31 @@ export default `<!DOCTYPE html>
       width: 100%;
       border-collapse: collapse;
       margin: 8px 0;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     th {
       font-weight: 900;
       text-align: left;
       padding: 4px 2px;
-      border-bottom: 2px solid #000;
+      border-bottom: 1px solid #000;
       text-transform: uppercase;
-      font-size: 10px;
+      font-size: 9px;
       color: #000;
     }
 
     td {
       padding: 3px 2px;
-      border-bottom: 1px solid #000;
+      border-bottom: 2px dotted #000;
       font-size: 11px;
     }
     
     .item-modifiers {
-      font-size: 10px;
+      font-size: 9px;
       font-style: italic;
       color: #000;
       padding-left: 4px;
-      font-weight: 900;
+      font-weight: bold;
     }
 
     .item-count {
@@ -145,7 +145,7 @@ export default `<!DOCTYPE html>
       font-weight: 900;
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .summary {
@@ -154,7 +154,7 @@ export default `<!DOCTYPE html>
       background-color: #f9f9f9;
       padding: 6px;
       border-radius: 3px;
-      font-size: 11px;
+      font-size: 10px;
       border: 1px solid #000;
     }
 
@@ -168,7 +168,7 @@ export default `<!DOCTYPE html>
       padding: 6px;
       margin-top: 5px;
       border-radius: 3px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
     }
 
@@ -178,7 +178,7 @@ export default `<!DOCTYPE html>
       border: 1px solid #000;
       border-radius: 3px;
       background-color: #f9f9f9;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .customer-info div {
@@ -197,19 +197,19 @@ export default `<!DOCTYPE html>
     .footer {
       margin-top: 10px;
       text-align: center;
-      font-size: 10px;
-      font-weight: 900;
+      font-size: 9px;
+      font-weight: bold;
       color: #000;
       padding-top: 6px;
-      border-top: 1px dashed #000;
+      border-top: 2px dashed #000;
     }
 
     .print-info {
-      font-size: 10px;
+      font-size: 9px;
       color: #000;
       text-align: center;
       margin-top: 8px;
-      font-style: italic;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -218,7 +218,6 @@ export default `<!DOCTYPE html>
     <div class="header">
       <div class="restaurant-name">KING ICE FAST FOOD</div>
       <div class="restaurant-info">Landhi 3 1/2 SNTN 5609626-7</div>
-      <div class="restaurant-info">All Prices Are Inclusive of 13% SST</div>
     </div>
 
     <div class="title-container">
