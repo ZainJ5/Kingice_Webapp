@@ -20,19 +20,19 @@ export default `<!DOCTYPE html>
       font-family: Arial, sans-serif;
       width: 72mm;
       max-width: 72mm;
-      font-size: 10px;
+      font-size: 11px;
       line-height: 1.1;
       background-color: white;
       font-weight: bold;
-      margin: 0px;
-      padding: 4px;
+      margin: 5px;
+      padding: 0;
     }
 
     @media print {
       body {
         width: 72mm;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 10px !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         color-adjust: exact !important;
@@ -59,7 +59,7 @@ export default `<!DOCTYPE html>
 
     .header-title {
       font-weight: 900;
-      font-size: 14px;
+      font-size: 15px;
       text-transform: uppercase;
       display: inline-block;
       padding: 2px 6px;
@@ -72,8 +72,8 @@ export default `<!DOCTYPE html>
       justify-content: space-between;
       border-top: 1px dashed #000;
       border-bottom: 1px dashed #000;
-      font-size: 9px;
-      padding: 4px 2px;
+      font-size: 10px;
+      padding: 6px 2px;
     }
 
     .order-info div {
@@ -93,7 +93,7 @@ export default `<!DOCTYPE html>
     th {
       text-align: left;
       padding: 2px;
-      font-size: 9px;
+      font-size: 10px;
       text-transform: uppercase;
       border-bottom: 1px solid #000;
       font-weight: 900;
@@ -102,7 +102,7 @@ export default `<!DOCTYPE html>
     td {
       padding: 2px;
       border-bottom: 1px dotted #000;
-      font-size: 11px;
+      font-size: 12px;
     }
 
     .qty-col {
@@ -113,11 +113,11 @@ export default `<!DOCTYPE html>
 
     .item-name {
       font-weight: 900;
-      font-size: 11px;
+      font-size: 12px;
     }
 
     .item-modifier {
-      font-size: 9px;
+      font-size: 10px;
       font-style: italic;
       padding-left: 3px;
       color: #000;
@@ -130,7 +130,7 @@ export default `<!DOCTYPE html>
 
     .footer {
       text-align: center;
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 900;
       padding: 4px 0;
       border-top: 1px dashed #000;
@@ -149,7 +149,7 @@ export default `<!DOCTYPE html>
         <div>ORDER #: {{orderNumber}}</div>
       </div>
       <div class="right-align">
-        <div><span class="bold">DATE:</span> {{currentDate}}</div>
+        <div><span class="bold">DATE:</span> {{currentDate}}</div></br>
         <div><span class="bold">TIME:</span> {{currentTime}}</div>
       </div>
     </div>
@@ -161,13 +161,13 @@ export default `<!DOCTYPE html>
           <th style="text-align: center; width: 32px;">QTY</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody style="padding:5px 0px;">
         {{itemsList}}
       </tbody>
     </table>
 
     <div class="footer">
-      <div>PREPARE IMMEDIATELY</div>
+      <div>KING ICE - KITCHEN SLIP</div>
     </div>
   </div>
 
