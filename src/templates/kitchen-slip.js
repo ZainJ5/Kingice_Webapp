@@ -1,75 +1,90 @@
-export default `<html lang="en">
+export default `<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kitchen Order Slip</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto+Mono:wght@500&display=swap');
+    @page {
+      size: 72mm auto;
+      margin: 0;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
-      font-family: 'Roboto Condensed', sans-serif;
-      margin: 0;
-      padding: 2px;
-      width: 72mm; /* Standard thermal receipt width */
+      font-family: Arial, sans-serif;
+      width: 72mm;
+      max-width: 72mm;
       font-size: 10px;
       line-height: 1.1;
       background-color: white;
+      font-weight: bold;
+      margin: 0;
+      padding: 0;
     }
 
     @media print {
       body {
+        width: 72mm;
+        margin: 0 !important;
+        padding: 0 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      
+      * {
+        font-weight: bold !important;
       }
     }
 
     .kot-container {
-      border: 1px solid #222;
-      padding: 4px;
-      border-radius: 1px;
+      border: 1px solid #000;
+      width: 100%;
+      overflow: hidden;
     }
 
     .header {
       text-align: center;
-      padding: 4px 0;
-      margin-bottom: 2px;
+      padding: 2px 0;
       position: relative;
     }
 
     .header-title {
-      font-weight: 700;
+      font-weight: 900;
       font-size: 14px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
       display: inline-block;
       padding: 2px 6px;
-      background-color: #222;
+      background-color: #000;
       color: white;
-      border-radius: 2px;
     }
 
     .priority-marker {
       position: absolute;
-      right: 0;
-      top: 3px;
-      background-color: #e74c3c;
+      right: 2px;
+      top: 2px;
+      background-color: #ff0000;
       color: white;
-      font-weight: 700;
+      font-weight: 900;
       padding: 1px 4px;
-      font-size: 7px;
-      border-radius: 8px;
+      font-size: 8px;
+      border-radius: 4px;
       text-transform: uppercase;
     }
 
     .order-info {
       display: flex;
       justify-content: space-between;
-      margin: 2px 0;
-      padding: 3px 0;
-      border-top: 1px dashed #444;
-      border-bottom: 1px dashed #444;
-      font-family: 'Roboto Mono', monospace;
+      border-top: 1px dashed #000;
+      border-bottom: 1px dashed #000;
       font-size: 9px;
+      padding: 2px 1px;
     }
 
     .order-info div {
@@ -77,54 +92,48 @@ export default `<html lang="en">
     }
 
     .order-type-section {
-      margin: 4px 0;
-      padding: 3px;
-      background-color: #f5f5f5;
-      border-left: 3px solid #222;
+      padding: 2px;
+      background-color: #e6e6e6;
+      border-left: 3px solid #000;
       font-size: 10px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 5px;
     }
 
     th {
       text-align: left;
-      padding: 3px 2px;
-      font-size: 8px;
+      padding: 2px;
+      font-size: 9px;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid #000;
+      font-weight: 900;
     }
 
     td {
-      padding: 3px 2px;
-      border-bottom: 1px dotted #ccc;
-      font-size: 10px;
+      padding: 2px;
+      border-bottom: 1px dotted #000;
+      font-size: 11px;
     }
 
     .qty-col {
       text-align: center;
-      font-weight: 700;
+      font-weight: 900;
       font-size: 12px;
     }
 
     .item-name {
-      font-weight: 700;
+      font-weight: 900;
       font-size: 11px;
     }
 
     .item-modifier {
-      font-size: 8px;
+      font-size: 9px;
       font-style: italic;
-      padding-left: 4px;
-      color: #444;
-    }
-
-    .bold {
-      font-weight: 700;
+      padding-left: 3px;
+      color: #000;
     }
 
     .centered {
@@ -132,42 +141,28 @@ export default `<html lang="en">
     }
 
     .header-row {
-      background-color: #222;
+      background-color: #000;
       color: white;
     }
 
     .footer {
-      margin-top: 5px;
       text-align: center;
-      font-size: 8px;
-      padding-top: 3px;
-      border-top: 1px dashed #444;
-    }
-
-    .timestamp {
-      font-family: 'Roboto Mono', monospace;
-      font-size: 7px;
-      color: #666;
-      margin-top: 2px;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 2px 0;
+      border-top: 1px dashed #000;
     }
 
     .ticket-number {
-      font-family: 'Roboto Mono', monospace;
       font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
+      font-weight: 900;
       margin: 2px 0;
     }
     
-    .modifiers {
+    .user-info {
       font-size: 8px;
-      font-style: italic;
-      padding-left: 5px;
-      color: #444;
-    }
-
-    .kot-container, table, .header, .order-info, .order-type-section, .footer {
-      page-break-inside: avoid;
+      text-align: center;
+      padding-top: 1px;
     }
   </style>
 </head>
@@ -184,27 +179,27 @@ export default `<html lang="en">
 
     <div class="order-info">
       <div>
-        <div><span class="bold">ORDER #:</span> {{orderNumber}}</div>
-        <div><span class="bold">KOT #:</span> 1</div>
-        <div><span class="bold">TABLE:</span> ----</div>
+        <div>ORDER #: {{orderNumber}}</div>
+        <div>KOT #: 1</div>
+        <div>TABLE: ----</div>
       </div>
       <div>
-        <div><span class="bold">DATE:</span> {{currentDate}}</div>
-        <div><span class="bold">TIME:</span> {{currentTime}}</div>
-        <div><span class="bold">CHEF:</span> Kitchen 1</div>
+        <div>DATE: 2025-08-26</div>
+        <div>TIME: 20:15:09</div>
+        <div>CHEF: Kitchen 1</div>
       </div>
     </div>
 
     <div class="order-type-section">
-      <div><span class="bold">TYPE:</span> {{orderType}}</div>
-      <div><span class="bold">STAFF:</span> General</div>
+      <div>TYPE: {{orderType}}</div>
+      <div>STAFF: General</div>
     </div>
 
     <table>
       <thead>
         <tr class="header-row">
           <th>ITEM DESCRIPTION</th>
-          <th style="text-align: center; width: 40px;">QTY</th>
+          <th style="text-align: center; width: 32px;">QTY</th>
         </tr>
       </thead>
       <tbody>
@@ -214,12 +209,13 @@ export default `<html lang="en">
 
     <div class="footer">
       <div>PREPARE IMMEDIATELY</div>
+    </div>
   </div>
 
   <script>
     window.onload = function() {
       window.print();
-      setTimeout(() => window.close(), 2000); 
+      setTimeout(() => window.close(), 500);
     }
   </script>
 </body>
