@@ -508,31 +508,25 @@ export default function OrderList() {
     const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
 
     const itemsList = orderToPrint.items.map((item) => {
-      // Get the title/name from new schema structure
       const itemName = item.title || item.name || "Unknown Item";
-      // Get quantity from new schema
       const quantity = item.quantity || 1;
       
       let modifiersHtml = '';
       
-      // Check for variation
       if (item.selectedVariation && item.selectedVariation.name) {
         modifiersHtml += `<div class="modifiers">Variation: ${item.selectedVariation.name}</div>`;
       } else if (item.type) {
         modifiersHtml += `<div class="modifiers">Type: ${item.type}</div>`;
       }
       
-      // Check for extras
       if (item.selectedExtras && item.selectedExtras.length > 0) {
         modifiersHtml += `<div class="modifiers">Extras: ${item.selectedExtras.map(e => e.name).join(', ')}</div>`;
       }
       
-      // Check for side orders
       if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
         modifiersHtml += `<div class="modifiers">Side Orders: ${item.selectedSideOrders.map(s => s.name).join(', ')}</div>`;
       }
       
-      // Check for special instructions
       if (item.specialInstructions) {
         modifiersHtml += `<div class="modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
       }
@@ -548,7 +542,6 @@ export default function OrderList() {
       `;
     }).join('');
 
-    // Use template and replace placeholders
     let htmlContent = kitchenSlipTemplate
       .replace(/{{ticketNumber}}/g, ticketNumber)
       .replace(/{{orderNumber}}/g, orderNumber)

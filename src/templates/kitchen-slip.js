@@ -3,7 +3,7 @@ export default `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kitchen Order Slip</title>
+  <title>Delivery Slip</title>
   <style>
     @page {
       size: 72mm auto;
@@ -24,7 +24,7 @@ export default `<!DOCTYPE html>
       line-height: 1.1;
       background-color: white;
       font-weight: bold;
-      margin: 0;
+      margin: 5px;
       padding: 0;
     }
 
@@ -43,16 +43,18 @@ export default `<!DOCTYPE html>
       }
     }
 
-    .kot-container {
-      border: 1px solid #000;
+    .slip-container {
+      // border: 1px solid #000;
       width: 100%;
       overflow: hidden;
+      padding: 5px 0; /* Added padding top and bottom */
     }
 
     .header {
       text-align: center;
       padding: 2px 0;
       position: relative;
+      margin-bottom: 5px; /* Added margin for space between title and fields */
     }
 
     .header-title {
@@ -65,42 +67,27 @@ export default `<!DOCTYPE html>
       color: white;
     }
 
-    .priority-marker {
-      position: absolute;
-      right: 2px;
-      top: 2px;
-      background-color: #ff0000;
-      color: white;
-      font-weight: 900;
-      padding: 1px 4px;
-      font-size: 8px;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-
     .order-info {
       display: flex;
       justify-content: space-between;
       border-top: 1px dashed #000;
       border-bottom: 1px dashed #000;
       font-size: 9px;
-      padding: 2px 1px;
+      padding: 4px 2px;
     }
 
     .order-info div {
       width: 50%;
     }
-
-    .order-type-section {
-      padding: 2px;
-      background-color: #e6e6e6;
-      border-left: 3px solid #000;
-      font-size: 10px;
+    
+    .order-info .right-align {
+      text-align: left;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 5px;
     }
 
     th {
@@ -136,10 +123,6 @@ export default `<!DOCTYPE html>
       color: #000;
     }
 
-    .centered {
-      text-align: center;
-    }
-
     .header-row {
       background-color: #000;
       color: white;
@@ -149,56 +132,34 @@ export default `<!DOCTYPE html>
       text-align: center;
       font-size: 9px;
       font-weight: 900;
-      padding: 2px 0;
+      padding: 4px 0;
       border-top: 1px dashed #000;
-    }
-
-    .ticket-number {
-      font-size: 14px;
-      font-weight: 900;
-      margin: 2px 0;
-    }
-    
-    .user-info {
-      font-size: 8px;
-      text-align: center;
-      padding-top: 1px;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
-  <div class="kot-container">
+  <div class="slip-container">
     <div class="header">
-      <div class="header-title">KITCHEN ORDER</div>
-      <div class="priority-marker">PRIORITY</div>
-    </div>
-
-    <div class="ticket-number centered">
-      TICKET #: {{ticketNumber}}
+      <div class="header-title">DELIVERY SLIP</div>
     </div>
 
     <div class="order-info">
       <div>
         <div>ORDER #: {{orderNumber}}</div>
-        <div>KOT #: 1</div>
-        <div>TABLE: ----</div>
+        <div>TABLE #: ----</div>
       </div>
-      <div>
-        <div>DATE: 2025-08-26</div>
-        <div>TIME: 20:15:09</div>
-        <div>CHEF: Kitchen 1</div>
+      <div class="right-align">
+        <div><span class="bold">DATE:</span> {{currentDate}}</div>
+        <div><span class="bold">TIME:</span> {{currentTime}}</div>
+        <div>WAITER: General</div>
       </div>
-    </div>
-
-    <div class="order-type-section">
-      <div>TYPE: {{orderType}}</div>
-      <div>STAFF: General</div>
     </div>
 
     <table>
       <thead>
         <tr class="header-row">
-          <th>ITEM DESCRIPTION</th>
+          <th>DESCRIPTION</th>
           <th style="text-align: center; width: 32px;">QTY</th>
         </tr>
       </thead>
