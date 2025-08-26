@@ -579,205 +579,207 @@ const printKitchenSlip = useCallback(async (order) => {
   newWindow.document.close();
 }, [fetchOrderDetails]);
 
-  const printDeliveryPreBill = useCallback(async (order) => {
-    let orderToPrint = order;
+const printDeliveryPreBill = useCallback(async (order) => {
+  let orderToPrint = order;
 
-    if (!order.items) {
-      const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
-      if (!fullOrder) {
-        alert("Could not fetch order details for printing");
-        return;
-      }
-      orderToPrint = fullOrder;
+  if (!order.items) {
+    const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+    if (!fullOrder) {
+      alert("Could not fetch order details for printing");
+      return;
+    }
+    orderToPrint = fullOrder;
+  }
+
+  const orderNumber = orderToPrint.orderNo || "N/A";
+  const currentDate = new Date().toLocaleDateString();
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
+  const customerName = orderToPrint.fullName || '';
+  const mobileNumber = orderToPrint.mobileNumber || '';
+  const alternateMobile = orderToPrint.alternateMobile ? `Alt: ${orderToPrint.alternateMobile}` : '';
+  const deliveryAddress = orderToPrint.deliveryAddress || '';
+  const paymentInstructions = orderToPrint.paymentInstructions || '----';
+
+  const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
+  const deliveryFee = orderToPrint.orderType === 'delivery' ?
+    getDeliveryFeeForArea(area) : 0;
+
+  const subtotal = extractValue(orderToPrint.subtotal) || 0;
+  const tax = extractValue(orderToPrint.tax) || 0;
+  const discount = extractValue(orderToPrint.discount) || 0;
+  const discountPercentage = orderToPrint.globalDiscountPercentage || orderToPrint.discountPercentage || 0;
+  const total = extractValue(orderToPrint.total) || 0;
+  const itemCount = orderToPrint.items.length;
+
+  const itemRows = orderToPrint.items.map((item, index) => {
+    const itemName = item.title || item.name || "Unknown Item";
+    const quantity = item.quantity || 1;
+    const price = extractValue(item.price) || 0;
+    const amount = price * quantity;
+    
+    let modifiersHtml = '';
+    
+    if (item.selectedVariation) {
+      modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+    } else if (item.type) {
+      modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
+    }
+    
+    if (item.selectedExtras && item.selectedExtras.length > 0) {
+      item.selectedExtras.forEach(extra => {
+        modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
+      });
+    }
+    
+    if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+      item.selectedSideOrders.forEach(sideOrder => {
+        modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
+      });
+    }
+    
+    if (item.specialInstructions) {
+      modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
     }
 
-    const orderNumber = orderToPrint.orderNo || "N/A";
-    const currentDate = new Date().toLocaleDateString();
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
-    const customerName = orderToPrint.fullName || '';
-    const mobileNumber = orderToPrint.mobileNumber || '';
-    const deliveryAddress = orderToPrint.deliveryAddress || '';
-    const paymentInstructions = orderToPrint.paymentInstructions || '----';
+    return `
+      <tr>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
+          ${itemName}
+          ${modifiersHtml}
+        </td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: center;">${quantity}</td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${price}</td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>
+      </tr>
+    `;
+  }).join('');
 
-    const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
-    const deliveryFee = orderToPrint.orderType === 'delivery' ?
-      getDeliveryFeeForArea(area) : 0;
+  let htmlContent = deliveryPreBillTemplate
+    .replace(/{{orderNumber}}/g, orderNumber)
+    .replace(/{{orderType}}/g, orderType)
+    .replace(/{{customerName}}/g, customerName)
+    .replace(/{{currentDate}}/g, currentDate)
+    .replace(/{{currentTime}}/g, currentTime)
+    .replace(/{{itemRows}}/g, itemRows)
+    .replace(/{{itemCount}}/g, itemCount)
+    .replace(/{{subtotal}}/g, subtotal)
+    .replace(/{{tax}}/g, tax)
+    .replace(/{{deliveryFee}}/g, deliveryFee)
+    .replace(/{{discountPercentage}}/g, discountPercentage)
+    .replace(/{{discount}}/g, discount)
+    .replace(/{{total}}/g, total)
+    .replace(/{{mobileNumber}}/g, `${mobileNumber}${alternateMobile ? ' / ' + alternateMobile : ''}`)
+    .replace(/{{deliveryAddress}}/g, deliveryAddress)
+    .replace(/{{paymentInstructions}}/g, paymentInstructions);
 
-    const subtotal = extractValue(orderToPrint.subtotal) || 0;
-    const tax = extractValue(orderToPrint.tax) || 0;
-    const discount = extractValue(orderToPrint.discount) || 0;
-    const discountPercentage = orderToPrint.globalDiscountPercentage || orderToPrint.discountPercentage || 0;
-    const total = extractValue(orderToPrint.total) || 0;
-    const itemCount = orderToPrint.items.length;
+  const newWindow = window.open("", "_blank", "width=300,height=600");
+  if (!newWindow) return;
 
-    const itemRows = orderToPrint.items.map((item, index) => {
-      const itemName = item.title || item.name || "Unknown Item";
-      const quantity = item.quantity || 1;
-      const price = extractValue(item.price) || 0;
-      const amount = price * quantity;
-      
-      let modifiersHtml = '';
-      
-      if (item.selectedVariation) {
-        modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
-      } else if (item.type) {
-        modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
-      }
-      
-      if (item.selectedExtras && item.selectedExtras.length > 0) {
-        item.selectedExtras.forEach(extra => {
-          modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
-        });
-      }
-      
-      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
-        item.selectedSideOrders.forEach(sideOrder => {
-          modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
-        });
-      }
-      
-      if (item.specialInstructions) {
-        modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
-      }
+  newWindow.document.write(htmlContent);
+  newWindow.document.close();
+}, [fetchOrderDetails, getDeliveryFeeForArea]);
 
-      return `
-        <tr>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
-            ${itemName}
-            ${modifiersHtml}
-          </td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: center;">${quantity}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${price}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>
-        </tr>
-      `;
-    }).join('');
+const printDeliveryPaymentReceipt = useCallback(async (order) => {
+  let orderToPrint = order;
 
-    let htmlContent = deliveryPreBillTemplate
-      .replace(/{{orderNumber}}/g, orderNumber)
-      .replace(/{{orderType}}/g, orderType)
-      .replace(/{{customerName}}/g, customerName)
-      .replace(/{{currentDate}}/g, currentDate)
-      .replace(/{{currentTime}}/g, currentTime)
-      .replace(/{{itemRows}}/g, itemRows)
-      .replace(/{{itemCount}}/g, itemCount)
-      .replace(/{{subtotal}}/g, subtotal)
-      .replace(/{{tax}}/g, tax)
-      .replace(/{{deliveryFee}}/g, deliveryFee)
-      .replace(/{{discountPercentage}}/g, discountPercentage)
-      .replace(/{{discount}}/g, discount)
-      .replace(/{{total}}/g, total)
-      .replace(/{{mobileNumber}}/g, mobileNumber)
-      .replace(/{{deliveryAddress}}/g, deliveryAddress)
-      .replace(/{{paymentInstructions}}/g, paymentInstructions);
+  if (!order.items) {
+    const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+    if (!fullOrder) {
+      alert("Could not fetch order details for printing");
+      return;
+    }
+    orderToPrint = fullOrder;
+  }
 
-    const newWindow = window.open("", "_blank", "width=300,height=600");
-    if (!newWindow) return;
+  const orderNumber = orderToPrint.orderNo || "N/A";
+  const currentDate = new Date().toLocaleDateString();
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
+  const customerName = orderToPrint.fullName || '';
+  const mobileNumber = orderToPrint.mobileNumber || '';
+  const alternateMobile = orderToPrint.alternateMobile ? `Alt: ${orderToPrint.alternateMobile}` : '';
+  const deliveryAddress = orderToPrint.deliveryAddress || '';
+  const paymentInstructions = orderToPrint.paymentInstructions || '----';
 
-    newWindow.document.write(htmlContent);
-    newWindow.document.close();
-  }, [fetchOrderDetails, getDeliveryFeeForArea]);
+  const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
+  const deliveryFee = orderToPrint.orderType === 'delivery' ?
+    getDeliveryFeeForArea(area) : 0;
 
-  const printDeliveryPaymentReceipt = useCallback(async (order) => {
-    let orderToPrint = order;
+  const subtotal = extractValue(orderToPrint.subtotal) || 0;
+  const total = extractValue(orderToPrint.total) || 0;
+  const paymentMethod = orderToPrint.paymentMethod === 'cod' ? 'Cash' : 'Online Payment';
+  const changeRequest = orderToPrint.changeRequest || '0.00';
+  const itemCount = orderToPrint.items.length;
 
-    if (!order.items) {
-      const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
-      if (!fullOrder) {
-        alert("Could not fetch order details for printing");
-        return;
-      }
-      orderToPrint = fullOrder;
+  const itemRows = orderToPrint.items.map((item, index) => {
+    const itemName = item.title || item.name || "Unknown Item";
+    const quantity = item.quantity || 1;
+    const price = extractValue(item.price) || 0;
+    const amount = price * quantity;
+    
+    let modifiersHtml = '';
+    
+    if (item.selectedVariation) {
+      modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+    } else if (item.type) {
+      modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
+    }
+    
+    if (item.selectedExtras && item.selectedExtras.length > 0) {
+      item.selectedExtras.forEach(extra => {
+        modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
+      });
+    }
+    
+    if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+      item.selectedSideOrders.forEach(sideOrder => {
+        modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
+      });
+    }
+    
+    if (item.specialInstructions) {
+      modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
     }
 
-    const orderNumber = orderToPrint.orderNo || "N/A";
-    const currentDate = new Date().toLocaleDateString();
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
-    const customerName = orderToPrint.fullName || '';
-    const mobileNumber = orderToPrint.mobileNumber || '';
-    const deliveryAddress = orderToPrint.deliveryAddress || '';
-    const paymentInstructions = orderToPrint.paymentInstructions || '----';
+    return `
+      <tr>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
+          ${itemName}
+          ${modifiersHtml}
+        </td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: center;">${quantity}</td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${price}</td>
+        <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>
+      </tr>
+    `;
+  }).join('');
 
-    const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
-    const deliveryFee = orderToPrint.orderType === 'delivery' ?
-      getDeliveryFeeForArea(area) : 0;
+  let htmlContent = paymentReceiptTemplate
+    .replace(/{{orderNumber}}/g, orderNumber)
+    .replace(/{{orderType}}/g, orderType)
+    .replace(/{{customerName}}/g, customerName)
+    .replace(/{{currentDate}}/g, currentDate)
+    .replace(/{{currentTime}}/g, currentTime)
+    .replace(/{{itemRows}}/g, itemRows)
+    .replace(/{{itemCount}}/g, itemCount)
+    .replace(/{{subtotal}}/g, subtotal)
+    .replace(/{{deliveryFee}}/g, deliveryFee)
+    .replace(/{{total}}/g, total)
+    .replace(/{{paymentMethod}}/g, paymentMethod)
+    .replace(/{{changeRequest}}/g, changeRequest)
+    .replace(/{{mobileNumber}}/g, `${mobileNumber}${alternateMobile ? ' / ' + alternateMobile : ''}`)
+    .replace(/{{deliveryAddress}}/g, deliveryAddress)
+    .replace(/{{paymentInstructions}}/g, paymentInstructions);
 
-    const subtotal = extractValue(orderToPrint.subtotal) || 0;
-    const total = extractValue(orderToPrint.total) || 0;
-    const paymentMethod = orderToPrint.paymentMethod === 'cod' ? 'Cash' : 'Online Payment';
-    const changeRequest = orderToPrint.changeRequest || '0.00';
-    const itemCount = orderToPrint.items.length;
+  const newWindow = window.open("", "_blank", "width=300,height=600");
+  if (!newWindow) return;
 
-    const itemRows = orderToPrint.items.map((item, index) => {
-      const itemName = item.title || item.name || "Unknown Item";
-      const quantity = item.quantity || 1;
-      const price = extractValue(item.price) || 0;
-      const amount = price * quantity;
-      
-      let modifiersHtml = '';
-      
-      if (item.selectedVariation) {
-        modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
-      } else if (item.type) {
-        modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
-      }
-      
-      if (item.selectedExtras && item.selectedExtras.length > 0) {
-        item.selectedExtras.forEach(extra => {
-          modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
-        });
-      }
-      
-      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
-        item.selectedSideOrders.forEach(sideOrder => {
-          modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
-        });
-      }
-      
-      if (item.specialInstructions) {
-        modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
-      }
-
-      return `
-        <tr>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
-            ${itemName}
-            ${modifiersHtml}
-          </td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: center;">${quantity}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${price}</td>
-          <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>
-        </tr>
-      `;
-    }).join('');
-
-    let htmlContent = paymentReceiptTemplate
-      .replace(/{{orderNumber}}/g, orderNumber)
-      .replace(/{{orderType}}/g, orderType)
-      .replace(/{{customerName}}/g, customerName)
-      .replace(/{{currentDate}}/g, currentDate)
-      .replace(/{{currentTime}}/g, currentTime)
-      .replace(/{{itemRows}}/g, itemRows)
-      .replace(/{{itemCount}}/g, itemCount)
-      .replace(/{{subtotal}}/g, subtotal)
-      .replace(/{{deliveryFee}}/g, deliveryFee)
-      .replace(/{{total}}/g, total)
-      .replace(/{{paymentMethod}}/g, paymentMethod)
-      .replace(/{{changeRequest}}/g, changeRequest)
-      .replace(/{{mobileNumber}}/g, mobileNumber)
-      .replace(/{{deliveryAddress}}/g, deliveryAddress)
-      .replace(/{{paymentInstructions}}/g, paymentInstructions);
-
-    const newWindow = window.open("", "_blank", "width=300,height=600");
-    if (!newWindow) return;
-
-    newWindow.document.write(htmlContent);
-    newWindow.document.close();
-  }, [fetchOrderDetails, getDeliveryFeeForArea]);
+  newWindow.document.write(htmlContent);
+  newWindow.document.close();
+}, [fetchOrderDetails, getDeliveryFeeForArea]);
 
   const printOrderDetails = useCallback(async (order) => {
     printDeliveryPaymentReceipt(order);

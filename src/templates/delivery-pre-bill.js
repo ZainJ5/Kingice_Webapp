@@ -151,7 +151,6 @@ export default `<!DOCTYPE html>
     .summary {
       margin-top: 8px;
       text-align: right;
-      background-color: #f9f9f9;
       padding: 6px;
       border-radius: 3px;
       font-size: 10px;
@@ -177,7 +176,6 @@ export default `<!DOCTYPE html>
       padding: 8px;
       border: 1px solid #000;
       border-radius: 3px;
-      background-color: #f9f9f9;
       font-size: 10px;
     }
 

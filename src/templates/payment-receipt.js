@@ -191,7 +191,6 @@ export default `<!DOCTYPE html>
       padding: 4px;
       border: 1px solid #000;
       border-radius: 3px;
-      background-color: #f9f9f9;
       font-size: 10px;
     }
 
