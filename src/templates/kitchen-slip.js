@@ -166,7 +166,6 @@ export default `<html lang="en">
       color: #444;
     }
 
-    /* Prevent breaks and minimize height */
     .kot-container, table, .header, .order-info, .order-type-section, .footer {
       page-break-inside: avoid;
     }
