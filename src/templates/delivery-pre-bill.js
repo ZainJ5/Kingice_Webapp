@@ -1,46 +1,74 @@
-export default `<html lang="en">
+export default `<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Delivery Pre-Bill</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap');
+    @page {
+      size: 72mm auto;
+      margin: 0;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-weight: bold;
+    }
 
     body {
-      font-family: 'Open Sans', sans-serif;
+      font-family: Arial, sans-serif;
       margin: 0;
       padding: 8px;
       width: 72mm; /* Standard thermal receipt width */
-      font-size: 9px;
-      line-height: 1.4;
-      color: #333;
+      font-size: 11px;
+      line-height: 1.2;
+      color: #000;
+      font-weight: 900;
+    }
+
+    @media print {
+      body {
+        width: 72mm;
+        margin: 0 !important;
+        padding: 8px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      
+      * {
+        font-weight: 900 !important;
+      }
     }
 
     .receipt-container {
-      border: 1px solid #ddd;
+      border: 1px solid #000;
       padding: 8px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       background-color: white;
+      width: 100%;
+      overflow: hidden;
     }
 
     .header {
       text-align: center;
       margin-bottom: 8px;
       padding-bottom: 8px;
-      border-bottom: 1px dashed #ccc;
+      border-bottom: 1px dashed #000;
     }
 
     .restaurant-name {
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 700;
-      font-size: 14px;
+      font-weight: 900;
+      font-size: 16px;
       letter-spacing: 1px;
       margin-bottom: 4px;
     }
 
     .restaurant-info {
-      font-size: 8px;
-      color: #555;
+      font-size: 10px;
+      color: #000;
     }
 
     .title-container {
@@ -49,11 +77,10 @@ export default `<html lang="en">
     }
 
     .receipt-title {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 900;
       color: white;
-      background-color: #222;
+      background-color: #000;
       padding: 6px 0;
       letter-spacing: 1px;
       border-radius: 3px;
@@ -66,7 +93,8 @@ export default `<html lang="en">
       justify-content: space-between;
       margin: 8px 0;
       padding: 6px 0;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #000;
+      font-size: 11px;
     }
 
     .order-details div {
@@ -74,48 +102,50 @@ export default `<html lang="en">
     }
 
     .section-title {
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 600;
-      font-size: 9px;
+      font-weight: 900;
+      font-size: 12px;
       margin-top: 8px;
       margin-bottom: 4px;
-      color: #222;
+      color: #000;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
       margin: 8px 0;
-      font-size: 8px;
+      font-size: 11px;
     }
 
     th {
-      font-weight: 600;
+      font-weight: 900;
       text-align: left;
       padding: 4px 2px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 2px solid #000;
       text-transform: uppercase;
-      font-size: 7px;
-      color: #555;
+      font-size: 10px;
+      color: #000;
     }
 
     td {
       padding: 3px 2px;
-      border-bottom: 1px dotted #eee;
+      border-bottom: 1px solid #000;
+      font-size: 11px;
     }
     
     .item-modifiers {
-      font-size: 7px;
+      font-size: 10px;
       font-style: italic;
-      color: #555;
+      color: #000;
       padding-left: 4px;
+      font-weight: 900;
     }
 
     .item-count {
       margin: 6px 0;
-      font-weight: 600;
+      font-weight: 900;
       display: flex;
       justify-content: space-between;
+      font-size: 11px;
     }
 
     .summary {
@@ -124,6 +154,8 @@ export default `<html lang="en">
       background-color: #f9f9f9;
       padding: 6px;
       border-radius: 3px;
+      font-size: 11px;
+      border: 1px solid #000;
     }
 
     .summary div {
@@ -131,21 +163,22 @@ export default `<html lang="en">
     }
 
     .bill-amount {
-      background-color: #222;
+      background-color: #000;
       color: #fff;
       padding: 6px;
       margin-top: 5px;
       border-radius: 3px;
-      font-size: 10px;
-      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 900;
     }
 
     .customer-info {
       margin-top: 10px;
       padding: 8px;
-      border: 1px solid #ddd;
+      border: 1px solid #000;
       border-radius: 3px;
       background-color: #f9f9f9;
+      font-size: 11px;
     }
 
     .customer-info div {
@@ -153,8 +186,8 @@ export default `<html lang="en">
     }
 
     .bold {
-      font-weight: 600;
-      color: #222;
+      font-weight: 900;
+      color: #000;
     }
 
     .text-right {
@@ -164,16 +197,16 @@ export default `<html lang="en">
     .footer {
       margin-top: 10px;
       text-align: center;
-      font-size: 8px;
-      font-style: italic;
-      color: #777;
+      font-size: 10px;
+      font-weight: 900;
+      color: #000;
       padding-top: 6px;
-      border-top: 1px dashed #ccc;
+      border-top: 1px dashed #000;
     }
 
     .print-info {
-      font-size: 7px;
-      color: #888;
+      font-size: 10px;
+      color: #000;
       text-align: center;
       margin-top: 8px;
       font-style: italic;
@@ -197,13 +230,10 @@ export default `<html lang="en">
         <div><span class="bold">ORDER #: </span>{{orderNumber}}</div>
         <div><span class="bold">TYPE: </span>{{orderType}}</div>
         <div><span class="bold">Customer: </span>{{customerName}}</div>
-        <div><span class="bold">Cashier: </span>General</div>
       </div>
       <div>
         <div><span class="bold">Date: </span>{{currentDate}}</div>
         <div><span class="bold">Time: </span>{{currentTime}}</div>
-        <div><span class="bold">Rider: </span>General</div>
-        <div><span class="bold">Covers: </span>1</div>
       </div>
     </div>
 
@@ -231,7 +261,7 @@ export default `<html lang="en">
     <div class="summary">
       <div><span class="bold">Sales Tax: </span>{{tax}}</div>
       <div><span class="bold">Delivery Charges: </span>{{deliveryFee}}</div>
-      <div><span class="bold">Discount {{discountPercentage}}%: </span>{{discount}}</div>
+      <div><span class="bold">Discount: </span>{{discount}}</div>
       <div class="bill-amount">
         <span class="bold">BILL AMOUNT: </span>{{total}}
       </div>
@@ -241,8 +271,8 @@ export default `<html lang="en">
       <div><span class="bold">Customer Name & Contact: </span>{{customerName}}</div>
       <div>{{mobileNumber}}</div>
       <div><span class="bold">Complete Address: </span>{{deliveryAddress}}</div>
-      <div><span class="bold">Instruction: </span>{{paymentInstructions}}</div>
     </div>
+  </div>
 
   <script>
     window.onload = function() {

@@ -346,13 +346,11 @@ export default function OrderList() {
         return updatedCache;
       });
 
-      // Update order details cache
       setOrderDetailsCache(prev => ({
         ...prev,
         [orderId]: updatedOrder
       }));
 
-      // Update selected order if it's the current one
       if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
         setSelectedOrder(updatedOrder);
       }
@@ -489,76 +487,93 @@ export default function OrderList() {
     return rangeWithDots.filter((page, index, arr) => arr.indexOf(page) === index);
   }, [currentPage, totalPages]);
 
-  const printKitchenSlip = useCallback(async (order) => {
-    let orderToPrint = order;
+const printKitchenSlip = useCallback(async (order) => {
+  let orderToPrint = order;
 
-    if (!order.items) {
-      const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
-      if (!fullOrder) {
-        console.error("Could not fetch order details for kitchen slip");
-        return;
-      }
-      orderToPrint = fullOrder;
-    }
-
-    const orderNumber = orderToPrint.orderNo || "N/A";
-    const ticketNumber = Math.floor(10000 + Math.random() * 90000);
-    const currentDate = new Date().toLocaleDateString();
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
-
-    const itemsList = orderToPrint.items.map((item) => {
-      const itemName = item.title || item.name || "Unknown Item";
-      const quantity = item.quantity || 1;
-      
-      let modifiersHtml = '';
-      
-      if (item.selectedVariation && item.selectedVariation.name) {
-        modifiersHtml += `<div class="modifiers">Variation: ${item.selectedVariation.name}</div>`;
-      } else if (item.type) {
-        modifiersHtml += `<div class="modifiers">Type: ${item.type}</div>`;
-      }
-      
-      if (item.selectedExtras && item.selectedExtras.length > 0) {
-        modifiersHtml += `<div class="modifiers">Extras: ${item.selectedExtras.map(e => e.name).join(', ')}</div>`;
-      }
-      
-      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
-        modifiersHtml += `<div class="modifiers">Side Orders: ${item.selectedSideOrders.map(s => s.name).join(', ')}</div>`;
-      }
-      
-      if (item.specialInstructions) {
-        modifiersHtml += `<div class="modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
-      }
-
-      return `
-        <tr>
-          <td style="padding: 3px 0; border-top: 1px dashed #aaa;">
-            ${itemName}
-            ${modifiersHtml}
-          </td>
-          <td style="padding: 3px 0; border-top: 1px dashed #aaa; text-align: center;">${quantity}</td>
-        </tr>
-      `;
-    }).join('');
-
-    let htmlContent = kitchenSlipTemplate
-      .replace(/{{ticketNumber}}/g, ticketNumber)
-      .replace(/{{orderNumber}}/g, orderNumber)
-      .replace(/{{currentDate}}/g, currentDate)
-      .replace(/{{currentTime}}/g, currentTime)
-      .replace(/{{orderType}}/g, orderType)
-      .replace(/{{itemsList}}/g, itemsList);
-
-    const newWindow = window.open("", "_blank", "width=300,height=600");
-    if (!newWindow) {
-      console.error("Couldn't open new window for kitchen slip printing");
+  if (!order.items) {
+    const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+    if (!fullOrder) {
+      console.error("Could not fetch order details for kitchen slip");
       return;
     }
+    orderToPrint = fullOrder;
+  }
 
-    newWindow.document.write(htmlContent);
-    newWindow.document.close();
-  }, [fetchOrderDetails]);
+  const orderNumber = orderToPrint.orderNo || "N/A";
+  const ticketNumber = Math.floor(10000 + Math.random() * 90000);
+  const currentDate = new Date().toLocaleDateString();
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
+
+  const specialInstructions = [];
+
+  const itemsList = orderToPrint.items.map((item, index, array) => {
+    const itemName = item.title || item.name || "Unknown Item";
+    const quantity = item.quantity || 1;
+    
+    let modifiersHtml = '';
+    
+    if (item.selectedVariation && item.selectedVariation.name) {
+      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
+    } else if (item.type) {
+      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
+    }
+    
+    if (item.selectedExtras && item.selectedExtras.length > 0) {
+      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Extras: ${item.selectedExtras.map(e => e.name).join(', ')}</div>`;
+    }
+    
+    if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Side Orders: ${item.selectedSideOrders.map(s => s.name).join(', ')}</div>`;
+    }
+    
+    if (item.specialInstructions) {
+      specialInstructions.push(`${itemName}: ${item.specialInstructions}`);
+    }
+
+    const isLastItem = index === array.length - 1;
+    const borderStyle = isLastItem ? "border-bottom: none;" : "";
+
+    return `
+      <tr>
+        <td style="padding: 8px 0; border-top: 1px dashed black; ${borderStyle}">
+          ${itemName}
+          ${modifiersHtml}
+        </td>
+        <td style="padding: 8px 0; border-top: 1px dashed black; text-align: center; ${borderStyle}">${quantity}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const instructionsRow = specialInstructions.length > 0 ? 
+    `<tr>
+      <td colspan="2" style="border-bottom: none; padding-top: 10px;">
+        <div style="font-weight: bold; text-decoration: underline; margin-bottom: 5px;">SPECIAL INSTRUCTIONS:</div>
+        ${specialInstructions.map(instruction => 
+          `<div style="color: #cc0000; margin: 5px 0;">${instruction}</div>`
+        ).join('')}
+      </td>
+    </tr>` : '';
+
+  const tableContent = itemsList + instructionsRow;
+
+  let htmlContent = kitchenSlipTemplate
+    .replace(/{{ticketNumber}}/g, ticketNumber)
+    .replace(/{{orderNumber}}/g, orderNumber)
+    .replace(/{{currentDate}}/g, currentDate)
+    .replace(/{{currentTime}}/g, currentTime)
+    .replace(/{{orderType}}/g, orderType)
+    .replace(/{{itemsList}}/g, tableContent);
+  
+  const newWindow = window.open("", "_blank", "width=300,height=600");
+  if (!newWindow) {
+    console.error("Couldn't open new window for kitchen slip printing");
+    return;
+  }
+
+  newWindow.document.write(htmlContent);
+  newWindow.document.close();
+}, [fetchOrderDetails]);
 
   const printDeliveryPreBill = useCallback(async (order) => {
     let orderToPrint = order;
@@ -593,7 +608,6 @@ export default function OrderList() {
     const itemCount = orderToPrint.items.length;
 
     const itemRows = orderToPrint.items.map((item, index) => {
-      // Get item details from new schema
       const itemName = item.title || item.name || "Unknown Item";
       const quantity = item.quantity || 1;
       const price = extractValue(item.price) || 0;
@@ -601,28 +615,24 @@ export default function OrderList() {
       
       let modifiersHtml = '';
       
-      // Add variation info
       if (item.selectedVariation) {
         modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
       } else if (item.type) {
         modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
       }
       
-      // Add extras info
       if (item.selectedExtras && item.selectedExtras.length > 0) {
         item.selectedExtras.forEach(extra => {
           modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
         });
       }
       
-      // Add side orders info
       if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
         item.selectedSideOrders.forEach(sideOrder => {
           modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
         });
       }
       
-      // Add special instructions if any
       if (item.specialInstructions) {
         modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
       }
@@ -641,7 +651,6 @@ export default function OrderList() {
       `;
     }).join('');
 
-    // Use template and replace placeholders
     let htmlContent = deliveryPreBillTemplate
       .replace(/{{orderNumber}}/g, orderNumber)
       .replace(/{{orderType}}/g, orderType)
@@ -699,7 +708,6 @@ export default function OrderList() {
     const itemCount = orderToPrint.items.length;
 
     const itemRows = orderToPrint.items.map((item, index) => {
-      // Get item details from new schema
       const itemName = item.title || item.name || "Unknown Item";
       const quantity = item.quantity || 1;
       const price = extractValue(item.price) || 0;
@@ -707,28 +715,24 @@ export default function OrderList() {
       
       let modifiersHtml = '';
       
-      // Add variation info
       if (item.selectedVariation) {
         modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
       } else if (item.type) {
         modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
       }
       
-      // Add extras info
       if (item.selectedExtras && item.selectedExtras.length > 0) {
         item.selectedExtras.forEach(extra => {
           modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
         });
       }
       
-      // Add side orders info
       if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
         item.selectedSideOrders.forEach(sideOrder => {
           modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
         });
       }
       
-      // Add special instructions if any
       if (item.specialInstructions) {
         modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
       }
@@ -747,7 +751,6 @@ export default function OrderList() {
       `;
     }).join('');
 
-    // Use template and replace placeholders
     let htmlContent = paymentReceiptTemplate
       .replace(/{{orderNumber}}/g, orderNumber)
       .replace(/{{orderType}}/g, orderType)
