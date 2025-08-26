@@ -597,7 +597,7 @@ const printDeliveryPreBill = useCallback(async (order) => {
   const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
   const customerName = orderToPrint.fullName || '';
   const mobileNumber = orderToPrint.mobileNumber || '';
-  const alternateMobile = orderToPrint.alternateMobile ? `Alt: ${orderToPrint.alternateMobile}` : '';
+  const alternateMobile = orderToPrint.alternateMobile || '';
   const deliveryAddress = orderToPrint.deliveryAddress || '';
   const paymentInstructions = orderToPrint.paymentInstructions || '----';
 
@@ -670,7 +670,8 @@ const printDeliveryPreBill = useCallback(async (order) => {
     .replace(/{{discountPercentage}}/g, discountPercentage)
     .replace(/{{discount}}/g, discount)
     .replace(/{{total}}/g, total)
-    .replace(/{{mobileNumber}}/g, `${mobileNumber}${alternateMobile ? ' / ' + alternateMobile : ''}`)
+    .replace(/{{mobileNumber}}/g, mobileNumber)
+    .replace(/{{alternateMobile}}/g, alternateMobile)
     .replace(/{{deliveryAddress}}/g, deliveryAddress)
     .replace(/{{paymentInstructions}}/g, paymentInstructions);
 
@@ -699,7 +700,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
   const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
   const customerName = orderToPrint.fullName || '';
   const mobileNumber = orderToPrint.mobileNumber || '';
-  const alternateMobile = orderToPrint.alternateMobile ? `Alt: ${orderToPrint.alternateMobile}` : '';
+  const alternateMobile = orderToPrint.alternateMobile || '';
   const deliveryAddress = orderToPrint.deliveryAddress || '';
   const paymentInstructions = orderToPrint.paymentInstructions || '----';
 
@@ -770,7 +771,8 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
     .replace(/{{total}}/g, total)
     .replace(/{{paymentMethod}}/g, paymentMethod)
     .replace(/{{changeRequest}}/g, changeRequest)
-    .replace(/{{mobileNumber}}/g, `${mobileNumber}${alternateMobile ? ' / ' + alternateMobile : ''}`)
+    .replace(/{{mobileNumber}}/g, mobileNumber)
+    .replace(/{{alternateMobile}}/g, alternateMobile)
     .replace(/{{deliveryAddress}}/g, deliveryAddress)
     .replace(/{{paymentInstructions}}/g, paymentInstructions);
 

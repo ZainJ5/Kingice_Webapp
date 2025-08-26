@@ -265,8 +265,9 @@ export default `<!DOCTYPE html>
     </div>
 
     <div class="customer-info">
-      <div><span class="bold">Customer Name & Contact: </span>{{customerName}}</div>
-      <div>{{mobileNumber}}</div>
+      <div><span class="bold">Customer Name: </span>{{customerName}}</div>
+      <div><span class="bold">Contact: </span>{{mobileNumber}}</div>
+      <div><span class="bold">Alternative: </span>{{alternateMobile}}</div>
       <div><span class="bold">Complete Address: </span>{{deliveryAddress}}</div>
     </div>
   </div>

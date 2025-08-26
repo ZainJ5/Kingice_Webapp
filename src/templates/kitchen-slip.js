@@ -69,17 +69,24 @@ export default `<!DOCTYPE html>
 
     .order-info {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
       border-top: 1px dashed #000;
       border-bottom: 1px dashed #000;
       font-size: 10px;
       padding: 6px 2px;
     }
-
-    .order-info div {
-      width: 50%;
+    
+    .order-number {
+      font-size: 14px;
+      font-weight: 900;
     }
     
+    .date-time {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+    }
+
     .order-info .right-align {
       text-align: left;
     }
@@ -145,12 +152,10 @@ export default `<!DOCTYPE html>
     </div>
 
     <div class="order-info">
-      <div>
-        <div>ORDER #: {{orderNumber}}</div>
-      </div>
-      <div class="right-align">
-        <div><span class="bold">DATE:</span> {{currentDate}}</div></br>
-        <div><span class="bold">TIME:</span> {{currentTime}}</div>
+      <div class="order-number">ORDER #: {{orderNumber}}</div>
+      <div class="date-time">
+        <div>DATE: {{currentDate}}</div>
+        <div>TIME: {{currentTime}}</div>
       </div>
     </div>
 
