@@ -507,6 +507,10 @@ const printKitchenSlip = useCallback(async (order) => {
 
   const specialInstructions = [];
 
+  if (orderToPrint.paymentInstructions && orderToPrint.paymentInstructions.trim() !== '----' && orderToPrint.paymentInstructions.trim() !== '') {
+    specialInstructions.push(`Order Instructions: ${orderToPrint.paymentInstructions.trim()}`);
+  }
+
   const itemsList = orderToPrint.items.map((item, index, array) => {
     const itemName = item.title || item.name || "Unknown Item";
     const quantity = item.quantity || 1;
@@ -527,7 +531,7 @@ const printKitchenSlip = useCallback(async (order) => {
       modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Side Orders: ${item.selectedSideOrders.map(s => s.name).join(', ')}</div>`;
     }
     
-    if (item.specialInstructions) {
+    if (item.specialInstructions && item.specialInstructions.trim() !== '') {
       specialInstructions.push(`${itemName}: ${item.specialInstructions}`);
     }
 
