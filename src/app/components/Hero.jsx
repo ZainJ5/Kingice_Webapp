@@ -87,7 +87,7 @@ function Header() {
           </div>
         </Link>
       )}
-      <div className="container mx-auto flex justify-between px-2 items-center">
+      <div className="container mx-auto flex justify-between px-2 py-1 items-center">
         <div className="flex items-center space-x-1 sm:space-x-2 relative" ref={dropdownRef}>
           <button 
             className="flex items-center bg-black rounded-lg text-white px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
