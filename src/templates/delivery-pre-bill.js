@@ -268,6 +268,7 @@ export default `<!DOCTYPE html>
       <div><span class="bold">Contact: </span>{{mobileNumber}}</div>
       <div><span class="bold">Alternative: </span>{{alternateMobile}}</div>
       <div><span class="bold">Complete Address: </span>{{deliveryAddress}}</div>
+      <div><span class="bold">Nearest Landmark: </span>{{nearestLandmark}}</div>
     </div>
   </div>
 
