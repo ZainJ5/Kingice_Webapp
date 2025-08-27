@@ -25,12 +25,35 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState("all");
   
   useEffect(() => {
-    const loadOrders = () => {
+    const loadOrders = async () => {
       setLoading(true);
       try {
         if (typeof window !== "undefined") {
           const orderHistory = JSON.parse(localStorage.getItem("orderHistory") || "[]");
-          setOrders(orderHistory);
+          
+          const updatedOrders = [];
+          
+          for (const order of orderHistory) {
+            try {
+              const response = await fetch(`/api/orders/${order._id}`);
+              if (response.ok) {
+                const updatedOrder = await response.json();
+                updatedOrders.push({
+                  ...order,
+                  status: updatedOrder.status
+                });
+              } else {
+                updatedOrders.push(order);
+              }
+            } catch (error) {
+              console.error(`Error fetching order ${order._id}:`, error);
+              updatedOrders.push(order);
+            }
+          }
+          
+          setOrders(updatedOrders);
+          
+          localStorage.setItem("orderHistory", JSON.stringify(updatedOrders));
         }
       } catch (error) {
         console.error("Error loading orders:", error);
@@ -63,7 +86,7 @@ export default function OrdersPage() {
 
   const filteredOrders = filter === "all" 
     ? sortedOrders 
-    : sortedOrders.filter(order => order.status.toLowerCase() === filter.toLowerCase());
+    : sortedOrders.filter(order => order.status?.toLowerCase() === filter.toLowerCase());
 
   const handleSort = (field) => {
     if (sortField === field) {
