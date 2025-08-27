@@ -1,10 +1,9 @@
-'use client'
-
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { MapPin, Phone, ChevronDown } from 'lucide-react'
+import { MapPin, Phone, ChevronDown, ClipboardList } from 'lucide-react'
 import StickyCartButton from './CartButton' 
 import { useBranchStore } from '../../store/branchStore' 
+import Link from 'next/link'
 
 function Header() {
   const [logo, setLogo] = useState('/logo/logo-1753880016916.png')
@@ -13,6 +12,7 @@ function Header() {
   const [loading, setLoading] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
+  const [hasOrders, setHasOrders] = useState(false)
 
   useEffect(() => {
     const fetchLogo = async () => {
@@ -43,8 +43,17 @@ function Header() {
       }
     }
 
+    // Check if orders exist in localStorage
+    const checkOrderHistory = () => {
+      const orderHistory = localStorage.getItem('orderHistory')
+      if (orderHistory && JSON.parse(orderHistory).length > 0) {
+        setHasOrders(true)
+      }
+    }
+
     fetchLogo()
     fetchBranches()
+    checkOrderHistory()
   }, [branch, setBranch]) 
 
   useEffect(() => {
@@ -66,8 +75,19 @@ function Header() {
   }
 
   return (
-    <header className="w-full bg-white text-black py-2 sm:py-3 px-2 sm:px-4 relative shadow-sm">
-      <div className="container mx-auto flex justify-between items-center">
+    <header className="w-full bg-white text-black  sm:py-3  sm:px-4 relative shadow-sm">
+      {hasOrders && (
+        <Link 
+          href="/orders" 
+          className="sm:hidden block w-full bg-green-600 hover:bg-green-700 text-white  text-center font-bold text-sm shadow-sm"
+        >
+          <div className="flex items-center py-1 justify-center">
+            <ClipboardList className="h-4 w-4 mr-1" />
+            View Order Status
+          </div>
+        </Link>
+      )}
+      <div className="container mx-auto flex justify-between px-2 items-center">
         <div className="flex items-center space-x-1 sm:space-x-2 relative" ref={dropdownRef}>
           <button 
             className="flex items-center bg-black rounded-lg text-white px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
@@ -110,7 +130,7 @@ function Header() {
           </a>
         </div>
 
-        <div className="absolute left-1/2 transform -translate-x-1/2 sm:top-0 top-[-6px] z-10">
+        <div className="absolute left-1/2 transform -translate-x-1/2 sm:top-0 top-[26px] z-10">
           <div className="bg-white rounded-full p-2 sm:w-28 sm:h-28 w-20 h-20 flex items-center justify-center shadow-md">
             <img 
               src={logo}
@@ -121,6 +141,18 @@ function Header() {
         </div>
 
         <div className="flex items-center space-x-1 sm:space-x-2">
+          {/* Orders button - visible on large devices in different position */}
+          {hasOrders && (
+            <div className="hidden sm:block absolute sm:right-48 right-3 top-3">
+              <Link href="/orders">
+                <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-2 sm:px-3 py-1 sm:py-2 rounded-lg text-xs sm:text-sm flex items-center shadow-sm">
+                  <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 mr-1" />
+                  <span className="font-medium">View Order Status</span>
+                </button>
+              </Link>
+            </div>
+          )}
+          
           <a 
             href={`tel:${branch?.phone || '03320222845'}`}
             className="flex sm:hidden items-center bg-black text-white rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
@@ -128,6 +160,7 @@ function Header() {
             <Phone className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
             <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03320222845'}</span>
           </a>
+          
           <div className="fixed top-11 right-3 z-[500]">
             <StickyCartButton className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm" />
           </div>
@@ -295,29 +328,6 @@ export default function Hero() {
             </button>
           </>
         )}
-{/* 
-        {images.length > 1 && (
-          <div className="absolute bottom-4 left-0 right-0 hidden md:flex justify-center space-x-2">
-            {images.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  if (isAnimatingRef.current) return;
-                  isAnimatingRef.current = true;
-                  setPrevious(current);
-                  setCurrent(idx);
-                  setIsAnimating(true);
-                  setTimeout(() => {
-                    setIsAnimating(false);
-                    isAnimatingRef.current = false;
-                  }, 1000);
-                }}
-                className={`w-3 h-3 rounded-full focus:outline-none ${idx === current ? 'bg-red-600' : 'bg-gray-300'
-                  }`}
-              />
-            ))}
-          </div>
-        )} */}
       </div>
     </section>
   )
