@@ -122,11 +122,11 @@ function Header() {
           )}
 
           <a 
-            href={`tel:${branch?.phone || '03320222845'}`}
+            href={`tel:${branch?.phone || '03122754064'}`}
             className="hidden sm:flex items-center bg-black text-white rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
           >
             <Phone className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
-            <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03320222845'}</span>
+            <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03122754064'}</span>
           </a>
         </div>
 
@@ -141,7 +141,6 @@ function Header() {
         </div>
 
         <div className="flex items-center space-x-1 sm:space-x-2">
-          {/* Orders button - visible on large devices in different position */}
           {hasOrders && (
             <div className="hidden sm:block absolute sm:right-48 right-3 top-3">
               <Link href="/order">
@@ -154,11 +153,11 @@ function Header() {
           )}
           
           <a 
-            href={`tel:${branch?.phone || '03320222845'}`}
+            href={`tel:${branch?.phone || '03122754064'}`}
             className="flex sm:hidden items-center bg-black text-white rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm"
           >
             <Phone className="h-4 w-4 sm:h-5 w-5 mr-1 text-white" />
-            <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03320222845'}</span>
+            <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03122754064'}</span>
           </a>
           
           <div className="fixed top-11 right-3 z-[500]">
