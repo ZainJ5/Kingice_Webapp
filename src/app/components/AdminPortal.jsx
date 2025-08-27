@@ -18,6 +18,7 @@ import SettingsPopup from "./SettingsPupup";
 import UserDetails from "./UserDetails";
 import DeliveryPickupSettings from "./DeliveryPickupSettings";
 import DeliveryAreasManager from "./DeliveryAreasManager";
+import CancelledOrderList from "./CancelledOrderList";  // New import
 
 const ConfirmationDialog = ({ title, message, onConfirm, onCancel }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -327,6 +328,8 @@ export default function AdminPortal({ onLogout }) {
         return <DeliveryPickupSettings />;
       case "statistics":
         return <Statistics />;
+      case "cancelledOrders":  // New case
+        return <CancelledOrderList />;
       default:
         return null;
     }
@@ -334,6 +337,7 @@ export default function AdminPortal({ onLogout }) {
 
   const navigationItems = [
     { id: "orders", label: "Orders Management", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+    { id: "cancelledOrders", label: "Cancelled Orders", icon: "M6 18L18 6M6 6l12 12" },  // New item
     { id: "branch", label: "Branch Management", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
     { id: "category", label: "Add Category", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
     { id: "subcategory", label: "Add Subcategory", icon: "M12 6v6m0 0v6m0-6h6m-6 0H6" },
@@ -423,7 +427,6 @@ export default function AdminPortal({ onLogout }) {
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="hidden md:flex flex-col w-64 bg-gradient-to-r from-[#ba0000] to-[#930000] text-white shadow-xl z-10">
-          {/* <div className="flex-1 overflow-y-auto py-4 scrollbar-hide" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}> */}
           <div className="flex-1 overflow-y-auto py-4 scrollbar-hide">
             <div className="px-4 py-2">
               <div className={`mb-6 px-3 py-2.5 rounded-lg ${siteStatus
@@ -597,7 +600,6 @@ export default function AdminPortal({ onLogout }) {
           </div>
         )}
 
-        {/* <main className="flex-1 overflow-y-auto bg-gray-50 scrollbar-hide" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }} > */}
         <main className="flex-1 overflow-y-auto bg-gray-50 scrollbar-hide">
           <div className="max-w-7xl mx-auto p-4 lg:p-6">
             <div className="mb-6 pb-4 border-b border-gray-200">
