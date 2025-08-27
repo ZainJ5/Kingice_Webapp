@@ -110,10 +110,6 @@ OrderSchema.pre('save', async function(next) {
 });
 
 OrderSchema.path('status').validate(function(value) {
-  if (value === 'Dispatched' && !this.riderName) {
-    this.invalidate('riderName', 'Rider name is required when status is Dispatched');
-  }
-  
   if (value === 'Cancel' && !this.cancelReason) {
     this.invalidate('cancelReason', 'Cancel reason is required when status is Cancel');
   }

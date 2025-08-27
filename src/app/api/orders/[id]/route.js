@@ -7,7 +7,6 @@ export async function GET(request, { params }) {
     await connectDB();
     const id = await params.id;    
     
-    // Populate branch information for the full order details
     const order = await Order.findById(id)
       .populate('branch', 'name location contactNumber')
       .lean();
@@ -34,14 +33,6 @@ export async function PATCH(request, { params }) {
     const id = await params.id;    
     const updateData = await request.json();
     
-    // Validation for status updates
-    if (updateData.status === 'Dispatched' && !updateData.riderName) {
-      return NextResponse.json(
-        { message: "Rider name is required when status is Dispatched" },
-        { status: 400 }
-      );
-    }
-    
     if (updateData.status === 'Cancel' && !updateData.cancelReason) {
       return NextResponse.json(
         { message: "Cancel reason is required when status is Cancel" },
@@ -55,9 +46,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
     
-    // Handle special case for updating items array
     if (updateData.items) {
-      // Validate the structure of each item to match the new schema
       for (const item of updateData.items) {
         if (!item.title || !item.price) {
           return NextResponse.json({
@@ -66,7 +55,6 @@ export async function PATCH(request, { params }) {
           });
         }
         
-        // Validate selected variations, extras, and side orders if present
         if (item.selectedVariation && (!item.selectedVariation.name || !item.selectedVariation.price)) {
           return NextResponse.json({
             message: "Selected variation must have name and price",
@@ -97,12 +85,10 @@ export async function PATCH(request, { params }) {
         }
       }
       
-      // Replace the entire items array
       order.items = updateData.items;
       delete updateData.items;
     }
     
-    // Update other fields
     Object.keys(updateData).forEach(key => {
       order[key] = updateData[key];
     });

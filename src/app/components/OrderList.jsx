@@ -309,60 +309,63 @@ export default function OrderList() {
     }
   }, [orderDetailsCache]);
 
-  const updateOrderStatus = useCallback(async (orderId, updateData) => {
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
-      });
+const updateOrderStatus = useCallback(async (orderId, updateData) => {
+  try {
+    const existingOrder = orders.find(order => String(extractValue(order._id)) === orderId);
+    const existingArea = existingOrder ? existingOrder.area : null;
+    
+    const res = await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateData),
+    });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to update order (Status: ${res.status})`);
-      }
-
-      const updatedOrder = await res.json();
-
-      // Update orders in the current view
-      setOrders(prev =>
-        prev.map(order =>
-          String(extractValue(order._id)) === orderId ? updatedOrder : order
-        )
-      );
-
-      // Update cache
-      setPageCache(prevCache => {
-        const updatedCache = { ...prevCache };
-
-        Object.keys(updatedCache).forEach(key => {
-          if (updatedCache[key] && updatedCache[key].orders) {
-            updatedCache[key].orders = updatedCache[key].orders.map(order =>
-              String(extractValue(order._id)) === orderId ? updatedOrder : order
-            );
-          }
-        });
-
-        return updatedCache;
-      });
-
-      setOrderDetailsCache(prev => ({
-        ...prev,
-        [orderId]: updatedOrder
-      }));
-
-      if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
-        setSelectedOrder(updatedOrder);
-      }
-
-      toast.success("Order status updated successfully");
-      return updatedOrder;
-    } catch (error) {
-      console.error("Error updating order:", error);
-      toast.error(error.message || "Failed to update order status");
-      throw error;
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to update order (Status: ${res.status})`);
     }
-  }, [selectedOrder]);
+
+    const updatedOrder = await res.json();
+    
+    updatedOrder.area = updatedOrder.area || existingArea || extractAreaFromAddress(updatedOrder.deliveryAddress) || "N/A";
+
+    setOrders(prev =>
+      prev.map(order =>
+        String(extractValue(order._id)) === orderId ? updatedOrder : order
+      )
+    );
+
+    setPageCache(prevCache => {
+      const updatedCache = { ...prevCache };
+
+      Object.keys(updatedCache).forEach(key => {
+        if (updatedCache[key] && updatedCache[key].orders) {
+          updatedCache[key].orders = updatedCache[key].orders.map(order =>
+            String(extractValue(order._id)) === orderId ? updatedOrder : order
+          );
+        }
+      });
+
+      return updatedCache;
+    });
+
+    setOrderDetailsCache(prev => ({
+      ...prev,
+      [orderId]: updatedOrder
+    }));
+
+    if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
+      setSelectedOrder(updatedOrder);
+    }
+
+    toast.success("Order status updated successfully");
+    return updatedOrder;
+  } catch (error) {
+    console.error("Error updating order:", error);
+    toast.error(error.message || "Failed to update order status");
+    throw error;
+  }
+}, [orders, selectedOrder]);
 
   const deleteOrder = useCallback(async (orderId) => {
     if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
@@ -968,9 +971,31 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                     Rs. {extractValue(order.total) || 0}
                   </td>
                   <td className="p-2 border">
-                    <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)}`}>
-                      {order.status || "Pending"}
-                    </span>
+                    <select
+                      value={order.status || "Pending"}
+                      onChange={async (e) => {
+                        const newStatus = e.target.value;
+                        let updateData = { status: newStatus };
+                        if (newStatus === "Cancel" && order.status !== "Cancel") {
+                          const reason = prompt("Please enter cancellation reason:");
+                          if (!reason) {
+                            e.target.value = order.status || "Pending";
+                            return;
+                          }
+                          updateData.cancelReason = reason;
+                        }
+                        try {
+                          await updateOrderStatus(String(extractValue(order._id)), updateData);
+                        } catch (err) {}
+                      }}
+                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)} w-full text-center`}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In-Process">In-Process</option>
+                      <option value="Dispatched">Dispatched</option>
+                      <option value="Complete">Complete</option>
+                      <option value="Cancel">Cancel</option>
+                    </select>
                   </td>
                   <td className="p-2 border text-center">
                     <button
