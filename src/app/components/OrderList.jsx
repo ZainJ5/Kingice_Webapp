@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Eye, ChevronLeft, ChevronRight, Printer, ArrowUpDown } from "lucide-react";
 import { useSocket } from "../context/SocketContext";
 import { Toaster, toast } from 'react-hot-toast';
-import OrderDetailsModal from "./OrderDetailsModal";
+import OrderDetails from "./OrderDetailsModal";
 
 import kitchenSlipTemplate from '../../templates/kitchen-slip';
 import deliveryPreBillTemplate from '../../templates/delivery-pre-bill';
@@ -109,7 +109,7 @@ export default function OrderList() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
-  const ordersPerPage = 10;
+  const ordersPerPage = 5;
 
   const [dateFilter, setDateFilter] = useState("today");
   const [customDate, setCustomDate] = useState("");
@@ -435,12 +435,13 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
 
   const viewOrderDetails = useCallback(async (order) => {
     if (!order.items) {
-      setSelectedOrder(order);
       setModalLoading(true);
       const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
       setModalLoading(false);
       if (fullOrder) {
         setSelectedOrder(fullOrder);
+      } else {
+        setSelectedOrder(order);
       }
     } else {
       setSelectedOrder(order);
@@ -448,7 +449,7 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
     }
   }, [fetchOrderDetails]);
 
-  const closeModal = useCallback(() => setSelectedOrder(null), []);
+  const closeDetails = useCallback(() => setSelectedOrder(null), []);
 
   const openReceiptModal = useCallback((imageUrl) => {
     setReceiptModal({
@@ -788,10 +789,6 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
   newWindow.document.close();
 }, [fetchOrderDetails, getDeliveryFeeForArea]);
 
-  const printOrderDetails = useCallback(async (order) => {
-    printDeliveryPaymentReceipt(order);
-  }, [printDeliveryPaymentReceipt]);
-
   const refreshOrders = () => {
     fetchOrders(currentPage, true);
   };
@@ -929,7 +926,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
             <th className="p-2 border text-left">Amount</th>
             <th className="p-2 border text-left">Status</th>
             <th className="p-2 border text-left">View</th>
-            <th className="p-2 border text-left">Print</th>
+            <th className="p-2 border text-left">Print Slips</th>
           </tr>
         </thead>
         <tbody>
@@ -1008,13 +1005,29 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                     </button>
                   </td>
                   <td className="p-2 border text-center">
-                    <button
-                      onClick={() => printOrderDetails(order)}
-                      className="text-blue-600 hover:text-blue-800"
-                      aria-label="Print order details"
-                    >
-                      <Printer className="h-5 w-5 inline-block" />
-                    </button>
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => printKitchenSlip(order)}
+                        className="text-green-600 hover:text-green-800"
+                        aria-label="Print kitchen slip"
+                      >
+                        <Printer className="h-5 w-5 inline-block" />
+                      </button>
+                      <button
+                        onClick={() => printDeliveryPreBill(order)}
+                        className="text-blue-600 hover:text-blue-800"
+                        aria-label="Print pre-bill"
+                      >
+                        <Printer className="h-5 w-5 inline-block" />
+                      </button>
+                      <button
+                        onClick={() => printDeliveryPaymentReceipt(order)}
+                        className="text-purple-600 hover:text-purple-800"
+                        aria-label="Print payment receipt"
+                      >
+                        <Printer className="h-5 w-5 inline-block" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -1089,23 +1102,27 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
         </div>
       )}
 
-      <OrderDetailsModal
-        selectedOrder={selectedOrder}
-        modalLoading={modalLoading}
-        closeModal={closeModal}
-        updateOrderStatus={updateOrderStatus}
-        deleteOrder={deleteOrder}
-        printKitchenSlip={printKitchenSlip}
-        printDeliveryPreBill={printDeliveryPreBill}
-        printDeliveryPaymentReceipt={printDeliveryPaymentReceipt}
-        openReceiptModal={openReceiptModal}
-        receiptModal={receiptModal}
-        closeReceiptModal={closeReceiptModal}
-        getDeliveryFeeForArea={getDeliveryFeeForArea}
-        extractValue={extractValue}
-        parseItemName={parseItemName}
-        extractAreaFromAddress={extractAreaFromAddress}
-      />
+      {selectedOrder && (
+        <div className="mt-8 border rounded-lg shadow-lg bg-white">
+          <OrderDetails
+            selectedOrder={selectedOrder}
+            modalLoading={modalLoading}
+            closeDetails={closeDetails}
+            updateOrderStatus={updateOrderStatus}
+            deleteOrder={deleteOrder}
+            printKitchenSlip={printKitchenSlip}
+            printDeliveryPreBill={printDeliveryPreBill}
+            printDeliveryPaymentReceipt={printDeliveryPaymentReceipt}
+            openReceiptModal={openReceiptModal}
+            receiptModal={receiptModal}
+            closeReceiptModal={closeReceiptModal}
+            getDeliveryFeeForArea={getDeliveryFeeForArea}
+            extractValue={extractValue}
+            parseItemName={parseItemName}
+            extractAreaFromAddress={extractAreaFromAddress}
+          />
+        </div>
+      )}
 
       <Toaster position="top-right" />
     </div>

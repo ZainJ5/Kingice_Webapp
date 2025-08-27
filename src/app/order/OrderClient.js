@@ -58,7 +58,6 @@ function OrderDetailContent() {
   const fetchOrderDetails = async (orderId) => {
     setLoading(true);
     try {
-      // Fetch order details from API
       const response = await fetch(`/api/orders/${orderId}`);
       
       if (!response.ok) {
@@ -72,12 +71,10 @@ function OrderDetailContent() {
       const data = await response.json();
       setOrderDetails(data);
       
-      // If we have branch info in the order, extract it
       if (data.branch) {
         if (typeof data.branch === 'object' && data.branch.name) {
           setBranchInfo(data.branch);
         } else if (typeof data.branch === 'string') {
-          // If branch is just an ID, fetch the branch details
           fetchBranchInfo(data.branch);
         }
       }
@@ -479,7 +476,6 @@ function OrderDetailContent() {
             </div>
           </div>
 
-          {/* Gift information if applicable */}
           {orderDetails.isGift && orderDetails.giftMessage && (
             <div className="px-6 py-4 bg-pink-50 border-t border-pink-100">
               <div className="flex items-center mb-2">
@@ -494,7 +490,6 @@ function OrderDetailContent() {
             </div>
           )}
 
-          {/* Order items */}
           <div className="px-6 py-5 border-t border-gray-200">
             <h3 className="text-base font-semibold text-gray-900 mb-4">Order Items</h3>
             <div className="overflow-x-auto">
@@ -596,7 +591,6 @@ function OrderDetailContent() {
                     </div>
                   )}
                   
-                  {/* Show promo code if available */}
                   {orderDetails.promoCode && (
                     <div className="flex justify-between text-green-600">
                       <span>Promo Code:</span>
@@ -615,7 +609,6 @@ function OrderDetailContent() {
             </div>
           </div>
           
-          {/* Order actions */}
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between space-x-4">
             <Link
               href="/orders"
@@ -697,7 +690,6 @@ function OrderDetailContent() {
         </div>
       </footer>
       
-      {/* Print specific styles */}
       <style jsx global>{`
         @media print {
           header, nav, footer, .no-print {
