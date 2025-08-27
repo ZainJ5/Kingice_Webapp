@@ -621,7 +621,7 @@ const printDeliveryPreBill = useCallback(async (order) => {
     let modifiersHtml = '';
     
     if (item.selectedVariation) {
-      modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+      // modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
     } else if (item.type) {
       modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
     }
@@ -723,7 +723,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
     let modifiersHtml = '';
     
     if (item.selectedVariation) {
-      modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+      // modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
     } else if (item.type) {
       modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
     }
