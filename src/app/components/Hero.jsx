@@ -78,7 +78,7 @@ function Header() {
     <header className="w-full bg-white text-black  sm:py-3  sm:px-4 relative shadow-sm">
       {hasOrders && (
         <Link 
-          href="/orders" 
+          href="/order" 
           className="sm:hidden block w-full bg-green-600 hover:bg-green-700 text-white  text-center font-bold text-sm shadow-sm"
         >
           <div className="flex items-center py-1 justify-center">
@@ -144,7 +144,7 @@ function Header() {
           {/* Orders button - visible on large devices in different position */}
           {hasOrders && (
             <div className="hidden sm:block absolute sm:right-48 right-3 top-3">
-              <Link href="/orders">
+              <Link href="/order">
                 <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-2 sm:px-3 py-1 sm:py-2 rounded-lg text-xs sm:text-sm flex items-center shadow-sm">
                   <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 mr-1" />
                   <span className="font-medium">View Order Status</span>
