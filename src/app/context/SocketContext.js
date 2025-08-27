@@ -45,7 +45,7 @@ export function SocketProvider({ children, isAdmin = false, onNewOrder }) {
         }
         
         toast.success(`New order received from ${order.fullName}`, {
-          duration: 5000,
+          duration: 10000,
           position: 'top-right',
         });
         

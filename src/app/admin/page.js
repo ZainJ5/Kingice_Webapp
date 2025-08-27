@@ -189,7 +189,9 @@ export default function AdminPage() {
   }, [fetchOrderDetails]);
 
   const handleNewOrder = useCallback((order) => {
-    printKitchenSlip(order);
+    setTimeout(() => {
+      printKitchenSlip(order);
+    }, 2000);
   }, [printKitchenSlip]);
 
   return (
