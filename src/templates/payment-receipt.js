@@ -19,7 +19,7 @@ export default `<!DOCTYPE html>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 8px;
+      padding: 4px;
       width: 72mm; /* Standard thermal receipt width */
       font-size: 10px;
       line-height: 1.1;
@@ -43,8 +43,7 @@ export default `<!DOCTYPE html>
     }
 
     .receipt-container {
-      border: 1px solid #000;
-      padding: 8px;
+      padding: 4px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       background-color: white;
       width: 100%;
