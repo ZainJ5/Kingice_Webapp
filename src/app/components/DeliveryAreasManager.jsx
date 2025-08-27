@@ -8,7 +8,11 @@ export default function DeliveryAreasManager() {
   const [name, setName] = useState("");
   const [fee, setFee] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [editName, setEditName] = useState("");
+  const [editFee, setEditFee] = useState("");
+  const [editIsActive, setEditIsActive] = useState(true);
   const [editingArea, setEditingArea] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -43,10 +47,8 @@ export default function DeliveryAreasManager() {
     setIsLoading(true);
     try {
       const url = "/api/delivery-areas";
-      const method = editingArea ? "PUT" : "POST";
-      const body = editingArea 
-        ? JSON.stringify({ _id: editingArea._id, name, fee: Number(fee), isActive }) 
-        : JSON.stringify({ name, fee: Number(fee), isActive });
+      const method = "POST";
+      const body = JSON.stringify({ name, fee: Number(fee), isActive });
 
       const res = await fetch(url, {
         method,
@@ -55,19 +57,54 @@ export default function DeliveryAreasManager() {
       });
 
       if (res.ok) {
-        toast.success(`Delivery area ${editingArea ? "updated" : "added"} successfully`);
+        toast.success(`Delivery area added successfully`);
         setName("");
         setFee("");
         setIsActive(true);
+        fetchAreas();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || `Failed to add delivery area`);
+      }
+    } catch (error) {
+      console.error(`Error adding delivery area:`, error);
+      toast.error(`Error adding delivery area`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editName.trim() || isNaN(editFee) || Number(editFee) < 0) {
+      toast.error("Please enter a valid name and fee");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const url = "/api/delivery-areas";
+      const method = "PUT";
+      const body = JSON.stringify({ _id: editingArea._id, name: editName, fee: Number(editFee), isActive: editIsActive });
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+
+      if (res.ok) {
+        toast.success(`Delivery area updated successfully`);
+        setIsModalOpen(false);
         setEditingArea(null);
         fetchAreas();
       } else {
         const data = await res.json();
-        toast.error(data.error || `Failed to ${editingArea ? "update" : "add"} delivery area`);
+        toast.error(data.error || `Failed to update delivery area`);
       }
     } catch (error) {
-      console.error(`Error ${editingArea ? "updating" : "adding"} delivery area:`, error);
-      toast.error(`Error ${editingArea ? "updating" : "adding"} delivery area`);
+      console.error(`Error updating delivery area:`, error);
+      toast.error(`Error updating delivery area`);
     } finally {
       setIsLoading(false);
     }
@@ -103,9 +140,10 @@ export default function DeliveryAreasManager() {
 
   const handleEdit = (area) => {
     setEditingArea(area);
-    setName(area.name);
-    setFee(area.fee);
-    setIsActive(area.isActive !== false); 
+    setEditName(area.name);
+    setEditFee(area.fee.toString());
+    setEditIsActive(area.isActive !== false); 
+    setIsModalOpen(true);
   };
 
   const handleToggleActive = async (area) => {
@@ -138,10 +176,8 @@ export default function DeliveryAreasManager() {
   };
 
   const cancelEdit = () => {
+    setIsModalOpen(false);
     setEditingArea(null);
-    setName("");
-    setFee("");
-    setIsActive(true);
   };
 
   return (
@@ -149,7 +185,7 @@ export default function DeliveryAreasManager() {
       <h3 className="text-lg font-semibold">Manage Delivery Areas</h3>
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-lg font-semibold mb-4">
-          {editingArea ? "Edit Delivery Area" : "Add New Delivery Area"}
+          Add New Delivery Area
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -198,18 +234,8 @@ export default function DeliveryAreasManager() {
             }`}
             disabled={isLoading}
           >
-            {isLoading ? "Processing..." : editingArea ? "Update Area" : "Add Area"}
+            {isLoading ? "Processing..." : "Add Area"}
           </button>
-          {editingArea && (
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-all duration-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-          )}
         </div>
       </form>
 
@@ -278,6 +304,74 @@ export default function DeliveryAreasManager() {
           </div>
         )}
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h2 className="text-lg font-semibold mb-4">Edit Delivery Area</h2>
+            <form onSubmit={handleUpdate}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Area Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                    placeholder="Enter area name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee (Rs.)</label>
+                  <input
+                    type="number"
+                    value={editFee}
+                    onChange={(e) => setEditFee(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                    placeholder="Enter delivery fee"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <div className="flex items-center mt-2">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editIsActive}
+                        onChange={(e) => setEditIsActive(e.target.checked)}
+                        className="form-checkbox h-5 w-5 text-red-600"
+                      />
+                      <span className="ml-2 text-gray-700">Active</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex space-x-4">
+                <button
+                  type="submit"
+                  className={`px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 ${
+                    isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Processing..." : "Update Area"}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-all duration-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
