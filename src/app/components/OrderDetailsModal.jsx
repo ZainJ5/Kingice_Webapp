@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Eye, Printer, CheckCircle, XCircle, Trash2, Save } from "lucide-react";
+import { Eye, Printer, CheckCircle, XCircle, Trash2, Save, MessageCircle } from "lucide-react";
 
 const OrderDetailsSkeleton = () => (
   <div className="animate-pulse space-y-4">
@@ -44,18 +44,10 @@ export default function OrderDetailsModal({
   parseItemName,
   extractAreaFromAddress,
 }) {
-  const [status, setStatus] = useState("");
-  const [riderName, setRiderName] = useState("");
-  const [cancelReason, setCancelReason] = useState("");
-  const [isUpdating, setIsUpdating] = useState(false);
   const [area, setArea] = useState("");
 
   useEffect(() => {
     if (selectedOrder) {
-      setStatus(selectedOrder.status || "Pending");
-      setRiderName(selectedOrder.riderName || "");
-      setCancelReason(selectedOrder.cancelReason || "");
-      
       const extractedArea = selectedOrder.area || 
         (selectedOrder.deliveryAddress ? extractAreaFromAddress(selectedOrder.deliveryAddress) : null);
       
@@ -65,39 +57,24 @@ export default function OrderDetailsModal({
 
   if (!selectedOrder) return null;
 
-  const handleStatusUpdate = async () => {
-    setIsUpdating(true);
-    try {
-      // Create update data object WITHOUT including _id
-      const updateData = { 
-        status
-      };
-      
-      if (status === "Dispatched") {
-        if (!riderName.trim()) {
-          alert("Rider name is required when status is Dispatched");
-          setIsUpdating(false);
-          return;
-        }
-        updateData.riderName = riderName;
-      }
-      
-      if (status === "Cancel") {
-        if (!cancelReason.trim()) {
-          alert("Cancel reason is required when status is Cancel");
-          setIsUpdating(false);
-          return;
-        }
-        updateData.cancelReason = cancelReason;
-      }
-      
-      // Use the ID in the URL path, not in the request body
-      await updateOrderStatus(selectedOrder._id, updateData);
-    } catch (error) {
-      console.error("Failed to update status:", error);
-    } finally {
-      setIsUpdating(false);
+  // Function to format phone number for WhatsApp API
+  const formatPhoneForWhatsApp = (phoneNumber) => {
+    // Remove spaces, dashes, parentheses and other non-digit characters
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    
+    // Add Pakistan country code if not present
+    // Assuming Pakistani numbers - if this isn't the case, you might need additional logic
+    if (cleanNumber.startsWith('0')) {
+      return `92${cleanNumber.substring(1)}`;
     }
+    
+    return cleanNumber;
+  };
+
+  // Function to open WhatsApp chat
+  const openWhatsAppChat = (phoneNumber) => {
+    const formattedNumber = formatPhoneForWhatsApp(phoneNumber);
+    window.open(`https://wa.me/${formattedNumber}`, '_blank');
   };
 
   const getStatusBadgeColor = (status) => {
@@ -171,12 +148,34 @@ export default function OrderDetailsModal({
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Mobile Number:</p>
-                      <p className="font-medium">{selectedOrder.mobileNumber}</p>
+                      <div className="flex items-center">
+                        <p className="font-medium">{selectedOrder.mobileNumber}</p>
+                        <button 
+                          onClick={() => openWhatsAppChat(selectedOrder.mobileNumber)}
+                          className="ml-2 text-green-600 hover:text-green-700"
+                          aria-label="WhatsApp this number"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     {selectedOrder.alternateMobile && (
                       <div>
                         <p className="text-sm text-gray-600">Alternate Mobile:</p>
-                        <p className="font-medium">{selectedOrder.alternateMobile}</p>
+                        <div className="flex items-center">
+                          <p className="font-medium">{selectedOrder.alternateMobile}</p>
+                          <button 
+                            onClick={() => openWhatsAppChat(selectedOrder.alternateMobile)}
+                            className="ml-2 text-green-600 hover:text-green-700"
+                            aria-label="WhatsApp this alternate number"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     )}
                     {selectedOrder.email && (
@@ -226,18 +225,6 @@ export default function OrderDetailsModal({
                       <div>
                         <p className="text-sm text-gray-600">Order Date:</p>
                         <p className="font-medium">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
-                      </div>
-                    )}
-                    {selectedOrder.status === "Dispatched" && selectedOrder.riderName && (
-                      <div>
-                        <p className="text-sm text-gray-600">Rider Name:</p>
-                        <p className="font-medium">{selectedOrder.riderName}</p>
-                      </div>
-                    )}
-                    {selectedOrder.status === "Cancel" && selectedOrder.cancelReason && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-gray-600">Cancel Reason:</p>
-                        <p className="font-medium text-red-600">{selectedOrder.cancelReason}</p>
                       </div>
                     )}
                   </div>
@@ -511,7 +498,7 @@ export default function OrderDetailsModal({
                 <div className="space-y-3">
                   {selectedOrder.paymentInstructions && (
                     <div>
-                      <p className="text-sm text-gray-600 font-medium">Payment Instructions:</p>
+                      <p className="text-sm text-gray-600 font-medium">Order Instructions:</p>
                       <p className="text-sm bg-yellow-50 p-2 rounded border border-yellow-100">
                         {selectedOrder.paymentInstructions}
                       </p>
@@ -545,82 +532,6 @@ export default function OrderDetailsModal({
                       </div>
                     </div>
                   )}
-                </div>
-                
-                {/* Status Update Section */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Update Order Status
-                  </h4>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-600 block mb-1">Status:</label>
-                      <select 
-                        value={status} 
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="In-Process">In-Process</option>
-                        <option value="Dispatched">Dispatched</option>
-                        <option value="Complete">Complete</option>
-                        <option value="Cancel">Cancel</option>
-                      </select>
-                    </div>
-                    
-                    {status === "Dispatched" && (
-                      <div>
-                        <label className="text-sm text-gray-600 block mb-1">Rider Name: <span className="text-red-500">*</span></label>
-                        <input 
-                          type="text" 
-                          value={riderName} 
-                          onChange={(e) => setRiderName(e.target.value)}
-                          placeholder="Enter rider name"
-                          className="w-full border border-gray-300 rounded px-3 py-2"
-                          required
-                        />
-                      </div>
-                    )}
-                    
-                    {status === "Cancel" && (
-                      <div>
-                        <label className="text-sm text-gray-600 block mb-1">Cancel Reason: <span className="text-red-500">*</span></label>
-                        <textarea 
-                          value={cancelReason} 
-                          onChange={(e) => setCancelReason(e.target.value)}
-                          placeholder="Enter reason for cancellation"
-                          className="w-full border border-gray-300 rounded px-3 py-2"
-                          rows="2"
-                          required
-                        ></textarea>
-                      </div>
-                    )}
-                    
-                    <button
-                      onClick={handleStatusUpdate}
-                      disabled={isUpdating}
-                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
-                    >
-                      {isUpdating ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Update Status
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
