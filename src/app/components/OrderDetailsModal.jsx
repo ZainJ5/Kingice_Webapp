@@ -30,7 +30,7 @@ const OrderDetailsSkeleton = () => (
 export default function OrderDetailsModal({
   selectedOrder,
   modalLoading,
-  closeModal,
+  closeDetails,
   updateOrderStatus,
   deleteOrder,
   printKitchenSlip,
@@ -119,7 +119,7 @@ export default function OrderDetailsModal({
           <div className="p-4 border-b flex justify-between items-center bg-red-600 text-white rounded-t-lg">
             <h3 className="text-lg font-bold">Order #{selectedOrder.orderNo || "N/A"}</h3>
             <button
-              onClick={closeModal}
+              onClick={closeDetails}
               className="text-white hover:text-gray-200"
               aria-label="Close"
             >
@@ -197,7 +197,7 @@ export default function OrderDetailsModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <p className="text-sm text-gray-600">Order Number:</p>
-                      <p className="font-medium">king-{selectedOrder.orderNo}</p>
+                      <p className="font-medium">{selectedOrder.orderNo}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Order Type:</p>

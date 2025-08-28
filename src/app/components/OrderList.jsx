@@ -109,12 +109,12 @@ export default function OrderList() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
-  const ordersPerPage = 5;
+  const ordersPerPage = 10;
 
   const [dateFilter, setDateFilter] = useState("today");
   const [customDate, setCustomDate] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [paymentFilter, setPaymentFilter] = useState("all");
 
   const [pageCache, setPageCache] = useState({});
@@ -203,8 +203,10 @@ export default function OrderList() {
         typeFilter,
       });
 
-      if (statusFilter !== "all") {
+      if (statusFilter !== "all" && statusFilter !== "active") {
         params.append("statusFilter", statusFilter);
+      } else if (statusFilter === "active") {
+        params.append("statusFilter", "Pending,In-Process,Dispatched");
       }
 
       if (paymentFilter !== "all") {
@@ -367,6 +369,40 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
   }
 }, [orders, selectedOrder]);
 
+  const removeOrder = useCallback((orderId) => {
+    setOrders(prev => prev.filter(order => String(extractValue(order._id)) !== orderId));
+
+    setPageCache(prevCache => {
+      const updatedCache = { ...prevCache };
+
+      Object.keys(updatedCache).forEach(key => {
+        if (updatedCache[key] && updatedCache[key].orders) {
+          updatedCache[key].orders = updatedCache[key].orders.filter(order =>
+            String(extractValue(order._id)) !== orderId
+          );
+          if (updatedCache[key].totalCount > 0) {
+            updatedCache[key].totalCount -= 1;
+          }
+        }
+      });
+
+      return updatedCache;
+    });
+
+    setTotalOrders(prev => Math.max(0, prev - 1));
+
+    const newTotalPages = Math.ceil((totalOrders - 1) / ordersPerPage);
+    setTotalPages(newTotalPages);
+
+    if (currentPage > newTotalPages && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+
+    if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
+      setSelectedOrder(null);
+    }
+  }, [totalOrders, ordersPerPage, currentPage, selectedOrder]);
+
   const deleteOrder = useCallback(async (orderId) => {
     if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
       return;
@@ -383,26 +419,7 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
         return;
       }
 
-      setOrders(prev =>
-        prev.filter(order => String(extractValue(order._id)) !== orderId)
-      );
-
-      setPageCache(prevCache => {
-        const updatedCache = { ...prevCache };
-
-        Object.keys(updatedCache).forEach(key => {
-          if (updatedCache[key] && updatedCache[key].orders) {
-            updatedCache[key].orders = updatedCache[key].orders.filter(order =>
-              String(extractValue(order._id)) !== orderId
-            );
-            if (updatedCache[key].totalCount > 0) {
-              updatedCache[key].totalCount -= 1;
-            }
-          }
-        });
-
-        return updatedCache;
-      });
+      removeOrder(orderId);
 
       setOrderDetailsCache(prev => {
         const updated = { ...prev };
@@ -410,23 +427,12 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
         return updated;
       });
 
-      setTotalOrders(prev => Math.max(0, prev - 1));
-
-      if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
-        setSelectedOrder(null);
-      }
-
-      const newTotalPages = Math.ceil((totalOrders - 1) / ordersPerPage);
-      if (currentPage > newTotalPages && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      }
-
       toast.success("Order deleted successfully");
     } catch (error) {
       console.error("Error deleting order:", error);
       toast.error("Error deleting order");
     }
-  }, [selectedOrder, totalOrders, currentPage, ordersPerPage]);
+  }, [removeOrder]);
 
   const handlePageChange = useCallback((pageNum) => {
     setCurrentPage(pageNum);
@@ -804,6 +810,27 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
     }
   };
 
+  const statusLevels = {
+    'Pending': 0,
+    'In-Process': 1,
+    'Dispatched': 2,
+    'Complete': 3,
+    'Cancel': 4
+  };
+
+  const formatPhoneForWhatsApp = (phoneNumber) => {
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    if (cleanNumber.startsWith('0')) {
+      return `92${cleanNumber.substring(1)}`;
+    }
+    return cleanNumber;
+  };
+
+  const openWhatsAppChat = (phoneNumber) => {
+    const formattedNumber = formatPhoneForWhatsApp(phoneNumber);
+    window.open(`https://wa.me/${formattedNumber}`, '_blank');
+  };
+
   return (
     <div className="max-w-5xl mx-auto p-6 overflow-auto">
       <div className="flex justify-between items-center mb-6">
@@ -883,6 +910,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
               setStatusFilter(e.target.value);
             }}
           >
+            <option value="active">Active</option>
             <option value="all">All</option>
             <option value="Pending">Pending</option>
             <option value="In-Process">In-Process</option>
@@ -953,12 +981,30 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                 ? order.orderType.charAt(0).toUpperCase() +
                   order.orderType.slice(1)
                 : "Delivery";
+              const currentStatus = order.status || "Pending";
+              const currentLevel = statusLevels[currentStatus];
+              const orderId = String(extractValue(order._id));
 
               return (
                 <tr key={order._id} className="hover:bg-gray-100">
                   <td className="p-2 border">{srNo}</td>
-                  <td className="p-2 border font-medium">king-{order.orderNo || "N/A"}</td>
-                  <td className="p-2 border">{order.fullName}</td>
+                  <td className="p-2 border font-medium">{order.orderNo || "N/A"}</td>
+                  <td className="p-2 border">
+                    <div className="flex items-center gap-2">
+                      {order.fullName}
+                      {order.mobileNumber && (
+                        <button 
+                          onClick={() => openWhatsAppChat(order.mobileNumber)}
+                          className="text-green-600 hover:text-green-700"
+                          aria-label="Contact via WhatsApp"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-2 border text-sm">
                     {formatDateTime(order.createdAt || null)}
                   </td>
@@ -969,29 +1015,41 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                   </td>
                   <td className="p-2 border">
                     <select
-                      value={order.status || "Pending"}
+                      value={currentStatus}
                       onChange={async (e) => {
                         const newStatus = e.target.value;
+                        if (statusLevels[newStatus] < currentLevel && newStatus !== 'Cancel') {
+                          toast.error("Cannot revert to previous status");
+                          e.target.value = currentStatus;
+                          return;
+                        }
                         let updateData = { status: newStatus };
-                        if (newStatus === "Cancel" && order.status !== "Cancel") {
+                        if (newStatus === "Cancel" && currentStatus !== "Cancel") {
                           const reason = prompt("Please enter cancellation reason:");
                           if (!reason) {
-                            e.target.value = order.status || "Pending";
+                            e.target.value = currentStatus;
                             return;
                           }
                           updateData.cancelReason = reason;
                         }
                         try {
-                          await updateOrderStatus(String(extractValue(order._id)), updateData);
+                          const updated = await updateOrderStatus(orderId, updateData);
+                          if (statusFilter === 'active' && (newStatus === 'Complete' || newStatus === 'Cancel')) {
+                            removeOrder(orderId);
+                          }
                         } catch (err) {}
                       }}
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(order.status)} w-full text-center`}
+                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(currentStatus)} w-full text-center`}
                     >
-                      <option value="Pending">Pending</option>
-                      <option value="In-Process">In-Process</option>
-                      <option value="Dispatched">Dispatched</option>
-                      <option value="Complete">Complete</option>
-                      <option value="Cancel">Cancel</option>
+                      {Object.keys(statusLevels).map(status => (
+                        <option 
+                          key={status} 
+                          value={status} 
+                          disabled={(statusLevels[status] < currentLevel && status !== 'Cancel' && status !== currentStatus) || (currentStatus === 'Complete' && status !== 'Cancel' && status !== 'Complete') || (currentStatus === 'Cancel' && status !== 'Cancel')}
+                        >
+                          {status}
+                        </option>
+                      ))}
                     </select>
                   </td>
                   <td className="p-2 border text-center">
@@ -1010,6 +1068,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                         onClick={() => printKitchenSlip(order)}
                         className="text-green-600 hover:text-green-800"
                         aria-label="Print kitchen slip"
+                        title="Kitchen Slip"
                       >
                         <Printer className="h-5 w-5 inline-block" />
                       </button>
@@ -1017,6 +1076,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                         onClick={() => printDeliveryPreBill(order)}
                         className="text-blue-600 hover:text-blue-800"
                         aria-label="Print pre-bill"
+                        title="Pre-Bill Slip"
                       >
                         <Printer className="h-5 w-5 inline-block" />
                       </button>
@@ -1024,6 +1084,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                         onClick={() => printDeliveryPaymentReceipt(order)}
                         className="text-purple-600 hover:text-purple-800"
                         aria-label="Print payment receipt"
+                        title="Payment Receipt Slip"
                       >
                         <Printer className="h-5 w-5 inline-block" />
                       </button>
