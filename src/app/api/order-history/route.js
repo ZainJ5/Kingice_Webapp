@@ -5,7 +5,7 @@ export async function GET() {
   try {
     await connectDB();
 
-    const orders = await Order.find({ status: 'Cancel' })
+    const orders = await Order.find({ status: { $in: ['Complete', 'Cancel'] } })
       .sort({ createdAt: -1 })
       .populate('branch');
 

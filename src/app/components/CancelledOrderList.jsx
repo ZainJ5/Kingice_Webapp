@@ -1,67 +1,258 @@
 import { useEffect, useState } from "react";
+import { Printer, Eye } from "lucide-react"; 
 
-export default function CancelledOrderList() {
+export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState("Today");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchCancelledOrders();
-  }, []);
+    fetchOrderHistory();
+  }, [dateFilter, statusFilter]);
 
-  const fetchCancelledOrders = async () => {
+  const fetchOrderHistory = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/cancelled-orders");
+      const res = await fetch("/api/order-history");
       if (res.ok) {
         const data = await res.json();
         setOrders(data);
+        setError(null);
       } else {
-        console.error("Failed to fetch cancelled orders");
+        setError("Failed to fetch order history");
       }
     } catch (error) {
-      console.error("Error fetching cancelled orders:", error);
+      setError(`Error fetching order history: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const extractValue = (field) => {
+    if (typeof field === "object" && field !== null) {
+      if (field.$numberInt) return parseInt(field.$numberInt, 10);
+      if (field.$numberLong) return parseInt(field.$numberLong, 10);
+      if (field.$oid) return field.$oid;
+      if (field.$date) {
+        if (typeof field.$date === "object" && field.$date.$numberLong) {
+          return new Date(parseInt(field.$date.$numberLong, 10));
+        } else {
+          return new Date(field.$date);
+        }
+      }
+    }
+    return field;
+  };
+
+  const extractAreaFromAddress = (deliveryAddress) => {
+    if (!deliveryAddress) return "N/A";
+    
+    const parts = deliveryAddress.split(',');
+    if (parts.length > 1) {
+      return parts[parts.length - 1].trim();
+    }
+    
+    return "N/A";
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date)) return "Invalid Date";
+      
+      return date.toLocaleDateString('en-US', {
+        month: "numeric",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Error";
+    }
+  };
+
+  const filteredOrders = orders.filter((order) => {
+    if (statusFilter !== "All" && order.status !== statusFilter) return false;
+
+    const orderDate = new Date(order.createdAt);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (dateFilter === "Today") {
+      const twentyFourHoursAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+      return orderDate >= twentyFourHoursAgo;
+    }
+    return true;
+  });
+
+  const handleDelete = async (orderId) => {
+    const password = prompt("Enter password to delete order:");
+    if (password === "admin123") {
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+        if (res.ok) {
+          setOrders(orders.filter((o) => o._id !== orderId));
+        } else {
+          alert("Failed to delete order");
+        }
+      } catch (error) {
+        alert("Error deleting order");
+      }
+    } else {
+      alert("Incorrect password");
+    }
+  };
+
+  const getStatusBadgeColor = (status) => {
+    switch(status) {
+      case "Complete": return "bg-green-100 text-green-800";
+      case "Cancel": return "bg-red-100 text-red-800";
+      case "Pending": return "bg-yellow-100 text-yellow-800";
+      case "In-Process": return "bg-blue-100 text-blue-800";
+      case "Dispatched": return "bg-purple-100 text-purple-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* <h2 className="text-xl font-semibold text-gray-900">Cancelled Orders</h2> */}
-      {orders.length === 0 ? (
-        <p className="text-gray-500">No cancelled orders found.</p>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div key={order._id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-medium text-gray-900">Order #{order.orderNo}</h3>
-                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
-                  Cancelled
-                </span>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                Date: {new Date(order.createdAt).toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600 mb-2">
-                Customer: {order.fullName} ({order.mobileNumber}) 
-              </p>
-              <p className="text-sm text-gray-600 mb-2">
-                Cancel Reason: <span className="font-medium">{order.cancelReason}</span>
-              </p>
-              <p className="text-sm text-gray-600 mb-4">
-                Total: Rs{order.total.toFixed(2)}
-              </p>
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Items:</h4>
-                <ul className="space-y-2">
-                  {order.items.map((item, index) => (
-                    <li key={index} className="text-sm text-gray-700">
-                      {item.quantity} x {item.title} - ${item.price.toFixed(2)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
+    <div className="bg-white rounded-lg">
+      {/* <h1 className="text-black text-2xl font-bold mb-2">Order History</h1>
+      <p className="text-gray-600 text-sm mb-6">
+        Manage your restaurant operations efficiently and effectively.
+      </p> */}
+      
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div className="flex items-center">
+          <span className="text-gray-700 mr-2 font-medium">Date:</span>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+          >
+            <option>Today</option>
+            <option>All</option>
+          </select>
+        </div>
+        
+        <div className="flex items-center">
+          <span className="text-gray-700 mr-2 font-medium">Status:</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+          >
+            <option>All</option>
+            <option>Complete</option>
+            <option>Cancel</option>
+            <option>Pending</option>
+            <option>In-Process</option>
+            <option>Dispatched</option>
+          </select>
+        </div>
+      </div>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
         </div>
       )}
+      
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-100 text-gray-800">
+              <th className="p-3 text-left font-semibold">Sr No</th>
+              <th className="p-3 text-left font-semibold">Order #</th>
+              <th className="p-3 text-left font-semibold">Customer Name</th>
+              <th className="p-3 text-left font-semibold">Date & Time</th>
+              <th className="p-3 text-left font-semibold">Type</th>
+              <th className="p-3 text-left font-semibold">Area</th>
+              <th className="p-3 text-left font-semibold">Amount</th>
+              <th className="p-3 text-left font-semibold">Status</th>
+              <th className="p-3 text-left font-semibold">Reason</th>
+              <th className="p-3 text-left font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array(5).fill(0).map((_, index) => (
+                <tr key={index} className="animate-pulse">
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                  <td className="p-3 border-b"><div className="h-4 bg-gray-200 rounded"></div></td>
+                </tr>
+              ))
+            ) : filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan="10" className="p-4 text-center text-gray-500 border-b">
+                  No orders found.
+                </td>
+              </tr>
+            ) : (
+              filteredOrders.map((order, index) => {
+                const area = order.area || extractAreaFromAddress(order.deliveryAddress);
+                return (
+                  <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-3 border-b">{index + 1}</td>
+                    <td className="p-3 border-b font-medium">
+                      {order.orderNo}
+                    </td>
+                    <td className="p-3 border-b">{order.fullName}</td>
+                    <td className="p-3 border-b text-sm text-gray-600">
+                      {formatDateTime(order.createdAt)}
+                    </td>
+                    <td className="p-3 border-b">
+                      {order.orderType.charAt(0).toUpperCase() + order.orderType.slice(1)}
+                    </td>
+                    <td className="p-3 border-b">{area}</td>
+                    <td className="p-3 border-b font-medium">
+                      Rs. {extractValue(order.total) || order.total}
+                    </td>
+                    <td className="p-3 border-b">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(order.status)}`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="p-3 border-b">
+                      {order.status === "Cancel" && order.cancelReason
+                        ? order.cancelReason
+                        : ""}
+                    </td>
+                    <td className="p-3 border-b">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleDelete(order._id)}
+                          className="text-red-600 hover:text-red-800 font-medium text-xs"
+                          title="Delete Order"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

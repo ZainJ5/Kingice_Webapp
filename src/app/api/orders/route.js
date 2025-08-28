@@ -60,7 +60,8 @@ export async function GET(request) {
     }
 
     if (statusFilter !== 'all') {
-      filter.status = statusFilter;
+      const statuses = statusFilter.split(',');
+      filter.status = { $in: statuses };
     }
 
     if (paymentFilter === 'cod') {
