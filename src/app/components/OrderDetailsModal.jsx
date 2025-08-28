@@ -115,7 +115,7 @@ export default function OrderDetailsModal({
   return (
     <>
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div className="bg-white rounded-lg shadow-lg relative max-w-lg w-full mx-4 max-h-[90vh] flex flex-col">
+        <div className="bg-white rounded-lg shadow-lg relative max-w-lg md:max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
           <div className="p-4 border-b flex justify-between items-center bg-red-600 text-white rounded-t-lg">
             <h3 className="text-lg font-bold">Order #{selectedOrder.orderNo || "N/A"}</h3>
             <button
@@ -129,25 +129,25 @@ export default function OrderDetailsModal({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {modalLoading ? (
               <OrderDetailsSkeleton />
             ) : (
-              <div className="space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <h4 className="text-md font-semibold mb-2 text-gray-700 flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     Customer Information
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-sm text-gray-600">Full Name:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 whitespace-nowrap">Full Name:</p>
                       <p className="font-medium">{selectedOrder.fullName}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Mobile Number:</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 whitespace-nowrap">Mobile Number:</p>
                       <div className="flex items-center">
                         <p className="font-medium">{selectedOrder.mobileNumber}</p>
                         <button 
@@ -162,8 +162,8 @@ export default function OrderDetailsModal({
                       </div>
                     </div>
                     {selectedOrder.alternateMobile && (
-                      <div>
-                        <p className="text-sm text-gray-600">Alternate Mobile:</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-600 whitespace-nowrap">Alternate Mobile:</p>
                         <div className="flex items-center">
                           <p className="font-medium">{selectedOrder.alternateMobile}</p>
                           <button 
@@ -179,75 +179,32 @@ export default function OrderDetailsModal({
                       </div>
                     )}
                     {selectedOrder.email && (
-                      <div>
-                        <p className="text-sm text-gray-600">Email:</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-600 whitespace-nowrap">Email:</p>
                         <p className="font-medium">{selectedOrder.email}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    Order Details
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-sm text-gray-600">Order Number:</p>
-                      <p className="font-medium">{selectedOrder.orderNo}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Order Type:</p>
-                      <p className="font-medium capitalize">
-                        {selectedOrder.orderType || "Delivery"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Order Status:</p>
-                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.status)}`}>
-                        {selectedOrder.status || "Pending"}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Payment Method:</p>
-                      <p className="font-medium">{selectedOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</p>
-                    </div>
-                    {selectedOrder.paymentMethod === "online" && selectedOrder.bankName && (
-                      <div>
-                        <p className="text-sm text-gray-600">Payment Platform:</p>
-                        <p className="font-medium">{selectedOrder.bankName}</p>
-                      </div>
-                    )}
-                    {selectedOrder.createdAt && (
-                      <div>
-                        <p className="text-sm text-gray-600">Order Date:</p>
-                        <p className="font-medium">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 {selectedOrder.orderType === "delivery" && selectedOrder.deliveryAddress && (
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <h4 className="text-md font-semibold mb-2 text-gray-700 flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       Delivery Information
                     </h4>
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-sm text-gray-600">Delivery Address:</p>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <p className="text-sm text-gray-600 whitespace-nowrap">Delivery Address:</p>
                         <p className="font-medium">{selectedOrder.deliveryAddress}</p>
                       </div>
                       
                       {area && (
-                        <div className="flex flex-col">
-                          <p className="text-sm text-gray-600">Area:</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm text-gray-600 whitespace-nowrap">Area:</p>
                           <div className="flex items-center gap-2">
                             <span className="inline-block px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full font-medium">
                               {area}
@@ -260,8 +217,8 @@ export default function OrderDetailsModal({
                       )}
                       
                       {selectedOrder.nearestLandmark && (
-                        <div>
-                          <p className="text-sm text-gray-600">Nearest Landmark:</p>
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <p className="text-sm text-gray-600 whitespace-nowrap">Nearest Landmark:</p>
                           <p className="font-medium">{selectedOrder.nearestLandmark}</p>
                         </div>
                       )}
@@ -270,36 +227,79 @@ export default function OrderDetailsModal({
                 )}
 
                 {selectedOrder.orderType === "pickup" && selectedOrder.pickupTime && (
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <h4 className="text-md font-semibold mb-2 text-gray-700 flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       Pickup Information
                     </h4>
-                    <div>
-                      <p className="text-sm text-gray-600">Pickup Time:</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 whitespace-nowrap">Pickup Time:</p>
                       <p className="font-medium">{selectedOrder.pickupTime}</p>
                     </div>
                   </div>
                 )}
 
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 md:col-span-2">
+                  <h4 className="text-md font-semibold mb-2 text-gray-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    Order Details
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 whitespace-nowrap">Order Number:</p>
+                      <p className="font-medium">{selectedOrder.orderNo}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 whitespace-nowrap">Order Type:</p>
+                      <p className="font-medium capitalize">
+                        {selectedOrder.orderType || "Delivery"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 whitespace-nowrap">Order Status:</p>
+                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.status)}`}>
+                        {selectedOrder.status || "Pending"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 whitespace-nowrap">Payment Method:</p>
+                      <p className="font-medium">{selectedOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</p>
+                    </div>
+                    {selectedOrder.paymentMethod === "online" && selectedOrder.bankName && (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-600 whitespace-nowrap">Payment Platform:</p>
+                        <p className="font-medium">{selectedOrder.bankName}</p>
+                      </div>
+                    )}
+                    {selectedOrder.createdAt && (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-600 whitespace-nowrap">Order Date:</p>
+                        <p className="font-medium">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {selectedOrder.items && (
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 md:col-span-2">
+                    <h4 className="text-md font-semibold mb-2 text-gray-700 flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                       </svg>
                       Order Items
                     </h4>
-                    <div className="mt-2 overflow-x-auto">
+                    <div className="mt-1 overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead>
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                            <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                            <th className="px-3 py-1 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                            <th className="px-3 py-1 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th className="px-3 py-1 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -317,7 +317,7 @@ export default function OrderDetailsModal({
                             return (
                               <React.Fragment key={i}>
                                 <tr>
-                                  <td className="px-3 py-2 text-sm text-gray-900">
+                                  <td className="px-3 py-1 text-sm text-gray-900">
                                     <div className="font-medium">{itemName}</div>
                                     {/* Simple variation (legacy format) */}
                                     {item.type && !item.selectedVariation && (
@@ -333,21 +333,21 @@ export default function OrderDetailsModal({
                                       </div>
                                     )}
                                   </td>
-                                  <td className="px-3 py-2 text-sm text-gray-500 text-center">{quantity}</td>
-                                  <td className="px-3 py-2 text-sm text-gray-500 text-right">Rs. {formatPrice(unitPrice)}</td>
-                                  <td className="px-3 py-2 text-sm font-medium text-gray-900 text-right">Rs. {formatPrice(itemTotal)}</td>
+                                  <td className="px-3 py-1 text-sm text-gray-500 text-center">{quantity}</td>
+                                  <td className="px-3 py-1 text-sm text-gray-500 text-right">Rs. {formatPrice(unitPrice)}</td>
+                                  <td className="px-3 py-1 text-sm font-medium text-gray-900 text-right">Rs. {formatPrice(itemTotal)}</td>
                                 </tr>
                                 
                                 {/* Render modifications based on the new schema */}
                                 {hasModifications(item) && (
                                   <tr>
-                                    <td colSpan="4" className="px-3 py-2">
-                                      <div className="bg-gray-50 rounded p-2 text-xs">
+                                    <td colSpan="4" className="px-3 py-1">
+                                      <div className="bg-gray-50 rounded p-1 text-xs">
                                         {/* Selected Extras (new schema) */}
                                         {item.selectedExtras && item.selectedExtras.length > 0 && (
-                                          <div className="mb-2">
+                                          <div className="mb-1">
                                             <div className="font-medium text-gray-700">Extras:</div>
-                                            <div className="ml-2 space-y-1">
+                                            <div className="ml-2 space-y-0.5">
                                               {item.selectedExtras.map((extra, idx) => (
                                                 <div key={`extra-${idx}`} className="flex justify-between">
                                                   <span>{extra.name}</span>
@@ -360,9 +360,9 @@ export default function OrderDetailsModal({
                                         
                                         {/* Selected Side Orders (new schema) */}
                                         {item.selectedSideOrders && item.selectedSideOrders.length > 0 && (
-                                          <div className="mb-2">
+                                          <div className="mb-1">
                                             <div className="font-medium text-gray-700">Side Orders:</div>
-                                            <div className="ml-2 space-y-1">
+                                            <div className="ml-2 space-y-0.5">
                                               {item.selectedSideOrders.map((sideOrder, idx) => (
                                                 <div key={`side-${idx}`} className="flex justify-between">
                                                   <span>{sideOrder.name}</span>
@@ -376,9 +376,9 @@ export default function OrderDetailsModal({
                                         {/* Handle legacy modifications format if present */}
                                         {item.modifications && item.modifications.length > 0 && (
                                           item.modifications.map((mod, index) => (
-                                            <div key={`mod-${index}`} className="mb-2">
+                                            <div key={`mod-${index}`} className="mb-1">
                                               <div className="font-medium text-gray-700">{mod.type}:</div>
-                                              <div className="ml-2 space-y-1">
+                                              <div className="ml-2 space-y-0.5">
                                                 {mod.items.map((modItem, idx) => (
                                                   <div key={`mod-${index}-${idx}`} className="flex justify-between">
                                                     <span>{modItem.name}</span>
@@ -392,9 +392,9 @@ export default function OrderDetailsModal({
                                         
                                         {/* Handle legacy extras format if present */}
                                         {!item.modifications && !item.selectedExtras && item.extras && item.extras.length > 0 && (
-                                          <div className="mb-2">
+                                          <div className="mb-1">
                                             <div className="font-medium text-gray-700">Extras:</div>
-                                            <div className="ml-2 space-y-1">
+                                            <div className="ml-2 space-y-0.5">
                                               {item.extras.map((extra, idx) => (
                                                 <div key={`legacy-extra-${idx}`} className="flex justify-between">
                                                   <span>{extra.name}</span>
@@ -405,11 +405,11 @@ export default function OrderDetailsModal({
                                           </div>
                                         )}
                                         
-                                        {/* Handle legacy side orders format if present */}
+{/* Handle legacy side orders format if present */}
                                         {!item.modifications && !item.selectedSideOrders && item.sideOrders && item.sideOrders.length > 0 && (
-                                          <div className="mb-2">
+                                          <div className="mb-1">
                                             <div className="font-medium text-gray-700">Side Orders:</div>
-                                            <div className="ml-2 space-y-1">
+                                            <div className="ml-2 space-y-0.5">
                                               {item.sideOrders.map((sideOrder, idx) => (
                                                 <div key={`legacy-side-${idx}`} className="flex justify-between">
                                                   <span>{sideOrder.name}</span>
@@ -422,7 +422,7 @@ export default function OrderDetailsModal({
                                         
                                         {/* Display special instructions if any */}
                                         {item.specialInstructions && (
-                                          <div className="mt-2 pt-2 border-t border-gray-200">
+                                          <div className="mt-1 pt-1 border-t border-gray-200">
                                             <div className="font-medium text-gray-700">Special Instructions:</div>
                                             <div className="ml-2 text-gray-600 italic">{item.specialInstructions}</div>
                                           </div>
@@ -440,14 +440,14 @@ export default function OrderDetailsModal({
                   </div>
                 )}
 
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="text-md font-semibold mb-3 text-gray-700 flex items-center">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 md:col-span-2">
+                  <h4 className="text-md font-semibold mb-2 text-gray-700 flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     Payment Summary
                   </h4>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-0.5 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal:</span>
                       <span className="font-medium">Rs. {formatPrice(extractValue(selectedOrder.subtotal))}</span>
@@ -488,31 +488,31 @@ export default function OrderDetailsModal({
                       </div>
                     )}
                     
-                    <div className="flex justify-between pt-2 border-t border-gray-200 mt-2">
+                    <div className="flex justify-between pt-1 border-t border-gray-200 mt-1">
                       <span className="font-semibold">Total:</span>
                       <span className="font-bold text-red-600">Rs. {formatPrice(extractValue(selectedOrder.total))}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="md:col-span-2 space-y-2">
                   {selectedOrder.paymentInstructions && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">Order Instructions:</p>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <p className="text-sm text-gray-600 font-medium whitespace-nowrap">Order Instructions:</p>
                       <p className="text-sm bg-yellow-50 p-2 rounded border border-yellow-100">
                         {selectedOrder.paymentInstructions}
                       </p>
                     </div>
                   )}
                   {selectedOrder.changeRequest && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">Change Request:</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-600 font-medium whitespace-nowrap">Change Request:</p>
                       <p className="text-sm">Rs. {selectedOrder.changeRequest}</p>
                     </div>
                   )}
                   {selectedOrder.isGift && selectedOrder.giftMessage && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">Gift Message:</p>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <p className="text-sm text-gray-600 font-medium whitespace-nowrap">Gift Message:</p>
                       <p className="text-sm bg-pink-50 p-2 rounded border border-pink-100">
                         {selectedOrder.giftMessage}
                       </p>
@@ -537,9 +537,9 @@ export default function OrderDetailsModal({
             )}
           </div>
 
-          <div className="p-6 border-t">
-            <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2 text-gray-700">Print Options:</h4>
+          <div className="p-4 border-t">
+            <div className="">
+              <h4 className="text-sm font-medium mb-1 text-gray-700">Print Options:</h4>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => printKitchenSlip(selectedOrder)}
@@ -565,8 +565,8 @@ export default function OrderDetailsModal({
               </div>
             </div>
 
-            <div>
-              <h4 className="text-sm font-medium mb-2 text-gray-700">Order Actions:</h4>
+            {/* <div>
+              <h4 className="text-sm font-medium mb-1 text-gray-700">Order Actions:</h4>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => deleteOrder(String(extractValue(selectedOrder._id)))}
@@ -576,7 +576,7 @@ export default function OrderDetailsModal({
                   Delete Order
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

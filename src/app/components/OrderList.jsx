@@ -946,7 +946,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
         <thead className="bg-gray-200">
           <tr>
             <th className="p-2 border text-left">Sr No</th>
-            <th className="p-2 border text-left">Order #</th>
+            <th className="p-2 border text-left">Order</th>
             <th className="p-2 border text-left">Name</th>
             <th className="p-2 border text-left">Date & Time</th>
             <th className="p-2 border text-left">Type</th>
