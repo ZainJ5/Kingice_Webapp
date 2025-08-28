@@ -1,171 +1,98 @@
 import { NextResponse } from "next/server";
-import connectDB from "@/app/lib/mongoose";
-import Order from "../../models/Order";
+import connectDB from "../../lib/mongoose";
+import Order from "../../models/Order"; 
+import mongoose from "mongoose"; 
 
-export async function GET() {
+function getDateFromPeriod(period) {
+  const now = new Date();
+
+  if (period === "1") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  if (period === "7") {
+    return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  }
+  if (period === "30") {
+    return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  return null;
+}
+
+export async function GET(req) {
   try {
     await connectDB();
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const [
-      totalSalesResult,
-      last7DaysSalesResult,
-      topItemsResult,
-      topAreasResult,
-      monthlySalesResult,
-      weeklySalesResult,
-    ] = await Promise.all([
-      Order.aggregate([
-        { $match: { isCompleted: true } },
-        {
-          $group: {
-            _id: null,
-            totalSales: { $sum: "$total" },
-          },
-        },
-      ]),
-      
-      Order.aggregate([
-        { 
-          $match: { 
-            isCompleted: true,
-            createdAt: { $gte: sevenDaysAgo }
-          } 
-        },
-        {
-          $group: {
-            _id: null,
-            last7DaysSales: { $sum: "$total" },
-          },
-        },
-      ]),
+    const { searchParams } = new URL(req.url);
+    const period = searchParams.get("period"); 
 
-      Order.aggregate([
-        { $match: { isCompleted: true } },
-        { $unwind: "$items" },
-        {
-          $group: {
-            _id: "$items.id",
-            name: { $first: "$items.name" },
-            quantitySold: { $sum: 1 },
-            totalRevenue: { $sum: "$items.price" },
-          },
-        },
-        { $sort: { quantitySold: -1 } },
-        { $limit: 5 },
-      ]),
+    if (!period) {
+      return NextResponse.json(
+        { success: false, message: "Please provide a period (1, 7, or 30)" },
+        { status: 400 }
+      );
+    }
 
-      Order.aggregate([
-        { $match: { isCompleted: true, orderType: "delivery" } },
-        {
-          $group: {
-            _id: "$deliveryAddress",
-            orderCount: { $sum: 1 },
-            totalRevenue: { $sum: "$total" },
-          },
-        },
-        {
-          $project: {
-            name: "$_id",
-            orderCount: 1,
-            totalRevenue: 1,
-            _id: 0,
-          },
-        },
-        { $sort: { orderCount: -1 } },
-        { $limit: 5 },
-      ]),
+    const startDate = getDateFromPeriod(period);
+    if (!startDate) {
+      return NextResponse.json(
+        { success: false, message: "Invalid period. Use 1, 7, or 30" },
+        { status: 400 }
+      );
+    }
 
-      Order.aggregate([
-        { $match: { isCompleted: true } },
-        {
-          $group: {
-            _id: {
-              year: { $year: "$createdAt" },
-              month: { $month: "$createdAt" },
-            },
-            total: { $sum: "$total" },
-          },
-        },
-        {
-          $project: {
-            month: {
-              $concat: [
-                { $toString: "$_id.year" },
-                "-",
-                {
-                  $cond: {
-                    if: { $lte: ["$_id.month", 9] },
-                    then: { $concat: ["0", { $toString: "$_id.month" }] },
-                    else: { $toString: "$_id.month" },
-                  },
-                },
-              ],
-            },
-            total: 1,
-            _id: 0,
-          },
-        },
-        { $sort: { month: 1 } },
-        { $limit: 12 },
-      ]),
+    const orders = await Order.find({ createdAt: { $gte: startDate } }).lean();
 
-      Order.aggregate([
-        { $match: { isCompleted: true } },
-        {
-          $group: {
-            _id: {
-              year: { $year: "$createdAt" },
-              week: { $week: "$createdAt" }
-            },
-            total: { $sum: "$total" },
-          },
-        },
-        {
-          $project: {
-            week: {
-              $concat: [
-                { $toString: "$_id.year" },
-                "-W",
-                {
-                  $cond: {
-                    if: { $lte: ["$_id.week", 9] },
-                    then: { $concat: ["0", { $toString: "$_id.week" }] },
-                    else: { $toString: "$_id.week" },
-                  },
-                },
-              ],
-            },
-            total: 1,
-            _id: 0,
-          },
-        },
-        { $sort: { week: 1 } },
-        { $limit: 10 },
-      ]),
-    ]);
-
-    const stats = {
-      totalSales: totalSalesResult[0]?.totalSales || 0,
-      last7DaysSales: last7DaysSalesResult[0]?.last7DaysSales || 0,
-      topItems: topItemsResult.map((item) => ({
-        id: item._id,
-        name: item.name,
-        quantitySold: item.quantitySold,
-        totalRevenue: item.totalRevenue,
-      })),
-      topAreas: topAreasResult,
-      monthlySales: monthlySalesResult.slice().reverse(), // Ensure newest months appear first
-      weeklySales: weeklySalesResult.slice().reverse(), // Ensure newest weeks appear first
-    };
-
-    return NextResponse.json(stats, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      period: period,
+      count: orders.length,
+      total: orders.reduce((acc, o) => acc + o.total, 0),
+      orders,
+    });
   } catch (error) {
     console.error("Error fetching statistics:", error);
     return NextResponse.json(
-      { message: "Failed to fetch statistics", error: error.message },
+      { success: false, message: "Server Error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req) {
+  try {
+    await connectDB();
+    const body = await req.json();
+    const period = body.period;
+
+    if (!period) {
+      return NextResponse.json(
+        { success: false, message: "Please provide a period (1, 7, or 30)" },
+        { status: 400 }
+      );
+    }
+
+    const startDate = getDateFromPeriod(period);
+    if (!startDate) {
+      return NextResponse.json(
+        { success: false, message: "Invalid period. Use 1, 7, or 30" },
+        { status: 400 }
+      );
+    }
+
+    const orders = await Order.find({ createdAt: { $gte: startDate } }).lean();
+
+    return NextResponse.json({
+      success: true,
+      period: period,
+      count: orders.length,
+      total: orders.reduce((acc, o) => acc + o.total, 0),
+      orders,
+    });
+  } catch (error) {
+    console.error("Error fetching statistics:", error);
+    return NextResponse.json(
+      { success: false, message: "Server Error", error: error.message },
       { status: 500 }
     );
   }

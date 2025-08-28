@@ -36,6 +36,7 @@
     "swiper": "^11.2.4",
     "use-sound": "^5.0.0",
     "uuid": "^11.1.0",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

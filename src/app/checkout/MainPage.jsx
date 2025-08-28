@@ -61,7 +61,6 @@ export default function CheckoutPage() {
   
   const globalDiscount = discountActive ? Math.round(subtotal * (discountPercentage / 100)) : 0;
   
-  // Pre-select the delivery area from the global state
   useEffect(() => {
     if (orderType === "delivery" && deliveryArea) {
       setSelectedArea(deliveryArea);
@@ -69,7 +68,6 @@ export default function CheckoutPage() {
   }, [orderType, deliveryArea]);
 
   useEffect(() => {
-    // Load saved user data from localStorage if available
     const savedUserData = localStorage.getItem('checkoutUserData');
     if (savedUserData) {
       try {
@@ -361,24 +359,20 @@ const handlePlaceOrder = async () => {
     return;
   }
   
-  // Save user data to localStorage
   saveUserData();
   setIsSubmitting(true);
 
   try {
-    // Format the order items to match the new schema structure
     const orderItems = items.map((item) => {
-      // Base item structure according to new OrderItemSchema
       const formattedItem = {
         id: item._id,
-        title: item.title.split(" x")[0], // Remove "x{quantity}" from title
+        title: item.title.split(" x")[0], 
         price: item.unitPrice || item.price,
         quantity: item.quantity || 1,
         imageUrl: item.imageUrl || null,
         specialInstructions: item.specialInstructions || ""
       };
       
-      // Add selected variation if present
       if (item.type && item.price) {
         formattedItem.selectedVariation = {
           name: item.type,
@@ -386,7 +380,6 @@ const handlePlaceOrder = async () => {
         };
       }
       
-      // Convert selected extras to the new schema format
       if (item.selectedExtras && item.selectedExtras.length > 0) {
         formattedItem.selectedExtras = item.selectedExtras.map(extra => ({
           name: extra.name,
@@ -394,7 +387,6 @@ const handlePlaceOrder = async () => {
         }));
       }
       
-      // Convert selected side orders to the new schema format
       if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
         formattedItem.selectedSideOrders = item.selectedSideOrders.map(sideOrder => ({
           name: sideOrder.name,
@@ -403,9 +395,7 @@ const handlePlaceOrder = async () => {
         }));
       }
       
-      // Handle modifications from newer versions of the cart
       if (item.modifications && item.modifications.length > 0) {
-        // Process each modification type to map to our new schema
         for (const mod of item.modifications) {
           if (mod.type === 'variation') {
             formattedItem.selectedVariation = {

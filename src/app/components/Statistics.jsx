@@ -1,27 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { RefreshCw, Download } from "lucide-react";
+import * as XLSX from "xlsx";
+
+const numberFmt = (n) => (typeof n === "number" ? n.toLocaleString() : "0");
 
 export default function Statistics() {
-  const [stats, setStats] = useState({
-    totalSales: 0,
-    last7DaysSales: 0,
-    topItems: [],
-    topAreas: [],
-    monthlySales: [],
-    weeklySales: [],
-  });
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [graphType, setGraphType] = useState("weekly"); // Changed default to weekly since you have more weekly data
+  const [period, setPeriod] = useState("7"); // Default to 7 days
+  const [showCompletedOnly, setShowCompletedOnly] = useState(false);
 
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/statistics");
+      const res = await fetch(`/api/statistics?period=${period}`);
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-      const data = await res.json();
-      setStats(data);
+      const responseData = await res.json();
+      setData(responseData);
     } catch (error) {
       console.error("Error fetching statistics:", error);
     } finally {
@@ -31,7 +28,258 @@ export default function Statistics() {
 
   useEffect(() => {
     fetchStatistics();
-  }, []);
+  }, [period]);
+
+  const filteredOrders = useMemo(() => {
+    if (!data || !data.orders) return [];
+    return showCompletedOnly 
+      ? data.orders.filter(order => order.status === "Complete") 
+      : data.orders;
+  }, [data, showCompletedOnly]);
+
+  const stats = useMemo(() => {
+    if (!filteredOrders.length) {
+      return {
+        totalOrders: 0,
+        completedOrders: 0,
+        cancelledOrders: 0,
+        pendingOrders: 0,
+        inProcessOrders: 0,
+        dispatchedOrders: 0,
+        subtotal: 0,
+        tax: 0,
+        discount: 0,
+        total: 0,
+        deliveryFees: 0,
+        avgOrderValue: 0,
+        avgDeliveryFee: 0,
+        topAreas: [],
+        topItems: [],
+        promoCodes: []
+      };
+    }
+
+    // Calculate basic stats
+    const totalOrders = filteredOrders.length;
+    const completedOrders = filteredOrders.filter(o => o.status === "Complete").length;
+    const cancelledOrders = filteredOrders.filter(o => o.status === "Cancel").length;
+    const pendingOrders = filteredOrders.filter(o => o.status === "Pending").length;
+    const inProcessOrders = filteredOrders.filter(o => o.status === "In-Process").length;
+    const dispatchedOrders = filteredOrders.filter(o => o.status === "Dispatched").length;
+    
+    const subtotal = filteredOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
+    const tax = filteredOrders.reduce((sum, o) => sum + (o.tax || 0), 0);
+    const discount = filteredOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
+    const total = filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    
+    // Extract delivery areas and fees
+    const areaMap = new Map();
+    filteredOrders.forEach(order => {
+      if (order.deliveryAddress) {
+        // Try to extract area name from delivery address
+        const addressParts = order.deliveryAddress.split(',');
+        const area = addressParts.length > 1 
+          ? addressParts[addressParts.length - 1].trim() 
+          : 'Unknown';
+          
+        if (!areaMap.has(area)) {
+          areaMap.set(area, {
+            name: area,
+            orderCount: 0,
+            totalRevenue: 0,
+            orders: []
+          });
+        }
+        
+        const areaData = areaMap.get(area);
+        areaData.orderCount += 1;
+        areaData.totalRevenue += order.total || 0;
+        areaData.orders.push(order);
+      }
+    });
+    
+    // Calculate top delivery areas
+    const topAreas = Array.from(areaMap.values())
+      .map(area => {
+        // Estimate delivery fees based on completed orders
+        const estimatedFees = area.orders.reduce((sum, order) => {
+          // Assuming delivery fee might be the difference between total and (subtotal - discount + tax)
+          const potentialFee = order.total - ((order.subtotal || 0) - (order.discount || 0) + (order.tax || 0));
+          return sum + Math.max(0, potentialFee); // Avoid negative fees
+        }, 0);
+        
+        return {
+          name: area.name,
+          orderCount: area.orderCount,
+          totalRevenue: area.totalRevenue,
+          totalDeliveryFees: estimatedFees,
+          avgOrderValue: area.totalRevenue / area.orderCount,
+          avgDeliveryFee: estimatedFees / area.orderCount
+        };
+      })
+      .sort((a, b) => b.orderCount - a.orderCount)
+      .slice(0, 5);
+      
+    // Calculate top items
+    const itemMap = new Map();
+    filteredOrders.forEach(order => {
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          const itemId = item.id;
+          const title = item.title;
+          const price = item.price;
+          const quantity = item.quantity || 1;
+          
+          if (!itemMap.has(itemId)) {
+            itemMap.set(itemId, {
+              id: itemId,
+              title: title,
+              totalQuantity: 0,
+              totalRevenue: 0
+            });
+          }
+          
+          const itemData = itemMap.get(itemId);
+          itemData.totalQuantity += quantity;
+          itemData.totalRevenue += price * quantity;
+        });
+      }
+    });
+    
+    const topItems = Array.from(itemMap.values())
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 5);
+      
+    // Calculate promo code usage
+    const promoMap = new Map();
+    filteredOrders.forEach(order => {
+      if (order.promoCode) {
+        if (!promoMap.has(order.promoCode)) {
+          promoMap.set(order.promoCode, {
+            promoCode: order.promoCode,
+            uses: 0,
+            totalDiscount: 0,
+            netRevenue: 0
+          });
+        }
+        
+        const promoData = promoMap.get(order.promoCode);
+        promoData.uses += 1;
+        promoData.totalDiscount += order.discount || 0;
+        promoData.netRevenue += order.total || 0;
+      }
+    });
+    
+    const promoCodes = Array.from(promoMap.values())
+      .map(promo => ({
+        ...promo,
+        avgDiscountPerUse: promo.totalDiscount / promo.uses,
+        avgNetPerUse: promo.netRevenue / promo.uses
+      }))
+      .sort((a, b) => b.uses - a.uses)
+      .slice(0, 10);
+    
+    // Calculate delivery fees
+    const deliveryFees = filteredOrders.reduce((sum, order) => {
+      // Similar estimation as above
+      if (order.orderType === "delivery") {
+        const potentialFee = order.total - ((order.subtotal || 0) - (order.discount || 0) + (order.tax || 0));
+        return sum + Math.max(0, potentialFee); // Avoid negative fees
+      }
+      return sum;
+    }, 0);
+    
+    // Calculate average values
+    const avgOrderValue = totalOrders > 0 ? total / totalOrders : 0;
+    const deliveryOrders = filteredOrders.filter(o => o.orderType === "delivery").length;
+    const avgDeliveryFee = deliveryOrders > 0 ? deliveryFees / deliveryOrders : 0;
+    
+    return {
+      totalOrders,
+      completedOrders,
+      cancelledOrders,
+      pendingOrders,
+      inProcessOrders,
+      dispatchedOrders,
+      subtotal,
+      tax,
+      discount,
+      total,
+      deliveryFees,
+      avgOrderValue,
+      avgDeliveryFee,
+      topAreas,
+      topItems,
+      promoCodes
+    };
+    
+  }, [filteredOrders]);
+
+  const downloadReport = () => {
+    if (!data || !filteredOrders.length) return;
+    
+    const reportType = showCompletedOnly ? "Completed_Orders" : "All_Orders";
+    const periodText = period === "1" ? "1_Day" : period === "7" ? "7_Days" : "30_Days";
+    
+    // Create a worksheet with order summary
+    const summaryData = [
+      ["Order Statistics Report"],
+      [`Period: ${periodText}`, `Type: ${reportType}`],
+      ["Generated On:", new Date().toLocaleString()],
+      [""],
+      ["Summary Metrics"],
+      ["Total Orders", stats.totalOrders],
+      ["Completed Orders", stats.completedOrders],
+      ["Cancelled Orders", stats.cancelledOrders],
+      ["Pending Orders", stats.pendingOrders],
+      ["In-Process Orders", stats.inProcessOrders],
+      ["Dispatched Orders", stats.dispatchedOrders],
+      [""],
+      ["Financial Summary"],
+      ["Subtotal", stats.subtotal],
+      ["Tax", stats.tax],
+      ["Discount", stats.discount],
+      ["Delivery Fees", stats.deliveryFees],
+      ["Total Revenue", stats.total],
+      ["Average Order Value", stats.avgOrderValue],
+      ["Average Delivery Fee", stats.avgDeliveryFee]
+    ];
+    
+    // Create worksheet for orders
+    const ordersData = [
+      [
+        "Order No", "Date", "Customer", "Status", "Type", 
+        "Payment Method", "Subtotal", "Tax", "Discount", "Total",
+        "Delivery Address", "Area"
+      ],
+      ...filteredOrders.map(order => [
+        order.orderNo,
+        new Date(order.createdAt).toLocaleString(),
+        order.fullName,
+        order.status,
+        order.orderType,
+        order.paymentMethod,
+        order.subtotal,
+        order.tax,
+        order.discount,
+        order.total,
+        order.deliveryAddress || "-",
+        order.deliveryAddress ? order.deliveryAddress.split(',').pop().trim() : "-"
+      ])
+    ];
+    
+    // Create a workbook and add worksheets
+    const wb = XLSX.utils.book_new();
+    
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, ws1, "Summary");
+    
+    const ws2 = XLSX.utils.aoa_to_sheet(ordersData);
+    XLSX.utils.book_append_sheet(wb, ws2, "Orders");
+    
+    // Save workbook
+    XLSX.writeFile(wb, `Orders_Report_${periodText}_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
 
   if (loading) {
     return (
@@ -41,201 +289,205 @@ export default function Statistics() {
     );
   }
 
-  const salesData = graphType === "monthly" ? stats.monthlySales : stats.weeklySales;
-  const graphLabel = graphType === "monthly" ? "Monthly Sales Trend" : "Weekly Sales Trend";
-
-  // Format week label from "2025-W19" to "Week 19"
-  const formatWeekLabel = (weekStr) => {
-    const match = weekStr.match(/\d+-W(\d+)/);
-    return match ? `Week ${match[1]}` : weekStr;
-  };
-
-  // Format month label from "2025-05" to "May 25"
-  const formatMonthLabel = (monthStr) => {
-    try {
-      const [year, month] = monthStr.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return date.toLocaleString('default', { month: 'short', year: '2-digit' });
-    } catch (e) {
-      return monthStr;
-    }
-  };
-
-  // Calculate maximum value for scaling the graph
-  const maxSales = salesData && salesData.length > 0 
-    ? Math.max(...salesData.map(item => parseFloat(item.total) || 0)) 
-    : 1000;
-
-  // Generate y-axis labels with proper formatting
-  const yAxisLabels = [
-    0,
-    Math.round(maxSales * 0.25),
-    Math.round(maxSales * 0.5),
-    Math.round(maxSales * 0.75),
-    Math.round(maxSales)
-  ];
-
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h3 className="text-2xl font-semibold text-gray-800">E-commerce Statistics</h3>
-        <button
-          onClick={fetchStatistics}
-          className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-          <h4 className="text-lg font-semibold text-gray-700 mb-2">Total Sales</h4>
-          <p className="text-3xl font-bold text-green-600">
-            Rs. {stats.totalSales.toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-          <h4 className="text-lg font-semibold text-gray-700 mb-2">Last 7 Days Sales</h4>
-          <p className="text-3xl font-bold text-blue-600">
-            Rs. {stats.last7DaysSales.toLocaleString()}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h4 className="text-lg font-semibold text-gray-700 mb-4">Top 5 Items</h4>
-        {stats.topItems && stats.topItems.length > 0 ? (
-          <ul className="space-y-3">
-            {stats.topItems.map((item, index) => (
-              <li
-                key={item.id || index}
-                className="flex justify-between items-center p-2 bg-gray-50 rounded-md"
-              >
-                <span className="text-gray-700">
-                  {index + 1}. {item.name}
-                </span>
-                <span className="text-gray-600">
-                  {item.quantitySold} units (Rs. {item.totalRevenue.toLocaleString()})
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500">No items sold yet.</p>
-        )}
-      </div>
-
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h4 className="text-lg font-semibold text-gray-700 mb-4">Top 5 Delivery Areas</h4>
-        {stats.topAreas && stats.topAreas.length > 0 ? (
-          <ul className="space-y-3">
-            {stats.topAreas.map((area, index) => (
-              <li
-                key={area.name || index}
-                className="flex justify-between items-center p-2 bg-gray-50 rounded-md"
-              >
-                <span className="text-gray-700">
-                  {index + 1}. {area.name || "Unknown Area"}
-                </span>
-                <span className="text-gray-600">
-                  {area.orderCount} orders (Rs. {area.totalRevenue.toLocaleString()})
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500">No orders in delivery areas yet.</p>
-        )}
-      </div>
-
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <div className="flex justify-between items-center mb-4">
-          <h4 className="text-lg font-semibold text-gray-700">{graphLabel}</h4>
-          <button
-            onClick={() => setGraphType(graphType === "monthly" ? "weekly" : "monthly")}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+      <div className="flex flex-wrap gap-4 justify-between items-center">
+        <h3 className="text-2xl font-semibold text-gray-800">Order Statistics</h3>
+        <div className="flex flex-wrap gap-3">
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm"
           >
-            Show {graphType === "monthly" ? "Weekly" : "Monthly"} Graph
+            <option value="1">Last 1 Day</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+          </select>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="completedOnly"
+              checked={showCompletedOnly}
+              onChange={(e) => setShowCompletedOnly(e.target.checked)}
+              className="rounded text-red-600 focus:ring-red-500"
+            />
+            <label htmlFor="completedOnly" className="text-sm">
+              Completed Orders Only
+            </label>
+          </div>
+
+          <button
+            onClick={downloadReport}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download Report
+          </button>
+
+          <button
+            onClick={fetchStatistics}
+            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
           </button>
         </div>
-        
-        {salesData && salesData.length > 0 ? (
-          <div className="h-80">
-            <div className="flex h-full">
-              {/* Y-axis */}
-              <div className="flex flex-col justify-between pr-2 text-xs text-gray-500 w-20">
-                {yAxisLabels.map((value, index) => (
-                  <div key={index} className={`${index === 0 ? 'mb-4' : ''}`}>
-                    Rs. {value.toLocaleString()}
-                  </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-2 gap-4">
+        <SummaryCard title="Total Orders" value={numberFmt(stats.totalOrders)} color="text-gray-700" />
+        <SummaryCard title="Completed Orders" value={numberFmt(stats.completedOrders)} color="text-green-600" />
+        <SummaryCard title="Cancelled Orders" value={numberFmt(stats.cancelledOrders)} color="text-red-600" />
+        <SummaryCard title="Pending Orders" value={numberFmt(stats.pendingOrders)} color="text-blue-600" />
+      </div>
+      
+      {/* Financial Summary Cards */}
+      <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-2 gap-4">
+        <SummaryCard title="Subtotal" value={`Rs. ${numberFmt(stats.subtotal)}`} color="text-amber-600" />
+        <SummaryCard title="Tax" value={`Rs. ${numberFmt(stats.tax)}`} color="text-purple-600" />
+        <SummaryCard title="Discounts" value={`Rs. ${numberFmt(stats.discount)}`} color="text-blue-600" />
+        <SummaryCard title="Total Revenue" value={`Rs. ${numberFmt(stats.total)}`} color="text-green-600" />
+        <SummaryCard title="Delivery Fees" value={`Rs. ${numberFmt(stats.deliveryFees)}`} color="text-indigo-600" />
+        <SummaryCard title="Avg Order Value" value={`Rs. ${numberFmt(Math.round(stats.avgOrderValue))}`} color="text-pink-600" />
+        <SummaryCard title="Avg Delivery Fee" value={`Rs. ${numberFmt(Math.round(stats.avgDeliveryFee))}`} color="text-orange-600" />
+      </div>
+
+      {/* Order Status Distribution */}
+      <Section title="Order Status Distribution">
+        <div className="flex flex-wrap gap-4 justify-center">
+          <StatusCard title="Pending" count={stats.pendingOrders} total={stats.totalOrders} color="bg-yellow-100 border-yellow-400" />
+          <StatusCard title="In-Process" count={stats.inProcessOrders} total={stats.totalOrders} color="bg-blue-100 border-blue-400" />
+          <StatusCard title="Dispatched" count={stats.dispatchedOrders} total={stats.totalOrders} color="bg-purple-100 border-purple-400" />
+          <StatusCard title="Completed" count={stats.completedOrders} total={stats.totalOrders} color="bg-green-100 border-green-400" />
+          <StatusCard title="Cancelled" count={stats.cancelledOrders} total={stats.totalOrders} color="bg-red-100 border-red-400" />
+        </div>
+      </Section>
+
+      {/* Top Items */}
+      <Section title="Top 5 Items">
+        {stats.topItems && stats.topItems.length > 0 ? (
+          <ul className="space-y-2">
+            {stats.topItems.map((item, idx) => (
+              <li key={item.id || idx} className="flex justify-between p-2 bg-gray-50 rounded-md">
+                <span className="text-gray-700">
+                  {idx + 1}. {item.title}
+                </span>
+                <span className="text-gray-600">
+                  {item.totalQuantity} qty (Rs. {numberFmt(item.totalRevenue)})
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No items sold during this period.</p>
+        )}
+      </Section>
+
+      {/* Top Areas */}
+      <Section title="Top 5 Delivery Areas">
+        {stats.topAreas && stats.topAreas.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="py-2 pr-4">Area</th>
+                  <th className="py-2 pr-4">Orders</th>
+                  <th className="py-2 pr-4">Net Revenue</th>
+                  <th className="py-2 pr-4">Delivery Fees</th>
+                  <th className="py-2 pr-4">Avg Order</th>
+                  <th className="py-2 pr-4">Avg Delivery Fee</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.topAreas.map((a, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="py-2 pr-4">{a.name || "Unknown"}</td>
+                    <td className="py-2 pr-4">{a.orderCount}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(a.totalRevenue)}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(a.totalDeliveryFees)}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(Math.round(a.avgOrderValue))}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(Math.round(a.avgDeliveryFee))}</td>
+                  </tr>
                 ))}
-              </div>
-              
-              {/* Graph container */}
-              <div className="flex-1 flex flex-col">
-                {/* Graph body */}
-                <div className="flex-1 relative border-l border-b border-gray-300">
-                  {/* Horizontal grid lines */}
-                  {yAxisLabels.map((_, index) => (
-                    <div 
-                      key={index}
-                      className={`absolute w-full border-t border-gray-200 ${index === 0 ? 'bottom-0' : ''}`}
-                      style={{
-                        bottom: `${index * 25}%`,
-                        height: '1px'
-                      }}
-                    />
-                  ))}
-                  
-                  {/* Bars */}
-                  <div className="absolute inset-0 flex items-end pb-4">
-                    {salesData.map((item, index) => {
-                      const total = parseFloat(item.total) || 0;
-                      const heightPercentage = maxSales > 0 ? (total / maxSales) * 100 : 0;
-                      
-                      return (
-                        <div key={index} className="flex-1 flex flex-col items-center mx-1">
-                          <div 
-                            className="w-3/4 bg-red-600 hover:bg-red-700 transition-colors rounded-t-md relative group cursor-pointer"
-                            style={{ height: `${heightPercentage}%` }}
-                          >
-                            {/* Tooltip */}
-                            <div className="absolute opacity-0 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10 pointer-events-none">
-                              Rs. {total.toLocaleString()}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                
-                {/* X-axis labels */}
-                <div className="h-10 flex">
-                  {salesData.map((item, index) => {
-                    const label = graphType === "monthly" 
-                      ? formatMonthLabel(item.month) 
-                      : formatWeekLabel(item.week);
-                    
-                    return (
-                      <div key={index} className="flex-1 flex justify-center px-1">
-                        <div className="text-xs text-gray-600 mt-1 transform -rotate-25 origin-top-left whitespace-nowrap">
-                          {label}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <p className="text-gray-500">No sales data available for the selected period.</p>
-          </div>
+          <p className="text-gray-500">No delivery data during this period.</p>
         )}
+      </Section>
+
+      {/* Promo Codes */}
+      <Section title="Promo Codes Usage">
+        {stats.promoCodes && stats.promoCodes.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="py-2 pr-4">Code</th>
+                  <th className="py-2 pr-4">Uses</th>
+                  <th className="py-2 pr-4">Total Discount</th>
+                  <th className="py-2 pr-4">Net Revenue</th>
+                  <th className="py-2 pr-4">Avg Discount</th>
+                  <th className="py-2 pr-4">Avg Net / Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.promoCodes.map((p, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="py-2 pr-4 font-medium">{p.promoCode}</td>
+                    <td className="py-2 pr-4">{p.uses}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(p.totalDiscount)}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(p.netRevenue)}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(Math.round(p.avgDiscountPerUse))}</td>
+                    <td className="py-2 pr-4">Rs. {numberFmt(Math.round(p.avgNetPerUse))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500">No promo code usage during this period.</p>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function SummaryCard({ title, value, color }) {
+  return (
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      <h4 className="text-sm font-medium text-gray-500 mb-1">{title}</h4>
+      <p className={`text-xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <h4 className="text-lg font-semibold text-gray-700 mb-4">{title}</h4>
+      {children}
+    </div>
+  );
+}
+
+function StatusCard({ title, count, total, color }) {
+  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+  
+  return (
+    <div className={`p-4 rounded-lg border-2 ${color} w-40 text-center`}>
+      <h4 className="text-gray-700 font-medium">{title}</h4>
+      <p className="text-2xl font-bold text-gray-800">{count}</p>
+      <div className="mt-2 bg-gray-200 h-2 rounded-full overflow-hidden">
+        <div 
+          className="bg-gray-600 h-full" 
+          style={{ width: `${percentage}%` }}
+        ></div>
       </div>
+      <p className="text-xs text-gray-500 mt-1">{percentage}% of total</p>
     </div>
   );
 }
