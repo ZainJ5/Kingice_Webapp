@@ -67,10 +67,10 @@ export default function OrderHistory() {
       return date.toLocaleDateString('en-US', {
         month: "numeric",
         day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true
+        year: "numeric"
+        // hour: "2-digit",
+        // minute: "2-digit",
+        // hour12: true
       });
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -171,11 +171,11 @@ export default function OrderHistory() {
             <tr className="bg-gray-100 text-gray-800">
               <th className="p-3 text-left font-semibold">Sr No</th>
               <th className="p-3 text-left font-semibold">Order #</th>
-              <th className="p-3 text-left font-semibold">Customer Name</th>
-              <th className="p-3 text-left font-semibold">Date & Time</th>
-              <th className="p-3 text-left font-semibold">Type</th>
-              <th className="p-3 text-left font-semibold">Area</th>
-              <th className="p-3 text-left font-semibold">Amount</th>
+              <th className="p-3 text-left font-semibold">Name</th>
+              <th className="p-3 text-left font-semibold">Date</th>
+              {/* <th className="p-3 text-left font-semibold">Type</th> */}
+              {/* <th className="p-3 text-left font-semibold">Area</th> */}
+              {/* <th className="p-3 text-left font-semibold">Amount</th> */}
               <th className="p-3 text-left font-semibold">Status</th>
               <th className="p-3 text-left font-semibold">Reason</th>
               <th className="p-3 text-left font-semibold">Actions</th>
@@ -216,13 +216,13 @@ export default function OrderHistory() {
                     <td className="p-3 border-b text-sm text-gray-600">
                       {formatDateTime(order.createdAt)}
                     </td>
-                    <td className="p-3 border-b">
+                    {/* <td className="p-3 border-b">
                       {order.orderType.charAt(0).toUpperCase() + order.orderType.slice(1)}
-                    </td>
-                    <td className="p-3 border-b">{area}</td>
-                    <td className="p-3 border-b font-medium">
+                    </td> */}
+                    {/* <td className="p-3 border-b">{area}</td> */}
+                    {/* <td className="p-3 border-b font-medium">
                       Rs. {extractValue(order.total) || order.total}
-                    </td>
+                    </td> */}
                     <td className="p-3 border-b">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(order.status)}`}

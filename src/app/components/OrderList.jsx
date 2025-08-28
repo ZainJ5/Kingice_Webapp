@@ -947,14 +947,14 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
           <tr>
             <th className="p-2 border text-left">Sr No</th>
             <th className="p-2 border text-left">Order #</th>
-            <th className="p-2 border text-left">Customer Name</th>
+            <th className="p-2 border text-left">Name</th>
             <th className="p-2 border text-left">Date & Time</th>
             <th className="p-2 border text-left">Type</th>
             <th className="p-2 border text-left w-24">Area</th>
             <th className="p-2 border text-left">Amount</th>
             <th className="p-2 border text-left">Status</th>
             <th className="p-2 border text-left">View</th>
-            <th className="p-2 border text-left">Print Slips</th>
+            <th className="p-2 border text-left">Print</th>
           </tr>
         </thead>
         <tbody>
