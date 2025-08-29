@@ -10,12 +10,23 @@ export default function Statistics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("7"); // Default to 7 days
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [showCompletedOnly, setShowCompletedOnly] = useState(false);
 
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/statistics?period=${period}`);
+      let query = "";
+      if (period !== "custom") {
+        query = `period=${period}`;
+      } else {
+        if (!from || !to) {
+          throw new Error("Please select from and to dates for custom range");
+        }
+        query = `from=${from}:00&to=${to}:00`; // Append seconds for full datetime
+      }
+      const res = await fetch(`/api/statistics?${query}`);
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
       const responseData = await res.json();
       setData(responseData);
@@ -27,8 +38,22 @@ export default function Statistics() {
   };
 
   useEffect(() => {
-    fetchStatistics();
+    if (period !== "custom") {
+      fetchStatistics();
+    }
   }, [period]);
+
+  const handlePeriodChange = (e) => {
+    const val = e.target.value;
+    setPeriod(val);
+    if (val === "custom") {
+      // Set default to last 7 days
+      const defaultTo = new Date().toISOString().slice(0, 16);
+      const defaultFrom = new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+      setFrom(defaultFrom);
+      setTo(defaultTo);
+    }
+  };
 
   const filteredOrders = useMemo(() => {
     if (!data || !data.orders) return [];
@@ -219,7 +244,11 @@ export default function Statistics() {
     if (!data || !filteredOrders.length) return;
     
     const reportType = showCompletedOnly ? "Completed_Orders" : "All_Orders";
-    const periodText = period === "1" ? "1_Day" : period === "7" ? "7_Days" : "30_Days";
+    let periodText;
+    if (period === "1") periodText = "1_Day";
+    else if (period === "7") periodText = "7_Days";
+    else if (period === "30") periodText = "30_Days";
+    else periodText = `Custom_${from.replace(/:/g, "-")}_to_${to.replace(/:/g, "-")}`;
     
     // Create a worksheet with order summary
     const summaryData = [
@@ -293,16 +322,46 @@ export default function Statistics() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap gap-4 justify-between items-center">
         <h3 className="text-2xl font-semibold text-gray-800">Order Statistics</h3>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
           <select
             value={period}
-            onChange={(e) => setPeriod(e.target.value)}
+            onChange={handlePeriodChange}
             className="border rounded-md px-3 py-2 text-sm"
           >
             <option value="1">Last 1 Day</option>
             <option value="7">Last 7 Days</option>
             <option value="30">Last 30 Days</option>
+            <option value="custom">Custom Range</option>
           </select>
+
+          {period === "custom" && (
+            <div className="flex flex-wrap gap-3 items-center">
+              <div>
+                <label className="text-sm mr-2">From:</label>
+                <input
+                  type="datetime-local"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className="border rounded-md px-2 py-1 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm mr-2">To:</label>
+                <input
+                  type="datetime-local"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="border rounded-md px-2 py-1 text-sm"
+                />
+              </div>
+              <button
+                onClick={fetchStatistics}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <input

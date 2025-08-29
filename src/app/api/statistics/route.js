@@ -25,27 +25,46 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url);
     const period = searchParams.get("period"); 
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
 
-    if (!period) {
+    let startDate;
+    let endDate = new Date();
+
+    if (from && to) {
+      startDate = new Date(from + "Z"); 
+      endDate = new Date(to + "Z");
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return NextResponse.json(
+          { success: false, message: "Invalid from or to date format" },
+          { status: 400 }
+        );
+      }
+    } else if (period) {
+      startDate = getDateFromPeriod(period);
+      if (!startDate) {
+        return NextResponse.json(
+          { success: false, message: "Invalid period. Use 1, 7, or 30" },
+          { status: 400 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { success: false, message: "Please provide a period (1, 7, or 30)" },
+        { success: false, message: "Please provide either period or from/to dates" },
         { status: 400 }
       );
     }
 
-    const startDate = getDateFromPeriod(period);
-    if (!startDate) {
-      return NextResponse.json(
-        { success: false, message: "Invalid period. Use 1, 7, or 30" },
-        { status: 400 }
-      );
+    const query = { createdAt: { $gte: startDate } };
+    if (from && to) {
+      query.createdAt.$lte = endDate;
     }
 
-    const orders = await Order.find({ createdAt: { $gte: startDate } }).lean();
+    const orders = await Order.find(query).lean();
 
     return NextResponse.json({
       success: true,
-      period: period,
+      period: period || "custom",
       count: orders.length,
       total: orders.reduce((acc, o) => acc + o.total, 0),
       orders,
@@ -64,27 +83,46 @@ export async function POST(req) {
     await connectDB();
     const body = await req.json();
     const period = body.period;
+    const from = body.from;
+    const to = body.to;
 
-    if (!period) {
+    let startDate;
+    let endDate = new Date();
+
+    if (from && to) {
+      startDate = new Date(from + "Z"); 
+      endDate = new Date(to + "Z"); 
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return NextResponse.json(
+          { success: false, message: "Invalid from or to date format" },
+          { status: 400 }
+        );
+      }
+    } else if (period) {
+      startDate = getDateFromPeriod(period);
+      if (!startDate) {
+        return NextResponse.json(
+          { success: false, message: "Invalid period. Use 1, 7, or 30" },
+          { status: 400 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { success: false, message: "Please provide a period (1, 7, or 30)" },
+        { success: false, message: "Please provide either period or from/to dates" },
         { status: 400 }
       );
     }
 
-    const startDate = getDateFromPeriod(period);
-    if (!startDate) {
-      return NextResponse.json(
-        { success: false, message: "Invalid period. Use 1, 7, or 30" },
-        { status: 400 }
-      );
+    const query = { createdAt: { $gte: startDate } };
+    if (from && to) {
+      query.createdAt.$lte = endDate;
     }
 
-    const orders = await Order.find({ createdAt: { $gte: startDate } }).lean();
+    const orders = await Order.find(query).lean();
 
     return NextResponse.json({
       success: true,
-      period: period,
+      period: period || "custom",
       count: orders.length,
       total: orders.reduce((acc, o) => acc + o.total, 0),
       orders,
