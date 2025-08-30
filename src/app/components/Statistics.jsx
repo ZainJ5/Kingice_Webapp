@@ -10,23 +10,12 @@ export default function Statistics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("7"); // Default to 7 days
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [showCompletedOnly, setShowCompletedOnly] = useState(false);
+  const [filterType, setFilterType] = useState("all"); // 'all', 'completed', 'canceled'
 
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      let query = "";
-      if (period !== "custom") {
-        query = `period=${period}`;
-      } else {
-        if (!from || !to) {
-          throw new Error("Please select from and to dates for custom range");
-        }
-        query = `from=${from}:00&to=${to}:00`; // Append seconds for full datetime
-      }
-      const res = await fetch(`/api/statistics?${query}`);
+      const res = await fetch(`/api/statistics?period=${period}`);
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
       const responseData = await res.json();
       setData(responseData);
@@ -38,29 +27,18 @@ export default function Statistics() {
   };
 
   useEffect(() => {
-    if (period !== "custom") {
-      fetchStatistics();
-    }
+    fetchStatistics();
   }, [period]);
-
-  const handlePeriodChange = (e) => {
-    const val = e.target.value;
-    setPeriod(val);
-    if (val === "custom") {
-      // Set default to last 7 days
-      const defaultTo = new Date().toISOString().slice(0, 16);
-      const defaultFrom = new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
-      setFrom(defaultFrom);
-      setTo(defaultTo);
-    }
-  };
 
   const filteredOrders = useMemo(() => {
     if (!data || !data.orders) return [];
-    return showCompletedOnly 
-      ? data.orders.filter(order => order.status === "Complete") 
-      : data.orders;
-  }, [data, showCompletedOnly]);
+    if (filterType === "completed") {
+      return data.orders.filter(order => order.status === "Complete");
+    } else if (filterType === "canceled") {
+      return data.orders.filter(order => order.status === "Cancel");
+    }
+    return data.orders;
+  }, [data, filterType]);
 
   const stats = useMemo(() => {
     if (!filteredOrders.length) {
@@ -91,15 +69,20 @@ export default function Statistics() {
     const pendingOrders = filteredOrders.filter(o => o.status === "Pending").length;
     const inProcessOrders = filteredOrders.filter(o => o.status === "In-Process").length;
     const dispatchedOrders = filteredOrders.filter(o => o.status === "Dispatched").length;
+
+    // Determine orders for financial calculations
+    const financialOrders = filterType === "canceled" 
+      ? filteredOrders 
+      : filteredOrders.filter(o => o.status !== "Cancel");
     
-    const subtotal = filteredOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
-    const tax = filteredOrders.reduce((sum, o) => sum + (o.tax || 0), 0);
-    const discount = filteredOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
-    const total = filteredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const subtotal = financialOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
+    const tax = financialOrders.reduce((sum, o) => sum + (o.tax || 0), 0);
+    const discount = financialOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
+    const total = financialOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     
     // Extract delivery areas and fees
     const areaMap = new Map();
-    filteredOrders.forEach(order => {
+    financialOrders.forEach(order => {
       if (order.deliveryAddress) {
         // Try to extract area name from delivery address
         const addressParts = order.deliveryAddress.split(',');
@@ -126,7 +109,7 @@ export default function Statistics() {
     // Calculate top delivery areas
     const topAreas = Array.from(areaMap.values())
       .map(area => {
-        // Estimate delivery fees based on completed orders
+        // Estimate delivery fees based on orders
         const estimatedFees = area.orders.reduce((sum, order) => {
           // Assuming delivery fee might be the difference between total and (subtotal - discount + tax)
           const potentialFee = order.total - ((order.subtotal || 0) - (order.discount || 0) + (order.tax || 0));
@@ -147,7 +130,7 @@ export default function Statistics() {
       
     // Calculate top items
     const itemMap = new Map();
-    filteredOrders.forEach(order => {
+    financialOrders.forEach(order => {
       if (order.items && Array.isArray(order.items)) {
         order.items.forEach(item => {
           const itemId = item.id;
@@ -177,7 +160,7 @@ export default function Statistics() {
       
     // Calculate promo code usage
     const promoMap = new Map();
-    filteredOrders.forEach(order => {
+    financialOrders.forEach(order => {
       if (order.promoCode) {
         if (!promoMap.has(order.promoCode)) {
           promoMap.set(order.promoCode, {
@@ -205,7 +188,7 @@ export default function Statistics() {
       .slice(0, 10);
     
     // Calculate delivery fees
-    const deliveryFees = filteredOrders.reduce((sum, order) => {
+    const deliveryFees = financialOrders.reduce((sum, order) => {
       // Similar estimation as above
       if (order.orderType === "delivery") {
         const potentialFee = order.total - ((order.subtotal || 0) - (order.discount || 0) + (order.tax || 0));
@@ -215,8 +198,9 @@ export default function Statistics() {
     }, 0);
     
     // Calculate average values
-    const avgOrderValue = totalOrders > 0 ? total / totalOrders : 0;
-    const deliveryOrders = filteredOrders.filter(o => o.orderType === "delivery").length;
+    const financialOrderCount = financialOrders.length;
+    const avgOrderValue = financialOrderCount > 0 ? total / financialOrderCount : 0;
+    const deliveryOrders = financialOrders.filter(o => o.orderType === "delivery").length;
     const avgDeliveryFee = deliveryOrders > 0 ? deliveryFees / deliveryOrders : 0;
     
     return {
@@ -238,17 +222,21 @@ export default function Statistics() {
       promoCodes
     };
     
-  }, [filteredOrders]);
+  }, [filteredOrders, filterType]);
 
   const downloadReport = () => {
     if (!data || !filteredOrders.length) return;
     
-    const reportType = showCompletedOnly ? "Completed_Orders" : "All_Orders";
-    let periodText;
-    if (period === "1") periodText = "1_Day";
-    else if (period === "7") periodText = "7_Days";
-    else if (period === "30") periodText = "30_Days";
-    else periodText = `Custom_${from.replace(/:/g, "-")}_to_${to.replace(/:/g, "-")}`;
+    let reportType;
+    if (filterType === "completed") {
+      reportType = "Completed_Orders";
+    } else if (filterType === "canceled") {
+      reportType = "Canceled_Orders";
+    } else {
+      reportType = "All_Orders";
+    }
+    
+    const periodText = period === "1" ? "1_Day" : period === "7" ? "7_Days" : "30_Days";
     
     // Create a worksheet with order summary
     const summaryData = [
@@ -322,59 +310,26 @@ export default function Statistics() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap gap-4 justify-between items-center">
         <h3 className="text-2xl font-semibold text-gray-800">Order Statistics</h3>
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-wrap gap-3">
           <select
             value={period}
-            onChange={handlePeriodChange}
+            onChange={(e) => setPeriod(e.target.value)}
             className="border rounded-md px-3 py-2 text-sm"
           >
             <option value="1">Last 1 Day</option>
             <option value="7">Last 7 Days</option>
             <option value="30">Last 30 Days</option>
-            <option value="custom">Custom Range</option>
           </select>
 
-          {period === "custom" && (
-            <div className="flex flex-wrap gap-3 items-center">
-              <div>
-                <label className="text-sm mr-2">From:</label>
-                <input
-                  type="datetime-local"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  className="border rounded-md px-2 py-1 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm mr-2">To:</label>
-                <input
-                  type="datetime-local"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  className="border rounded-md px-2 py-1 text-sm"
-                />
-              </div>
-              <button
-                onClick={fetchStatistics}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Apply
-              </button>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="completedOnly"
-              checked={showCompletedOnly}
-              onChange={(e) => setShowCompletedOnly(e.target.checked)}
-              className="rounded text-red-600 focus:ring-red-500"
-            />
-            <label htmlFor="completedOnly" className="text-sm">
-              Completed Orders Only
-            </label>
-          </div>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm"
+          >
+            <option value="all">All Orders</option>
+            <option value="completed">Completed Only</option>
+            <option value="canceled">Canceled Only</option>
+          </select>
 
           <button
             onClick={downloadReport}
