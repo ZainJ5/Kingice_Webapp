@@ -175,7 +175,7 @@ export default function OrderHistory() {
               <th className="p-3 text-left font-semibold">Date</th>
               {/* <th className="p-3 text-left font-semibold">Type</th> */}
               {/* <th className="p-3 text-left font-semibold">Area</th> */}
-              {/* <th className="p-3 text-left font-semibold">Amount</th> */}
+              <th className="p-3 text-left font-semibold">Amount</th>
               <th className="p-3 text-left font-semibold">Status</th>
               <th className="p-3 text-left font-semibold">Reason</th>
               <th className="p-3 text-left font-semibold">Actions</th>
@@ -220,9 +220,9 @@ export default function OrderHistory() {
                       {order.orderType.charAt(0).toUpperCase() + order.orderType.slice(1)}
                     </td> */}
                     {/* <td className="p-3 border-b">{area}</td> */}
-                    {/* <td className="p-3 border-b font-medium">
+                    <td className="p-3 border-b font-medium">
                       Rs. {extractValue(order.total) || order.total}
-                    </td> */}
+                    </td>
                     <td className="p-3 border-b">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(order.status)}`}
