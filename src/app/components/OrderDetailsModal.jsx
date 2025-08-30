@@ -57,13 +57,8 @@ export default function OrderDetailsModal({
 
   if (!selectedOrder) return null;
 
-  // Function to format phone number for WhatsApp API
   const formatPhoneForWhatsApp = (phoneNumber) => {
-    // Remove spaces, dashes, parentheses and other non-digit characters
     const cleanNumber = phoneNumber.replace(/\D/g, '');
-    
-    // Add Pakistan country code if not present
-    // Assuming Pakistani numbers - if this isn't the case, you might need additional logic
     if (cleanNumber.startsWith('0')) {
       return `92${cleanNumber.substring(1)}`;
     }
@@ -71,7 +66,6 @@ export default function OrderDetailsModal({
     return cleanNumber;
   };
 
-  // Function to open WhatsApp chat
   const openWhatsAppChat = (phoneNumber) => {
     const formattedNumber = formatPhoneForWhatsApp(phoneNumber);
     window.open(`https://wa.me/${formattedNumber}`, '_blank');
@@ -88,27 +82,23 @@ export default function OrderDetailsModal({
     }
   };
 
-  // Get delivery fee based on area
   const deliveryFee = selectedOrder.orderType === 'delivery' && area ? 
     getDeliveryFeeForArea(area) : 0;
 
-  // Format price with locale string
   const formatPrice = (price) => {
     if (!price && price !== 0) return "0";
     return Number(price).toLocaleString();
   };
 
-  // Helper to check if an item has any modifications (considering all possible formats)
   const hasModifications = (item) => {
     return (
       (item.selectedVariation) ||
       (item.selectedExtras && item.selectedExtras.length > 0) ||
       (item.selectedSideOrders && item.selectedSideOrders.length > 0) ||
-      // Legacy formats
       (item.modifications && item.modifications.length > 0) ||
       (item.extras && item.extras.length > 0) ||
       (item.sideOrders && item.sideOrders.length > 0) ||
-      (item.type) // Consider type as a simple variation
+      (item.type) 
     );
   };
 
@@ -275,13 +265,9 @@ export default function OrderDetailsModal({
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {selectedOrder.items.map((item, i) => {
-                              // Handle item parsing from the updated schema structure
                               const quantity = item.quantity || 1;
-                              
-                              // Get the title/name (prioritize title from new schema)
                               const itemName = item.title || item.name || "";
                               
-                              // Calculate unit price and total
                               const unitPrice = item.price || 0;
                               const itemTotal = unitPrice * quantity;
 
@@ -290,11 +276,9 @@ export default function OrderDetailsModal({
                                   <tr>
                                     <td className="px-3 py-1 text-sm text-gray-900">
                                       <div className="font-medium">{itemName}</div>
-                                      {/* Simple variation (legacy format) */}
                                       {item.type && !item.selectedVariation && (
                                         <div className="text-xs text-gray-500">Type: {item.type}</div>
                                       )}
-                                      {/* New schema variation */}
                                       {item.selectedVariation && (
                                         <div className="text-xs text-gray-500">
                                           Variation: {item.selectedVariation.name} 
@@ -309,12 +293,10 @@ export default function OrderDetailsModal({
                                     <td className="px-3 py-1 text-sm font-medium text-gray-900 text-right">Rs. {formatPrice(itemTotal)}</td>
                                   </tr>
                                   
-                                  {/* Render modifications based on the new schema */}
                                   {hasModifications(item) && (
                                     <tr>
                                       <td colSpan="4" className="px-3 py-1">
                                         <div className="bg-gray-50 rounded p-1 text-xs">
-                                          {/* Selected Extras (new schema) */}
                                           {item.selectedExtras && item.selectedExtras.length > 0 && (
                                             <div className="mb-1">
                                               <div className="font-medium text-gray-700">Extras:</div>
@@ -329,7 +311,6 @@ export default function OrderDetailsModal({
                                             </div>
                                           )}
                                           
-                                          {/* Selected Side Orders (new schema) */}
                                           {item.selectedSideOrders && item.selectedSideOrders.length > 0 && (
                                             <div className="mb-1">
                                               <div className="font-medium text-gray-700">Side Orders:</div>
@@ -344,7 +325,6 @@ export default function OrderDetailsModal({
                                             </div>
                                           )}
                                           
-                                          {/* Handle legacy modifications format if present */}
                                           {item.modifications && item.modifications.length > 0 && (
                                             item.modifications.map((mod, index) => (
                                               <div key={`mod-${index}`} className="mb-1">
@@ -361,7 +341,6 @@ export default function OrderDetailsModal({
                                             ))
                                           )}
                                           
-                                          {/* Handle legacy extras format if present */}
                                           {!item.modifications && !item.selectedExtras && item.extras && item.extras.length > 0 && (
                                             <div className="mb-1">
                                               <div className="font-medium text-gray-700">Extras:</div>
@@ -376,7 +355,6 @@ export default function OrderDetailsModal({
                                             </div>
                                           )}
                                           
-                                          {/* Handle legacy side orders format if present */}
                                           {!item.modifications && !item.selectedSideOrders && item.sideOrders && item.sideOrders.length > 0 && (
                                             <div className="mb-1">
                                               <div className="font-medium text-gray-700">Side Orders:</div>
@@ -391,7 +369,6 @@ export default function OrderDetailsModal({
                                             </div>
                                           )}
                                           
-                                          {/* Display special instructions if any */}
                                           {item.specialInstructions && (
                                             <div className="mt-1 pt-1 border-t border-gray-200">
                                               <div className="font-medium text-gray-700">Special Instructions:</div>
@@ -437,7 +414,6 @@ export default function OrderDetailsModal({
                       </div>
                     )}
                     
-                    {/* Display discount breakdowns if available */}
                     {selectedOrder.globalDiscount > 0 && (
                       <div className="flex justify-between text-amber-600">
                         <span>Global Discount ({selectedOrder.globalDiscountPercentage || 0}%):</span>
@@ -452,7 +428,6 @@ export default function OrderDetailsModal({
                       </div>
                     )}
                     
-                    {/* Show total discount (for backwards compatibility) */}
                     {(!selectedOrder.globalDiscount && !selectedOrder.promoDiscount && selectedOrder.discount > 0) && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Discount:</span>
