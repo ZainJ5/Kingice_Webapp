@@ -50,6 +50,7 @@ export default function CheckoutPage() {
     updatedAt: new Date()
   });
   const [isLogoLoading, setIsLogoLoading] = useState(true);
+  const [isSiteActive, setIsSiteActive] = useState(true);
 
   const { orderType } = useOrderTypeStore();
   const { deliveryArea } = useDeliveryAreaStore(); // Get the selected delivery area from the global store
@@ -200,11 +201,25 @@ export default function CheckoutPage() {
         });
       }
     }
+
+    async function fetchSiteStatus() {
+      try {
+        const res = await fetch("/api/site-status");
+        if (res.ok) {
+          const data = await res.json();
+          setIsSiteActive(data.isSiteActive);
+        }
+      } catch (error) {
+        console.error("Error fetching site status:", error);
+        setIsSiteActive(false);
+      }
+    }
     
     fetchDiscountSettings();
     if (orderType === "delivery") {
       fetchDeliveryAreas();
     }
+    fetchSiteStatus();
   }, [orderType]);
 
   useEffect(() => {
@@ -586,7 +601,6 @@ const handlePlaceOrder = async () => {
   };
 
   const resetFormFields = () => {
-    // Don't reset user contact details as they might want to place another order
     setPaymentInstructions("");
     setPaymentMethod("cod");
     setOnlineOption(null);
@@ -601,12 +615,10 @@ const handlePlaceOrder = async () => {
     setPickupTime("20");
   };
 
-  // Format price for display
   const formatPrice = (price) => {
     return Number(price).toLocaleString();
   };
 
-  // Get base title without quantity
   const getBaseTitle = (fullTitle) => {
     if (!fullTitle) return '';
     const parts = fullTitle.split(" x");
@@ -1252,11 +1264,18 @@ const handlePlaceOrder = async () => {
                 )}
               </div>
               
+              {!isSiteActive && (
+                <div className="mt-6 p-4 bg-red-50 text-red-700 rounded-md text-center">
+                  <p className="font-medium">Service Unavailable</p>
+                  <p className="text-sm mt-2">Service is currently unavailable. Please check back later.</p>
+                </div>
+              )}
+              
               <div className="mt-6">
                 <button
                   type="button"
                   onClick={handlePlaceOrder}
-                  disabled={isSubmitting || items.length === 0 || subtotal < MIN_ORDER_VALUE}
+                  disabled={isSubmitting || items.length === 0 || subtotal < MIN_ORDER_VALUE || !isSiteActive}
                   className="w-full mt-6 bg-red-600 text-white py-3 rounded-md hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (

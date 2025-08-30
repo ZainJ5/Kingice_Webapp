@@ -100,21 +100,6 @@ export default function DeliveryPickupModal() {
 
   if (!open) return null;
 
-  if (!isSiteActive || (!settings.allowDelivery && !settings.allowPickup)) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-        <div className="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden">
-          <div className="bg-red-600 text-white text-center py-4">
-            <h2 className="text-xl font-bold">Service Unavailable</h2>
-          </div>
-          {/* <div className="p-6">
-            <p className="text-gray-700 text-center">Our ordering system is currently unavailable. Please check back later.</p>
-          </div> */}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden animate-fadeIn">
