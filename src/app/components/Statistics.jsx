@@ -62,7 +62,6 @@ export default function Statistics() {
       };
     }
 
-    // Calculate basic stats
     const totalOrders = filteredOrders.length;
     const completedOrders = filteredOrders.filter(o => o.status === "Complete").length;
     const cancelledOrders = filteredOrders.filter(o => o.status === "Cancel").length;
@@ -70,7 +69,6 @@ export default function Statistics() {
     const inProcessOrders = filteredOrders.filter(o => o.status === "In-Process").length;
     const dispatchedOrders = filteredOrders.filter(o => o.status === "Dispatched").length;
 
-    // Determine orders for financial calculations
     const financialOrders = filterType === "canceled" 
       ? filteredOrders 
       : filteredOrders.filter(o => o.status !== "Cancel");
@@ -80,11 +78,9 @@ export default function Statistics() {
     const discount = financialOrders.reduce((sum, o) => sum + (o.discount || 0), 0);
     const total = financialOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     
-    // Extract delivery areas and fees
     const areaMap = new Map();
     financialOrders.forEach(order => {
       if (order.deliveryAddress) {
-        // Try to extract area name from delivery address
         const addressParts = order.deliveryAddress.split(',');
         const area = addressParts.length > 1 
           ? addressParts[addressParts.length - 1].trim() 
@@ -106,14 +102,11 @@ export default function Statistics() {
       }
     });
     
-    // Calculate top delivery areas
     const topAreas = Array.from(areaMap.values())
       .map(area => {
-        // Estimate delivery fees based on orders
         const estimatedFees = area.orders.reduce((sum, order) => {
-          // Assuming delivery fee might be the difference between total and (subtotal - discount + tax)
           const potentialFee = order.total - ((order.subtotal || 0) - (order.discount || 0) + (order.tax || 0));
-          return sum + Math.max(0, potentialFee); // Avoid negative fees
+          return sum + Math.max(0, potentialFee); 
         }, 0);
         
         return {
@@ -128,7 +121,6 @@ export default function Statistics() {
       .sort((a, b) => b.orderCount - a.orderCount)
       .slice(0, 5);
       
-    // Calculate top items
     const itemMap = new Map();
     financialOrders.forEach(order => {
       if (order.items && Array.isArray(order.items)) {
@@ -158,7 +150,6 @@ export default function Statistics() {
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
       .slice(0, 5);
       
-    // Calculate promo code usage
     const promoMap = new Map();
     financialOrders.forEach(order => {
       if (order.promoCode) {
@@ -187,17 +178,14 @@ export default function Statistics() {
       .sort((a, b) => b.uses - a.uses)
       .slice(0, 10);
     
-    // Calculate delivery fees
     const deliveryFees = financialOrders.reduce((sum, order) => {
-      // Similar estimation as above
       if (order.orderType === "delivery") {
         const potentialFee = order.total - ((order.subtotal || 0) - (order.discount || 0) + (order.tax || 0));
-        return sum + Math.max(0, potentialFee); // Avoid negative fees
+        return sum + Math.max(0, potentialFee); 
       }
       return sum;
     }, 0);
     
-    // Calculate average values
     const financialOrderCount = financialOrders.length;
     const avgOrderValue = financialOrderCount > 0 ? total / financialOrderCount : 0;
     const deliveryOrders = financialOrders.filter(o => o.orderType === "delivery").length;
@@ -238,7 +226,6 @@ export default function Statistics() {
     
     const periodText = period === "1" ? "1_Day" : period === "7" ? "7_Days" : "30_Days";
     
-    // Create a worksheet with order summary
     const summaryData = [
       ["Order Statistics Report"],
       [`Period: ${periodText}`, `Type: ${reportType}`],
@@ -262,7 +249,6 @@ export default function Statistics() {
       ["Average Delivery Fee", stats.avgDeliveryFee]
     ];
     
-    // Create worksheet for orders
     const ordersData = [
       [
         "Order No", "Date", "Customer", "Status", "Type", 
@@ -285,7 +271,6 @@ export default function Statistics() {
       ])
     ];
     
-    // Create a workbook and add worksheets
     const wb = XLSX.utils.book_new();
     
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
@@ -294,7 +279,6 @@ export default function Statistics() {
     const ws2 = XLSX.utils.aoa_to_sheet(ordersData);
     XLSX.utils.book_append_sheet(wb, ws2, "Orders");
     
-    // Save workbook
     XLSX.writeFile(wb, `Orders_Report_${periodText}_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
@@ -349,7 +333,6 @@ export default function Statistics() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-2 gap-4">
         <SummaryCard title="Total Orders" value={numberFmt(stats.totalOrders)} color="text-gray-700" />
         <SummaryCard title="Completed Orders" value={numberFmt(stats.completedOrders)} color="text-green-600" />
@@ -357,7 +340,6 @@ export default function Statistics() {
         <SummaryCard title="Pending Orders" value={numberFmt(stats.pendingOrders)} color="text-blue-600" />
       </div>
       
-      {/* Financial Summary Cards */}
       <div className="grid lg:grid-cols-4 md:grid-cols-2 sm:grid-cols-2 gap-4">
         <SummaryCard title="Subtotal" value={`Rs. ${numberFmt(stats.subtotal)}`} color="text-amber-600" />
         <SummaryCard title="Tax" value={`Rs. ${numberFmt(stats.tax)}`} color="text-purple-600" />
@@ -368,7 +350,6 @@ export default function Statistics() {
         <SummaryCard title="Avg Delivery Fee" value={`Rs. ${numberFmt(Math.round(stats.avgDeliveryFee))}`} color="text-orange-600" />
       </div>
 
-      {/* Order Status Distribution */}
       <Section title="Order Status Distribution">
         <div className="flex flex-wrap gap-4 justify-center">
           <StatusCard title="Pending" count={stats.pendingOrders} total={stats.totalOrders} color="bg-yellow-100 border-yellow-400" />
@@ -379,7 +360,6 @@ export default function Statistics() {
         </div>
       </Section>
 
-      {/* Top Items */}
       <Section title="Top 5 Items">
         {stats.topItems && stats.topItems.length > 0 ? (
           <ul className="space-y-2">
@@ -399,7 +379,6 @@ export default function Statistics() {
         )}
       </Section>
 
-      {/* Top Areas */}
       <Section title="Top 5 Delivery Areas">
         {stats.topAreas && stats.topAreas.length > 0 ? (
           <div className="overflow-x-auto">
