@@ -18,7 +18,7 @@ import SettingsPopup from "./SettingsPupup";
 import UserDetails from "./UserDetails";
 import DeliveryPickupSettings from "./DeliveryPickupSettings";
 import DeliveryAreasManager from "./DeliveryAreasManager";
-import CancelledOrderList from "./CancelledOrderList";  // New import
+import CancelledOrderList from "./CancelledOrderList";  
 
 const ConfirmationDialog = ({ title, message, onConfirm, onCancel }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import AdminPortal from '../components/AdminPortal';
 import { SocketProvider } from '../context/SocketContext';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import kitchenSlipTemplate from '../../templates/kitchen-slip';
 
 export default function AdminPage() {
@@ -97,95 +97,119 @@ export default function AdminPage() {
   };
 
   const printKitchenSlip = useCallback(async (order) => {
-    let orderToPrint = order;
-    
-    if (!order.items) {
-      const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
-      if (!fullOrder) {
-        console.error("Could not fetch order details for kitchen slip");
+    if (window.printKitchenSlip && typeof window.printKitchenSlip === 'function') {
+      console.log('Electron environment detected. Delegating to silent print handler.');
+
+      let orderToPrint = order;
+      if (!order.items) {
+        const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+        if (!fullOrder) {
+          console.error("Could not fetch order details for silent printing.");
+          toast.error("Could not fetch order details for printing.");
+          return;
+        }
+        orderToPrint = fullOrder;
+      }
+      
+      window.printKitchenSlip(orderToPrint);
+    } else {
+      console.warn('Electron print handler not found. Falling back to browser printing.');
+      
+      let orderToPrint = order;
+      
+      if (!order.items) {
+        const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+        if (!fullOrder) {
+          console.error("Could not fetch order details for kitchen slip");
+          return;
+        }
+        orderToPrint = fullOrder;
+      }
+      
+      const orderNumber = orderToPrint.orderNo || "N/A";
+      const ticketNumber = Math.floor(10000 + Math.random() * 90000);
+      const currentDate = new Date().toLocaleDateString();
+      const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
+
+      const specialInstructions = [];
+
+      if (orderToPrint.paymentInstructions && orderToPrint.paymentInstructions.trim() !== '----' && orderToPrint.paymentInstructions.trim() !== '') {
+        specialInstructions.push(`Order Instructions: ${orderToPrint.paymentInstructions.trim()}`);
+      }
+
+      const itemsList = orderToPrint.items.map((item, index, array) => {
+        const itemName = item.title || item.name || "Unknown Item";
+        const quantity = item.quantity || 1;
+        
+        let modifiersHtml = '';
+        
+        if (item.selectedVariation && item.selectedVariation.name) {
+          modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
+        } else if (item.type) {
+          modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
+        }
+        
+        if (item.selectedExtras && item.selectedExtras.length > 0) {
+          modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Extras: ${item.selectedExtras.map(e => e.name).join(', ')}</div>`;
+        }
+        
+        if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+          modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Side Orders: ${item.selectedSideOrders.map(s => s.name).join(', ')}</div>`;
+        }
+        
+        if (item.specialInstructions && item.specialInstructions.trim() !== '') {
+          specialInstructions.push(`${itemName}: ${item.specialInstructions}`);
+        }
+
+        const isLastItem = index === array.length - 1;
+        const borderStyle = isLastItem ? "border-bottom: none;" : "";
+
+        return `
+          <tr>
+            <td style="padding: 8px 0; border-top: 1px dashed black; ${borderStyle}">
+              ${itemName}
+              ${modifiersHtml}
+            </td>
+            <td style="padding: 8px 0; border-top: 1px dashed black; text-align: center; ${borderStyle}">${quantity}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const instructionsRow = specialInstructions.length > 0 ? 
+        `<tr>
+          <td colspan="2" style="border-bottom: none; padding-top: 10px;">
+            <div style="font-weight: bold; text-decoration: underline; margin-bottom: 5px;">SPECIAL INSTRUCTIONS:</div>
+            ${specialInstructions.map(instruction => 
+              `<div style="color: #cc0000; margin: 5px 0;">${instruction}</div>`
+            ).join('')}
+          </td>
+        </tr>` : '';
+
+      const tableContent = itemsList + instructionsRow;
+
+      let htmlContent = kitchenSlipTemplate
+        .replace(/{{ticketNumber}}/g, ticketNumber)
+        .replace(/{{orderNumber}}/g, orderNumber)
+        .replace(/{{currentDate}}/g, currentDate)
+        .replace(/{{currentTime}}/g, currentTime)
+        .replace(/{{orderType}}/g, orderType)
+        .replace(/{{itemsList}}/g, tableContent);
+      
+      const newWindow = window.open("", "_blank", "width=300,height=600");
+      if (!newWindow) {
+        console.error("Couldn't open new window for kitchen slip printing");
         return;
       }
-      orderToPrint = fullOrder;
+
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+      
+      setTimeout(() => {
+        newWindow.print();
+        newWindow.close();
+      }, 250);
     }
-    
-    const orderNumber = orderToPrint.orderNo || "N/A";
-    const ticketNumber = Math.floor(10000 + Math.random() * 90000);
-    const currentDate = new Date().toLocaleDateString();
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
-
-    const specialInstructions = [];
-
-    if (orderToPrint.paymentInstructions && orderToPrint.paymentInstructions.trim() !== '----' && orderToPrint.paymentInstructions.trim() !== '') {
-      specialInstructions.push(`Order Instructions: ${orderToPrint.paymentInstructions.trim()}`);
-    }
-
-    const itemsList = orderToPrint.items.map((item, index, array) => {
-      const itemName = item.title || item.name || "Unknown Item";
-      const quantity = item.quantity || 1;
-      
-      let modifiersHtml = '';
-      
-      if (item.selectedVariation && item.selectedVariation.name) {
-        modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
-      } else if (item.type) {
-        modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
-      }
-      
-      if (item.selectedExtras && item.selectedExtras.length > 0) {
-        modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Extras: ${item.selectedExtras.map(e => e.name).join(', ')}</div>`;
-      }
-      
-      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
-        modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Side Orders: ${item.selectedSideOrders.map(s => s.name).join(', ')}</div>`;
-      }
-      
-      if (item.specialInstructions && item.specialInstructions.trim() !== '') {
-        specialInstructions.push(`${itemName}: ${item.specialInstructions}`);
-      }
-
-      const isLastItem = index === array.length - 1;
-      const borderStyle = isLastItem ? "border-bottom: none;" : "";
-
-      return `
-        <tr>
-          <td style="padding: 8px 0; border-top: 1px dashed black; ${borderStyle}">
-            ${itemName}
-            ${modifiersHtml}
-          </td>
-          <td style="padding: 8px 0; border-top: 1px dashed black; text-align: center; ${borderStyle}">${quantity}</td>
-        </tr>
-      `;
-    }).join('');
-
-    const instructionsRow = specialInstructions.length > 0 ? 
-      `<tr>
-        <td colspan="2" style="border-bottom: none; padding-top: 10px;">
-          <div style="font-weight: bold; text-decoration: underline; margin-bottom: 5px;">SPECIAL INSTRUCTIONS:</div>
-          ${specialInstructions.map(instruction => 
-            `<div style="color: #cc0000; margin: 5px 0;">${instruction}</div>`
-          ).join('')}
-        </td>
-      </tr>` : '';
-
-    const tableContent = itemsList + instructionsRow;
-
-    let htmlContent = kitchenSlipTemplate
-      .replace(/{{ticketNumber}}/g, ticketNumber)
-      .replace(/{{orderNumber}}/g, orderNumber)
-      .replace(/{{currentDate}}/g, currentDate)
-      .replace(/{{currentTime}}/g, currentTime)
-      .replace(/{{orderType}}/g, orderType)
-      .replace(/{{itemsList}}/g, tableContent);
-    
-    const newWindow = window.open("", "_blank", "width=300,height=600");
-    if (!newWindow) {
-      console.error("Couldn't open new window for kitchen slip printing");
-      return;
-    }
-
-    newWindow.document.write(htmlContent);
-    newWindow.document.close();
   }, [fetchOrderDetails]);
 
   const handleNewOrder = useCallback((order) => {

@@ -12,7 +12,7 @@ const CategorySchema = new mongoose.Schema(
       ref: "Branch",
       required: true,
     },
-    image: { type: String, required: true } 
+    image: { type: String, required:true } 
   },
   { timestamps: true }
 );
