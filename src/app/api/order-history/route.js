@@ -13,10 +13,10 @@ export async function GET(req) {
     if (from || to) {
       query.createdAt = {};
       if (from) {
-        query.createdAt.$gte = new Date(from + "Z");
+        query.createdAt.$gte = new Date(`${from}+05:00`);
       }
       if (to) {
-        query.createdAt.$lte = new Date(to + "Z");
+        query.createdAt.$lte = new Date(`${to}+05:00`);
       }
     }
 
@@ -38,6 +38,3 @@ export async function GET(req) {
     );
   }
 }
-
-
-

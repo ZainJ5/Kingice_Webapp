@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Printer, Eye } from "lucide-react"; 
 
@@ -15,6 +14,11 @@ export default function OrderHistory() {
     fetchOrderHistory();
   }, [dateFilter, statusFilter, fromDate, toDate]);
 
+  const formatLocalDatetime = (date) => {
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
   const fetchOrderHistory = async () => {
     setLoading(true);
     try {
@@ -24,8 +28,8 @@ export default function OrderHistory() {
         if (dateFilter === "Today") {
           const now = new Date();
           const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          fromStr = twentyFourHoursAgo.toISOString().slice(0, 16);
-          toStr = now.toISOString().slice(0, 16);
+          fromStr = formatLocalDatetime(twentyFourHoursAgo);
+          toStr = formatLocalDatetime(now);
         } else { // Custom
           if (!fromDate || !toDate) {
             setLoading(false);
