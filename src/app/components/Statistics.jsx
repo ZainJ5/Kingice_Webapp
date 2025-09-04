@@ -10,12 +10,24 @@ export default function Statistics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("7"); // Default to 7 days
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [filterType, setFilterType] = useState("all"); // 'all', 'completed', 'canceled'
 
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/statistics?period=${period}`);
+      let url = `/api/statistics`;
+      if (period === "custom") {
+        if (!fromDate || !toDate) {
+          setLoading(false);
+          return;
+        }
+        url += `?from=${fromDate}:00&to=${toDate}:59`;
+      } else {
+        url += `?period=${period}`;
+      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
       const responseData = await res.json();
       setData(responseData);
@@ -224,7 +236,7 @@ export default function Statistics() {
       reportType = "All_Orders";
     }
     
-    const periodText = period === "1" ? "1_Day" : period === "7" ? "7_Days" : "30_Days";
+    const periodText = period === "1" ? "1_Day" : period === "7" ? "7_Days" : period === "30" ? "30_Days" : `Custom_${fromDate}_to_${toDate}`;
     
     const summaryData = [
       ["Order Statistics Report"],
@@ -303,7 +315,32 @@ export default function Statistics() {
             <option value="1">Last 1 Day</option>
             <option value="7">Last 7 Days</option>
             <option value="30">Last 30 Days</option>
+            <option value="custom">Custom Range</option>
           </select>
+          {period === "custom" && (
+            <div className="flex gap-3 items-center">
+              <input
+                type="datetime-local"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+                placeholder="From DateTime"
+              />
+              <input
+                type="datetime-local"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+                placeholder="To DateTime"
+              />
+              <button
+                onClick={fetchStatistics}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          )}
 
           <select
             value={filterType}
