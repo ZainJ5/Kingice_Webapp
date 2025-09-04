@@ -521,9 +521,10 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   return (
     <>
       <div 
-        className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer 
+        className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow 
+                    ${!item.isAvailable ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
                     ${hasAnyDiscount ? 'border-2 border-red-500' : ''}`}
-        onClick={handleCardClick}
+        onClick={item.isAvailable ? handleCardClick : null}
       >
         <div className="h-48 w-full relative">
           {imageUrl && !imageError ? (
@@ -548,6 +549,12 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                   calculateDiscountPercentage(v.price, v.previousPrice) || 0
                 ))}% OFF`
               }
+            </div>
+          )}
+
+          {!item.isAvailable && (
+            <div className="absolute top-0 left-0 bg-gray-600 text-white px-2 py-1 text-xs font-bold">
+              Unavailable
             </div>
           )}
         </div>
@@ -599,19 +606,25 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                 )}
               </div>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (hasVariations || hasExtras || hasSideOrders) {
-                  handleCardClick();
-                } else {
-                  handleAddDirectly(e);
-                }
-              }}
-              className="px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-            >
-              Add
-            </button>
+            {item.isAvailable ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (hasVariations || hasExtras || hasSideOrders) {
+                    handleCardClick();
+                  } else {
+                    handleAddDirectly(e);
+                  }
+                }}
+                className="px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Add
+              </button>
+            ) : (
+              <span className="px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm bg-gray-400 text-white rounded-md">
+                Unavailable
+              </span>
+            )}
           </div>
         </div>
       </div>

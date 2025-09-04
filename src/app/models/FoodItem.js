@@ -61,6 +61,7 @@ const FoodItemSchema = new mongoose.Schema(
       ref: "Branch",
       required: true,
     },
+    isAvailable: { type: Boolean, default: true }, 
     variations: [VariationSchema],
     extras: [ExtraSchema],
     sideOrders: [SideOrderSchema],

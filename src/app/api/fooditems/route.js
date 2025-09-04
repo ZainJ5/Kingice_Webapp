@@ -41,6 +41,8 @@ export async function POST(request) {
     const category = formData.get("category");
     const subcategory = formData.get("subcategory");
     const branch = formData.get("branch");
+    const isAvailableValue = formData.get("isAvailable");
+    const isAvailable = isAvailableValue === "true" || isAvailableValue === true;
     
     const imageUrl = await processFileUpload(formData, "foodImage");
     if (!imageUrl) {
@@ -116,6 +118,7 @@ export async function POST(request) {
       imageUrl,
       category,
       branch,
+      isAvailable, 
       variations: variationsParsed,
       extras: extrasParsed,
       sideOrders: sideOrdersParsed
@@ -145,10 +148,22 @@ export async function POST(request) {
   }
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
     await connectDB();
-    const items = await FoodItem.find({})
+    
+    const { searchParams } = new URL(request.url);
+    const filterAvailable = searchParams.get("available");
+    
+    let query = {};
+    
+    if (filterAvailable === "true") {
+      query.isAvailable = true;
+    } else if (filterAvailable === "false") {
+      query.isAvailable = false;
+    }
+    
+    const items = await FoodItem.find(query)
       .populate("branch")
       .populate("category")
       .populate("subcategory");

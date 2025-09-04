@@ -31,7 +31,7 @@ async function processFileUpload(formData, fieldName) {
 export async function DELETE(request, context) {
   try {
     await connectDB();
-    const { id } = context.params;
+    const { id } = await context.params;
     const foodItem = await FoodItem.findById(id);
     if (!foodItem) {
       return NextResponse.json({ message: "Item not found" }, { status: 404 });
@@ -47,7 +47,7 @@ export async function DELETE(request, context) {
 export async function PATCH(request, context) {
   try {
     await connectDB();
-    const { id } = context.params;
+    const { id } = await context.params;
     const formData = await request.formData();
 
     const title = formData.get("title");
@@ -57,6 +57,7 @@ export async function PATCH(request, context) {
     const category = formData.get("category");
     const subcategory = formData.get("subcategory");
     const branch = formData.get("branch");
+    const isAvailable = formData.get("isAvailable") === 'true';
 
     if (category) {
       const subcategoriesCount = await Subcategory.countDocuments({ category });
@@ -73,16 +74,6 @@ export async function PATCH(request, context) {
     if (variations) {
       try {
         variationsParsed = JSON.parse(variations);
-        
-        for (let i = 0; i < variationsParsed.length; i++) {
-          const variationImageField = `variationImage_${i}`;
-          if (formData.has(variationImageField)) {
-            const varImageUrl = await processFileUpload(formData, variationImageField);
-            if (varImageUrl) {
-              variationsParsed[i].imageUrl = varImageUrl;
-            }
-          }
-        }
       } catch (err) {
         console.error("Error parsing variations:", err);
       }
@@ -142,6 +133,7 @@ export async function PATCH(request, context) {
       variations: variationsParsed,
       extras: extrasParsed,
       sideOrders: sideOrdersParsed,
+      isAvailable,
     };
 
     if (subcategory && subcategory !== "") {
@@ -183,7 +175,7 @@ export async function PATCH(request, context) {
 export async function GET(request, context) {
   try {
     await connectDB();
-    const { id } = context.params;
+    const { id } = await context.params;
     
     const foodItem = await FoodItem.findById(id)
       .populate("branch")

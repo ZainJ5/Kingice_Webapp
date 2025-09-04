@@ -19,6 +19,7 @@ export default function AddFoodItemForm({
   const [previousPrice, setPreviousPrice] = useState(""); 
   const [applyDiscount, setApplyDiscount] = useState(false); 
   const [foodImageFile, setFoodImageFile] = useState(null);
+  const [isAvailable, setIsAvailable] = useState(true); // Added availability state
 
   const [variations, setVariations] = useState([]);
   const [variationName, setVariationName] = useState("");
@@ -279,6 +280,7 @@ export default function AddFoodItemForm({
     }
     formData.append("title", title.trim());
     formData.append("description", description.trim());
+    formData.append("isAvailable", isAvailable); // Added isAvailable field
     
     if (variations.length === 0) {
       formData.append("price", price);
@@ -337,6 +339,7 @@ export default function AddFoodItemForm({
       setVariations([]);
       setExtras([]);
       setSideOrders([]);
+      setIsAvailable(true); // Reset isAvailable to default true
     } catch (error) {
       toast.error("Error adding food item: " + error.message);
       console.error("Form submission error:", error);
@@ -433,6 +436,25 @@ export default function AddFoodItemForm({
           className="w-full border rounded p-2"
           placeholder="Enter description (optional)"
         ></textarea>
+      </div>
+
+      {/* Added availability toggle */}
+      <div className="flex items-center mb-4 p-3 border rounded bg-gray-50">
+        <input
+          type="checkbox"
+          id="isAvailable"
+          checked={isAvailable}
+          onChange={(e) => setIsAvailable(e.target.checked)}
+          className="mr-2 h-5 w-5"
+        />
+        <label htmlFor="isAvailable" className="font-medium">
+          Item is Available for Order
+        </label>
+        <div className="ml-2 text-sm text-gray-600">
+          {isAvailable ? 
+            "(Customers can order this item)" : 
+            "(This item will be hidden from customers)"}
+        </div>
       </div>
 
       {variations.length === 0 && (

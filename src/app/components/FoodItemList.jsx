@@ -18,7 +18,8 @@ export default function FoodItemList() {
     branch: "",
     variations: [],
     extras: [],
-    sideOrders: []
+    sideOrders: [],
+    isAvailable: true,
   });
   const [editImage, setEditImage] = useState(null);
   const [originalItemData, setOriginalItemData] = useState(null);
@@ -209,31 +210,33 @@ export default function FoodItemList() {
       branch: branchId || "",
       variations: item.variations || [],
       extras: item.extras || [],
-      sideOrders: item.sideOrders || []
+      sideOrders: item.sideOrders || [],
+      isAvailable: item.isAvailable ?? true,
     });
     setOriginalItemData(item);
     setEditImage(null);
   };
 
   const handleEditChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    const val = type === "checkbox" ? checked : value;
     if (name === "branch") {
       setEditData((prev) => ({
         ...prev,
-        branch: value,
+        branch: val,
         category: "",
         subcategory: "",
       }));
     } else if (name === "category") {
       setEditData((prev) => ({
         ...prev,
-        category: value,
+        category: val,
         subcategory: "",
       }));
     } else {
       setEditData((prev) => ({
         ...prev,
-        [name]: value,
+        [name]: val,
       }));
     }
   };
@@ -399,6 +402,7 @@ export default function FoodItemList() {
     formData.append("category", editData.category);
     if (editData.subcategory) formData.append("subcategory", editData.subcategory);
     formData.append("branch", editData.branch);
+    formData.append("isAvailable", editData.isAvailable);
 
     // Process variations
     if (editData.variations && editData.variations.length > 0) {
@@ -468,7 +472,8 @@ export default function FoodItemList() {
           branch: "",
           variations: [],
           extras: [],
-          sideOrders: []
+          sideOrders: [],
+          isAvailable: true,
         });
         setOriginalItemData(null);
         setEditImage(null);
@@ -495,7 +500,8 @@ export default function FoodItemList() {
       branch: "",
       variations: [],
       extras: [],
-      sideOrders: []
+      sideOrders: [],
+      isAvailable: true,
     });
     setOriginalItemData(null);
     setEditImage(null);
@@ -585,6 +591,7 @@ export default function FoodItemList() {
           const id = extractValue(item._id);
           const price = extractValue(item.price);
           const previousPrice = extractValue(item.previousPrice);
+          const isAvailable = item.isAvailable ?? true;
 
           if (editingItemId === id) {
             return (
@@ -703,6 +710,19 @@ export default function FoodItemList() {
                           onChange={handleImageChange}
                           className="mt-1 block w-full rounded-lg border-gray-200 text-sm"
                         />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="isAvailable"
+                          name="isAvailable"
+                          checked={editData.isAvailable}
+                          onChange={handleEditChange}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor="isAvailable" className="text-sm font-medium text-gray-700">
+                          Item is Available
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -978,6 +998,9 @@ export default function FoodItemList() {
                 </div>
               )}
               <h3 className="text-base font-semibold text-gray-800 mb-1">{item.title}</h3>
+              <p className={`text-xs font-medium ${isAvailable ? "text-green-600" : "text-red-600"}`}>
+                {isAvailable ? "Available" : "Unavailable"}
+              </p>
               
               {/* Price display with optional previous price */}
               {(!item.variations || item.variations.length === 0) && (
