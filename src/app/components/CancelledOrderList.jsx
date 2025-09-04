@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Printer, Eye } from "lucide-react"; 
 
@@ -6,16 +7,36 @@ export default function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("Today");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchOrderHistory();
-  }, [dateFilter, statusFilter]);
+  }, [dateFilter, statusFilter, fromDate, toDate]);
 
   const fetchOrderHistory = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/order-history");
+      let url = "/api/order-history";
+      if (dateFilter === "Today" || dateFilter === "Custom") {
+        let fromStr, toStr;
+        if (dateFilter === "Today") {
+          const now = new Date();
+          const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          fromStr = twentyFourHoursAgo.toISOString().slice(0, 16);
+          toStr = now.toISOString().slice(0, 16);
+        } else { // Custom
+          if (!fromDate || !toDate) {
+            setLoading(false);
+            return;
+          }
+          fromStr = fromDate;
+          toStr = toDate;
+        }
+        url += `?from=${fromStr}:00&to=${toStr}:59`;
+      }
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setOrders(data);
@@ -80,16 +101,6 @@ export default function OrderHistory() {
 
   const filteredOrders = orders.filter((order) => {
     if (statusFilter !== "All" && order.status !== statusFilter) return false;
-
-    const orderDate = new Date(order.createdAt);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (dateFilter === "Today") {
-      const twentyFourHoursAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-      return orderDate >= twentyFourHoursAgo;
-    }
     return true;
   });
 
@@ -139,8 +150,26 @@ export default function OrderHistory() {
           >
             <option>Today</option>
             <option>All</option>
+            <option>Custom</option>
           </select>
         </div>
+        
+        {dateFilter === "Custom" && (
+          <div className="flex items-center gap-3">
+            <input
+              type="datetime-local"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+            />
+            <input
+              type="datetime-local"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+            />
+          </div>
+        )}
         
         <div className="flex items-center">
           <span className="text-gray-700 mr-2 font-medium">Status:</span>

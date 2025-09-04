@@ -1,11 +1,26 @@
 import connectDB from '../../lib/mongoose'; 
 import Order from '../../models/Order';
 
-export async function GET() {
+export async function GET(req) {
   try {
     await connectDB();
 
-    const orders = await Order.find({ status: { $in: ['Complete', 'Cancel'] } })
+    const { searchParams } = new URL(req.url);
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+
+    const query = { status: { $in: ['Complete', 'Cancel'] } };
+    if (from || to) {
+      query.createdAt = {};
+      if (from) {
+        query.createdAt.$gte = new Date(from + "Z");
+      }
+      if (to) {
+        query.createdAt.$lte = new Date(to + "Z");
+      }
+    }
+
+    const orders = await Order.find(query)
       .sort({ createdAt: -1 })
       .populate('branch');
 
@@ -23,3 +38,6 @@ export async function GET() {
     );
   }
 }
+
+
+
