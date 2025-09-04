@@ -3,17 +3,21 @@ import connectDB from "../../lib/mongoose";
 import Order from "../../models/Order"; 
 import mongoose from "mongoose"; 
 
+const offset = 5 * 60 * 60 * 1000; // PKT is UTC+5
+
 function getDateFromPeriod(period) {
-  const now = new Date();
+  const utcNow = new Date();
+  const pktNow = new Date(utcNow.getTime() + offset);
 
   if (period === "1") {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const pktStart = new Date(pktNow.getFullYear(), pktNow.getMonth(), pktNow.getDate());
+    return new Date(pktStart.getTime() - offset);
   }
   if (period === "7") {
-    return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return new Date(pktNow.getTime() - 7 * 24 * 60 * 60 * 1000);
   }
   if (period === "30") {
-    return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return new Date(pktNow.getTime() - 30 * 24 * 60 * 60 * 1000);
   }
 
   return null;
@@ -32,14 +36,16 @@ export async function GET(req) {
     let endDate = new Date();
 
     if (from && to) {
-      startDate = new Date(from + "Z"); 
-      endDate = new Date(to + "Z");
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      const tempStart = new Date(from + "Z");
+      const tempEnd = new Date(to + "Z");
+      if (isNaN(tempStart.getTime()) || isNaN(tempEnd.getTime())) {
         return NextResponse.json(
           { success: false, message: "Invalid from or to date format" },
           { status: 400 }
         );
       }
+      startDate = new Date(tempStart.getTime() - offset);
+      endDate = new Date(tempEnd.getTime() - offset);
     } else if (period) {
       startDate = getDateFromPeriod(period);
       if (!startDate) {
@@ -90,14 +96,16 @@ export async function POST(req) {
     let endDate = new Date();
 
     if (from && to) {
-      startDate = new Date(from + "Z"); 
-      endDate = new Date(to + "Z"); 
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      const tempStart = new Date(from + "Z");
+      const tempEnd = new Date(to + "Z");
+      if (isNaN(tempStart.getTime()) || isNaN(tempEnd.getTime())) {
         return NextResponse.json(
           { success: false, message: "Invalid from or to date format" },
           { status: 400 }
         );
       }
+      startDate = new Date(tempStart.getTime() - offset);
+      endDate = new Date(tempEnd.getTime() - offset);
     } else if (period) {
       startDate = getDateFromPeriod(period);
       if (!startDate) {
