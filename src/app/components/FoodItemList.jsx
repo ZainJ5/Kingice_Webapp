@@ -24,6 +24,7 @@ export default function FoodItemList() {
   const [editImage, setEditImage] = useState(null);
   const [originalItemData, setOriginalItemData] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [updatingAvailability, setUpdatingAvailability] = useState(null); // Track which item's availability is being updated
   const [filters, setFilters] = useState({
     branch: "",
     category: "",
@@ -114,6 +115,39 @@ export default function FoodItemList() {
       toast.error("Error fetching food items");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // New function to toggle item availability
+  const toggleItemAvailability = async (id, currentAvailability) => {
+    setUpdatingAvailability(id);
+    try {
+      const formData = new FormData();
+      formData.append("isAvailable", !currentAvailability);
+      
+      const res = await fetch(`/api/fooditems/${id}/toggle-availability`, {
+        method: "PATCH",
+        body: formData,
+      });
+      
+      if (res.ok) {
+        // Update the local state
+        const updatedItems = foodItems.map(item => 
+          extractValue(item._id) === id 
+            ? { ...item, isAvailable: !currentAvailability }
+            : item
+        );
+        setFoodItems(updatedItems);
+        toast.success(`Item is now ${!currentAvailability ? "available" : "unavailable"}`);
+      } else {
+        const errorData = await res.json();
+        toast.error(`Failed to update availability: ${errorData.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error updating availability:", error);
+      toast.error("Error updating availability");
+    } finally {
+      setUpdatingAvailability(null);
     }
   };
 
@@ -998,9 +1032,32 @@ export default function FoodItemList() {
                 </div>
               )}
               <h3 className="text-base font-semibold text-gray-800 mb-1">{item.title}</h3>
-              <p className={`text-xs font-medium ${isAvailable ? "text-green-600" : "text-red-600"}`}>
-                {isAvailable ? "Available" : "Unavailable"}
-              </p>
+              
+              {/* Updated availability toggle */}
+              <div className="flex items-center justify-between mb-2">
+                <button 
+                  onClick={() => toggleItemAvailability(id, isAvailable)}
+                  disabled={updatingAvailability === id}
+                  className={`relative inline-flex items-center h-6 rounded-full w-11 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out ${
+                    isAvailable ? 'bg-green-600' : 'bg-gray-300'
+                  }`}
+                  aria-pressed={isAvailable}
+                >
+                  <span className="sr-only">
+                    {isAvailable ? 'Available' : 'Unavailable'}
+                  </span>
+                  <span
+                    className={`${
+                      isAvailable ? 'translate-x-5' : 'translate-x-0'
+                    } inline-block w-5 h-5 transform bg-white rounded-full transition-transform duration-200 ease-in-out ${
+                      updatingAvailability === id ? 'animate-pulse' : ''
+                    }`}
+                  />
+                </button>
+                <span className={`text-xs font-medium ${isAvailable ? "text-green-600" : "text-red-600"}`}>
+                  {updatingAvailability === id ? 'Updating...' : isAvailable ? 'Available' : 'Unavailable'}
+                </span>
+              </div>
               
               {/* Price display with optional previous price */}
               {(!item.variations || item.variations.length === 0) && (
