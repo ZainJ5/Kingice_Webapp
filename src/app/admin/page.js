@@ -144,11 +144,11 @@ export default function AdminPage() {
         
         let modifiersHtml = '';
         
-        if (item.selectedVariation && item.selectedVariation.name) {
-          modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
-        } else if (item.type) {
-          modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
-        }
+        // if (item.selectedVariation && item.selectedVariation.name) {
+        //   modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
+        // } else if (item.type) {
+        //   modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
+        // }
         
         if (item.selectedExtras && item.selectedExtras.length > 0) {
           modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Extras: ${item.selectedExtras.map(e => e.name).join(', ')}</div>`;
@@ -181,7 +181,7 @@ export default function AdminPage() {
           <td colspan="2" style="border-bottom: none; padding-top: 10px;">
             <div style="font-weight: bold; text-decoration: underline; margin-bottom: 5px;">SPECIAL INSTRUCTIONS:</div>
             ${specialInstructions.map(instruction => 
-              `<div style="color: #cc0000; margin: 5px 0;">${instruction}</div>`
+              `<div style="font-weight: bold; margin: 5px 0;">${instruction}</div>`
             ).join('')}
           </td>
         </tr>` : '';

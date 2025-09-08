@@ -836,7 +836,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold">Order List</h2>
 
-        {/* <div className="flex items-center">
+        <div className="flex items-center">
           <button
             onClick={refreshOrders}
             className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
@@ -844,7 +844,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
           >
             Refresh
           </button>
-        </div> */}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center mb-6 flex-wrap">
