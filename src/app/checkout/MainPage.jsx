@@ -295,6 +295,13 @@ export default function CheckoutPage() {
       });
       return false;
     }
+
+    if(!alternateMobile.trim()){
+        toast.error("Please enter your whatsapp number.", {
+        style: { background: "#dc2626", color: "#ffffff" },
+      });
+      return false;
+    }
     
     const phoneRegex = /^03[0-9]{9}$/;
     if (!phoneRegex.test(mobileNumber.trim())) {
