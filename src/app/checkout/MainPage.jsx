@@ -733,11 +733,12 @@ const handlePlaceOrder = async () => {
                   ) : (
                     <div>
                       <label className="block text-sm text-gray-700 mb-1">
-                        Alternate Mobile Number
-                      </label>
+                      Whatsapp Number <span className="text-red-500">*Required</span>
+                    </label>
                       <input
                         type="tel"
                         value={alternateMobile}
+                        required
                         onChange={(e) => setAlternateMobile(e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md"
                         placeholder="03xx-xxxxxxx"
