@@ -31,6 +31,33 @@ async function saveFile(file, directory) {
   return `/${directory}/${filename}`;
 }
 
+async function sendWhatsAppMessage(to, text) {
+  console.log("In Whatsapp function")
+  let formattedTo = to.trim();
+  if (formattedTo.startsWith('0')) {
+    formattedTo = '+92' + formattedTo.slice(1);
+  } else if (!formattedTo.startsWith('+')) {
+    formattedTo = '+92' + formattedTo;
+  }
+  try {
+    const response = await fetch("https://wasenderapi.com/api/send-message", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.WASENDER_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ to: formattedTo, text })
+    });
+    console.log("Response:", await response.text());
+
+    if (!response.ok) {
+      console.error(`Failed to send WhatsApp message to ${formattedTo}:`, await response.text());
+    }
+  } catch (error) {
+    console.error(`Error sending WhatsApp message to ${formattedTo}:`, error);
+  }
+}
+
 export async function POST(request) {
   try {
     await connectDB();
@@ -179,6 +206,13 @@ export async function POST(request) {
     if (global.io) {
       global.io.emit('newOrder', populatedOrder);
       console.log('New order event emitted');
+    }
+
+    const confirmationMessage = `Thank you for your order! Your order number is ${populatedOrder.orderNo}. Total amount: ${populatedOrder.total}. We will process it shortly.`;
+    // await sendWhatsAppMessage(mobileNumber, confirmationMessage);
+    if (alternateMobile) {
+      console.log("Alternate no. found")
+      await sendWhatsAppMessage(alternateMobile, confirmationMessage);
     }
     
     console.log("Created Order:", populatedOrder);
