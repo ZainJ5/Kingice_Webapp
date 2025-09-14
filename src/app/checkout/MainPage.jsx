@@ -296,16 +296,24 @@ export default function CheckoutPage() {
       return false;
     }
 
-    if(!alternateMobile.trim()){
-        toast.error("Please enter your whatsapp number.", {
+    const phoneRegex = /^03[0-9]{9}$/;
+    if (!phoneRegex.test(mobileNumber.trim())) {
+      toast.error("Please enter a valid mobile number (format: 03XXXXXXXXX)", {
         style: { background: "#dc2626", color: "#ffffff" },
       });
       return false;
     }
     
-    const phoneRegex = /^03[0-9]{9}$/;
-    if (!phoneRegex.test(mobileNumber.trim())) {
-      toast.error("Please enter a valid mobile number (format: 03XXXXXXXXX)", {
+    if(!alternateMobile.trim()){
+        toast.error("Please enter your WhatsApp number.", {
+        style: { background: "#dc2626", color: "#ffffff" },
+      });
+      return false;
+    }
+    
+    // Added validation for WhatsApp number format
+    if (!phoneRegex.test(alternateMobile.trim())) {
+      toast.error("Please enter a valid WhatsApp number (format: 03XXXXXXXXX)", {
         style: { background: "#dc2626", color: "#ffffff" },
       });
       return false;
@@ -749,7 +757,9 @@ const handlePlaceOrder = async () => {
                         onChange={(e) => setAlternateMobile(e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md"
                         placeholder="03xx-xxxxxxx"
+                        pattern="^03[0-9]{9}$"
                       />
+                      <p className="text-xs text-gray-500 mt-1">Format: 03xxxxxxxxx</p>
                     </div>
                   )}
                 </div>
@@ -1275,7 +1285,7 @@ const handlePlaceOrder = async () => {
               {!isSiteActive && (
                 <div className="mt-6 p-4 bg-red-50 text-red-700 rounded-md text-center">
                   {/* <p className="font-medium">Service Unavailable</p> */}
-                  <p className="text-sm">Order time is 06:00 pm to 1:45 am. Please make orders during opening hours.</p>
+                  <p className="text-sm">Order time is 06:00 pm to 1:45 am. Please make orders during opening hours.</p>
                 </div>
               )}
               

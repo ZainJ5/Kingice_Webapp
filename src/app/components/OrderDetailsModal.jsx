@@ -141,7 +141,7 @@ export default function OrderDetailsModal({
                       <div className="flex items-center">
                         <p className="font-medium">{selectedOrder.mobileNumber}</p>
                         <button 
-                          onClick={() => openWhatsAppChat(selectedOrder.mobileNumber)}
+                          onClick={() => openWhatsAppChat(selectedOrder.alternateMobile)}
                           className="ml-2 text-green-600 hover:text-green-700"
                           aria-label="WhatsApp this number"
                         >
