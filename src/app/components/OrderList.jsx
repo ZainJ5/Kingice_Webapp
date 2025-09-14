@@ -70,14 +70,14 @@ const extractAreaFromAddress = (deliveryAddress) => {
 
 const formatDateTime = (dateString) => {
   if (!dateString) return "N/A";
-  
+
   try {
     const date = new Date(dateString);
     if (isNaN(date)) return "Invalid Date";
-    
+
     const formattedDate = date.toLocaleDateString();
     const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
+
     return `${formattedDate} ${formattedTime}`;
   } catch (error) {
     console.error("Error formatting date:", error);
@@ -311,63 +311,63 @@ export default function OrderList() {
     }
   }, [orderDetailsCache]);
 
-const updateOrderStatus = useCallback(async (orderId, updateData) => {
-  try {
-    const existingOrder = orders.find(order => String(extractValue(order._id)) === orderId);
-    const existingArea = existingOrder ? existingOrder.area : null;
-    
-    const res = await fetch(`/api/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updateData),
-    });
+  const updateOrderStatus = useCallback(async (orderId, updateData) => {
+    try {
+      const existingOrder = orders.find(order => String(extractValue(order._id)) === orderId);
+      const existingArea = existingOrder ? existingOrder.area : null;
 
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || `Failed to update order (Status: ${res.status})`);
-    }
-
-    const updatedOrder = await res.json();
-    
-    updatedOrder.area = updatedOrder.area || existingArea || extractAreaFromAddress(updatedOrder.deliveryAddress) || "N/A";
-
-    setOrders(prev =>
-      prev.map(order =>
-        String(extractValue(order._id)) === orderId ? updatedOrder : order
-      )
-    );
-
-    setPageCache(prevCache => {
-      const updatedCache = { ...prevCache };
-
-      Object.keys(updatedCache).forEach(key => {
-        if (updatedCache[key] && updatedCache[key].orders) {
-          updatedCache[key].orders = updatedCache[key].orders.map(order =>
-            String(extractValue(order._id)) === orderId ? updatedOrder : order
-          );
-        }
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
       });
 
-      return updatedCache;
-    });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to update order (Status: ${res.status})`);
+      }
 
-    setOrderDetailsCache(prev => ({
-      ...prev,
-      [orderId]: updatedOrder
-    }));
+      const updatedOrder = await res.json();
 
-    if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
-      setSelectedOrder(updatedOrder);
+      updatedOrder.area = updatedOrder.area || existingArea || extractAreaFromAddress(updatedOrder.deliveryAddress) || "N/A";
+
+      setOrders(prev =>
+        prev.map(order =>
+          String(extractValue(order._id)) === orderId ? updatedOrder : order
+        )
+      );
+
+      setPageCache(prevCache => {
+        const updatedCache = { ...prevCache };
+
+        Object.keys(updatedCache).forEach(key => {
+          if (updatedCache[key] && updatedCache[key].orders) {
+            updatedCache[key].orders = updatedCache[key].orders.map(order =>
+              String(extractValue(order._id)) === orderId ? updatedOrder : order
+            );
+          }
+        });
+
+        return updatedCache;
+      });
+
+      setOrderDetailsCache(prev => ({
+        ...prev,
+        [orderId]: updatedOrder
+      }));
+
+      if (selectedOrder && String(extractValue(selectedOrder._id)) === orderId) {
+        setSelectedOrder(updatedOrder);
+      }
+
+      toast.success("Order status updated successfully");
+      return updatedOrder;
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast.error(error.message || "Failed to update order status");
+      throw error;
     }
-
-    toast.success("Order status updated successfully");
-    return updatedOrder;
-  } catch (error) {
-    console.error("Error updating order:", error);
-    toast.error(error.message || "Failed to update order status");
-    throw error;
-  }
-}, [orders, selectedOrder]);
+  }, [orders, selectedOrder]);
 
   const removeOrder = useCallback((orderId) => {
     setOrders(prev => prev.filter(order => String(extractValue(order._id)) !== orderId));
@@ -407,7 +407,7 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
     if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
       return;
     }
-    
+
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "DELETE",
@@ -497,58 +497,58 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
     return rangeWithDots.filter((page, index, arr) => arr.indexOf(page) === index);
   }, [currentPage, totalPages]);
 
-const printKitchenSlip = useCallback(async (order) => {
-  let orderToPrint = order;
+  const printKitchenSlip = useCallback(async (order) => {
+    let orderToPrint = order;
 
-  if (!order.items) {
-    const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
-    if (!fullOrder) {
-      console.error("Could not fetch order details for kitchen slip");
-      return;
-    }
-    orderToPrint = fullOrder;
-  }
-
-  const orderNumber = orderToPrint.orderNo || "N/A";
-  const ticketNumber = Math.floor(10000 + Math.random() * 90000);
-  const currentDate = new Date().toLocaleDateString();
-  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
-
-  const specialInstructions = [];
-
-  if (orderToPrint.paymentInstructions && orderToPrint.paymentInstructions.trim() !== '----' && orderToPrint.paymentInstructions.trim() !== '') {
-    specialInstructions.push(`Order Instructions: ${orderToPrint.paymentInstructions.trim()}`);
-  }
-
-  const itemsList = orderToPrint.items.map((item, index, array) => {
-    const itemName = item.title || item.name || "Unknown Item";
-    const quantity = item.quantity || 1;
-    
-    let modifiersHtml = '';
-    
-    if (item.selectedVariation && item.selectedVariation.name) {
-      // modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
-    } else if (item.type) {
-      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
-    }
-    
-    if (item.selectedExtras && item.selectedExtras.length > 0) {
-      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Extras: ${item.selectedExtras.map(e => e.name).join('<br />')}</div>`;
-    }
-    
-    if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
-      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Side Orders: ${item.selectedSideOrders.map(s => s.name).join('<br />')}</div>`;
-    }
-    
-    if (item.specialInstructions && item.specialInstructions.trim() !== '') {
-      specialInstructions.push(`${itemName}: ${item.specialInstructions}`);
+    if (!order.items) {
+      const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+      if (!fullOrder) {
+        console.error("Could not fetch order details for kitchen slip");
+        return;
+      }
+      orderToPrint = fullOrder;
     }
 
-    const isLastItem = index === array.length - 1;
-    const borderStyle = isLastItem ? "border-bottom: none;" : "";
+    const orderNumber = orderToPrint.orderNo || "N/A";
+    const ticketNumber = Math.floor(10000 + Math.random() * 90000);
+    const currentDate = new Date().toLocaleDateString();
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
 
-    return `
+    const specialInstructions = [];
+
+    if (orderToPrint.paymentInstructions && orderToPrint.paymentInstructions.trim() !== '----' && orderToPrint.paymentInstructions.trim() !== '') {
+      specialInstructions.push(`Order Instructions: ${orderToPrint.paymentInstructions.trim()}`);
+    }
+
+    const itemsList = orderToPrint.items.map((item, index, array) => {
+      const itemName = item.title || item.name || "Unknown Item";
+      const quantity = item.quantity || 1;
+
+      let modifiersHtml = '';
+
+      if (item.selectedVariation && item.selectedVariation.name) {
+        // modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
+      } else if (item.type) {
+        modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
+      }
+
+      if (item.selectedExtras && item.selectedExtras.length > 0) {
+        modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Extras: ${item.selectedExtras.map(e => e.name).join('<br />')}</div>`;
+      }
+
+      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+        modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Side Orders: ${item.selectedSideOrders.map(s => s.name).join('<br />')}</div>`;
+      }
+
+      if (item.specialInstructions && item.specialInstructions.trim() !== '') {
+        specialInstructions.push(`${itemName}: ${item.specialInstructions}`);
+      }
+
+      const isLastItem = index === array.length - 1;
+      const borderStyle = isLastItem ? "border-bottom: none;" : "";
+
+      return `
       <tr>
         <td style="padding: 4px 0; border-top: 1px dashed black; ${borderStyle}">
           ${itemName}
@@ -557,103 +557,103 @@ const printKitchenSlip = useCallback(async (order) => {
         <td style="padding: 4px 0; border-top: 1px dashed black; text-align: center; ${borderStyle}">${quantity}</td>
       </tr>
     `;
-  }).join('');
+    }).join('');
 
-  const instructionsRow = specialInstructions.length > 0 ? 
-    `<tr>
+    const instructionsRow = specialInstructions.length > 0 ?
+      `<tr>
       <td colspan="2" style="border-bottom: none; padding-top: 5px;">
         <div style="font-weight: bold; text-decoration: underline; margin-bottom: 5px;">SPECIAL INSTRUCTIONS:</div>
-        ${specialInstructions.map(instruction => 
-          `<div style="color: #000000; font-weight: bold; margin: 5px 0;">${instruction}</div>`
-        ).join('')}
+        ${specialInstructions.map(instruction =>
+        `<div style="color: #000000; font-weight: bold; margin: 5px 0;">${instruction}</div>`
+      ).join('')}
       </td>
     </tr>` : '';
 
-  const tableContent = itemsList + instructionsRow;
+    const tableContent = itemsList + instructionsRow;
 
-  let htmlContent = kitchenSlipTemplate
-    .replace(/{{ticketNumber}}/g, ticketNumber)
-    .replace(/{{orderNumber}}/g, orderNumber)
-    .replace(/{{currentDate}}/g, currentDate)
-    .replace(/{{currentTime}}/g, currentTime)
-    .replace(/{{orderType}}/g, orderType)
-    .replace(/{{itemsList}}/g, tableContent);
-  
-  const newWindow = window.open("", "_blank", "width=300,height=600");
-  if (!newWindow) {
-    console.error("Couldn't open new window for kitchen slip printing");
-    return;
-  }
+    let htmlContent = kitchenSlipTemplate
+      .replace(/{{ticketNumber}}/g, ticketNumber)
+      .replace(/{{orderNumber}}/g, orderNumber)
+      .replace(/{{currentDate}}/g, currentDate)
+      .replace(/{{currentTime}}/g, currentTime)
+      .replace(/{{orderType}}/g, orderType)
+      .replace(/{{itemsList}}/g, tableContent);
 
-  newWindow.document.write(htmlContent);
-  newWindow.document.close();
-}, [fetchOrderDetails]);
-
-const printDeliveryPreBill = useCallback(async (order) => {
-  let orderToPrint = order;
-
-  if (!order.items) {
-    const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
-    if (!fullOrder) {
-      alert("Could not fetch order details for printing");
+    const newWindow = window.open("", "_blank", "width=300,height=600");
+    if (!newWindow) {
+      console.error("Couldn't open new window for kitchen slip printing");
       return;
     }
-    orderToPrint = fullOrder;
-  }
 
-  const orderNumber = orderToPrint.orderNo || "N/A";
-  const currentDate = new Date().toLocaleDateString();
-  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
-  const customerName = orderToPrint.fullName || '';
-  const mobileNumber = orderToPrint.mobileNumber || '';
-  const alternateMobile = orderToPrint.alternateMobile || '';
-  const deliveryAddress = orderToPrint.deliveryAddress || '';
-  const nearestLandmark = orderToPrint.nearestLandmark || '----'; 
-  const paymentInstructions = orderToPrint.paymentInstructions || '----';
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
+  }, [fetchOrderDetails]);
 
-  const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
-  const deliveryFee = orderToPrint.orderType === 'delivery' ?
-    getDeliveryFeeForArea(area) : 0;
+  const printDeliveryPreBill = useCallback(async (order) => {
+    let orderToPrint = order;
 
-  const subtotal = extractValue(orderToPrint.subtotal) || 0;
-  const tax = extractValue(orderToPrint.tax) || 0;
-  const discount = extractValue(orderToPrint.discount) || 0;
-  const discountPercentage = orderToPrint.globalDiscountPercentage || orderToPrint.discountPercentage || 0;
-  const total = extractValue(orderToPrint.total) || 0;
-  const itemCount = orderToPrint.items.length;
-
-  const itemRows = orderToPrint.items.map((item, index) => {
-    const itemName = item.title || item.name || "Unknown Item";
-    const quantity = item.quantity || 1;
-    const price = extractValue(item.price) || 0;
-    const amount = price * quantity;
-    
-    let modifiersHtml = '';
-    
-    if (item.selectedVariation) {
-      // modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
-    } else if (item.type) {
-      modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
-    }
-    
-    if (item.selectedExtras && item.selectedExtras.length > 0) {
-      item.selectedExtras.forEach(extra => {
-        modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
-      });
-    }
-    
-    if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
-      item.selectedSideOrders.forEach(sideOrder => {
-        modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
-      });
-    }
-    
-    if (item.specialInstructions) {
-      modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
+    if (!order.items) {
+      const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+      if (!fullOrder) {
+        alert("Could not fetch order details for printing");
+        return;
+      }
+      orderToPrint = fullOrder;
     }
 
-    return `
+    const orderNumber = orderToPrint.orderNo || "N/A";
+    const currentDate = new Date().toLocaleDateString();
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
+    const customerName = orderToPrint.fullName || '';
+    const mobileNumber = orderToPrint.mobileNumber || '';
+    const alternateMobile = orderToPrint.alternateMobile || '';
+    const deliveryAddress = orderToPrint.deliveryAddress || '';
+    const nearestLandmark = orderToPrint.nearestLandmark || '----';
+    const paymentInstructions = orderToPrint.paymentInstructions || '----';
+
+    const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
+    const deliveryFee = orderToPrint.orderType === 'delivery' ?
+      getDeliveryFeeForArea(area) : 0;
+
+    const subtotal = extractValue(orderToPrint.subtotal) || 0;
+    const tax = extractValue(orderToPrint.tax) || 0;
+    const discount = extractValue(orderToPrint.discount) || 0;
+    const discountPercentage = orderToPrint.globalDiscountPercentage || orderToPrint.discountPercentage || 0;
+    const total = extractValue(orderToPrint.total) || 0;
+    const itemCount = orderToPrint.items.length;
+
+    const itemRows = orderToPrint.items.map((item, index) => {
+      const itemName = item.title || item.name || "Unknown Item";
+      const quantity = item.quantity || 1;
+      const price = extractValue(item.price) || 0;
+      const amount = price * quantity;
+
+      let modifiersHtml = '';
+
+      if (item.selectedVariation) {
+        // modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+      } else if (item.type) {
+        modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
+      }
+
+      if (item.selectedExtras && item.selectedExtras.length > 0) {
+        item.selectedExtras.forEach(extra => {
+          modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
+        });
+      }
+
+      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+        item.selectedSideOrders.forEach(sideOrder => {
+          modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
+        });
+      }
+
+      if (item.specialInstructions) {
+        modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
+      }
+
+      return `
       <tr>
         <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
         <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
@@ -665,98 +665,98 @@ const printDeliveryPreBill = useCallback(async (order) => {
         <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>
       </tr>
     `;
-  }).join('');
+    }).join('');
 
-  let htmlContent = deliveryPreBillTemplate
-    .replace(/{{orderNumber}}/g, orderNumber)
-    .replace(/{{orderType}}/g, orderType)
-    .replace(/{{customerName}}/g, customerName)
-    .replace(/{{currentDate}}/g, currentDate)
-    .replace(/{{currentTime}}/g, currentTime)
-    .replace(/{{itemRows}}/g, itemRows)
-    .replace(/{{itemCount}}/g, itemCount)
-    .replace(/{{subtotal}}/g, subtotal)
-    .replace(/{{tax}}/g, tax)
-    .replace(/{{deliveryFee}}/g, deliveryFee)
-    .replace(/{{discountPercentage}}/g, discountPercentage)
-    .replace(/{{discount}}/g, discount)
-    .replace(/{{total}}/g, total)
-    .replace(/{{mobileNumber}}/g, mobileNumber)
-    .replace(/{{alternateMobile}}/g, alternateMobile)
-    .replace(/{{deliveryAddress}}/g, deliveryAddress)
-    .replace(/{{nearestLandmark}}/g, nearestLandmark)
-    .replace(/{{paymentInstructions}}/g, paymentInstructions);
+    let htmlContent = deliveryPreBillTemplate
+      .replace(/{{orderNumber}}/g, orderNumber)
+      .replace(/{{orderType}}/g, orderType)
+      .replace(/{{customerName}}/g, customerName)
+      .replace(/{{currentDate}}/g, currentDate)
+      .replace(/{{currentTime}}/g, currentTime)
+      .replace(/{{itemRows}}/g, itemRows)
+      .replace(/{{itemCount}}/g, itemCount)
+      .replace(/{{subtotal}}/g, subtotal)
+      .replace(/{{tax}}/g, tax)
+      .replace(/{{deliveryFee}}/g, deliveryFee)
+      .replace(/{{discountPercentage}}/g, discountPercentage)
+      .replace(/{{discount}}/g, discount)
+      .replace(/{{total}}/g, total)
+      .replace(/{{mobileNumber}}/g, mobileNumber)
+      .replace(/{{alternateMobile}}/g, alternateMobile)
+      .replace(/{{deliveryAddress}}/g, deliveryAddress)
+      .replace(/{{nearestLandmark}}/g, nearestLandmark)
+      .replace(/{{paymentInstructions}}/g, paymentInstructions);
 
-  const newWindow = window.open("", "_blank", "width=300,height=600");
-  if (!newWindow) return;
+    const newWindow = window.open("", "_blank", "width=300,height=600");
+    if (!newWindow) return;
 
-  newWindow.document.write(htmlContent);
-  newWindow.document.close();
-}, [fetchOrderDetails, getDeliveryFeeForArea]);
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
+  }, [fetchOrderDetails, getDeliveryFeeForArea]);
 
-const printDeliveryPaymentReceipt = useCallback(async (order) => {
-  let orderToPrint = order;
+  const printDeliveryPaymentReceipt = useCallback(async (order) => {
+    let orderToPrint = order;
 
-  if (!order.items) {
-    const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
-    if (!fullOrder) {
-      alert("Could not fetch order details for printing");
-      return;
-    }
-    orderToPrint = fullOrder;
-  }
-
-  const orderNumber = orderToPrint.orderNo || "N/A";
-  const currentDate = new Date().toLocaleDateString();
-  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
-  const customerName = orderToPrint.fullName || '';
-  const mobileNumber = orderToPrint.mobileNumber || '';
-  const alternateMobile = orderToPrint.alternateMobile || '';
-  const deliveryAddress = orderToPrint.deliveryAddress || '';
-  const paymentInstructions = orderToPrint.paymentInstructions || '----';
-
-  const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
-  const deliveryFee = orderToPrint.orderType === 'delivery' ?
-    getDeliveryFeeForArea(area) : 0;
-
-  const subtotal = extractValue(orderToPrint.subtotal) || 0;
-  const total = extractValue(orderToPrint.total) || 0;
-  const paymentMethod = orderToPrint.paymentMethod === 'cod' ? 'Cash' : 'Online Payment';
-  const changeRequest = orderToPrint.changeRequest || '0.00';
-  const itemCount = orderToPrint.items.length;
-
-  const itemRows = orderToPrint.items.map((item, index) => {
-    const itemName = item.title || item.name || "Unknown Item";
-    const quantity = item.quantity || 1;
-    const price = extractValue(item.price) || 0;
-    const amount = price * quantity;
-    
-    let modifiersHtml = '';
-    
-    if (item.selectedVariation) {
-      // modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
-    } else if (item.type) {
-      modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
-    }
-    
-    if (item.selectedExtras && item.selectedExtras.length > 0) {
-      item.selectedExtras.forEach(extra => {
-        modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
-      });
-    }
-    
-    if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
-      item.selectedSideOrders.forEach(sideOrder => {
-        modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
-      });
-    }
-    
-    if (item.specialInstructions) {
-      modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
+    if (!order.items) {
+      const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
+      if (!fullOrder) {
+        alert("Could not fetch order details for printing");
+        return;
+      }
+      orderToPrint = fullOrder;
     }
 
-    return `
+    const orderNumber = orderToPrint.orderNo || "N/A";
+    const currentDate = new Date().toLocaleDateString();
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const orderType = orderToPrint.orderType?.charAt(0).toUpperCase() + orderToPrint.orderType?.slice(1) || 'Delivery';
+    const customerName = orderToPrint.fullName || '';
+    const mobileNumber = orderToPrint.mobileNumber || '';
+    const alternateMobile = orderToPrint.alternateMobile || '';
+    const deliveryAddress = orderToPrint.deliveryAddress || '';
+    const paymentInstructions = orderToPrint.paymentInstructions || '----';
+
+    const area = orderToPrint.area || extractAreaFromAddress(orderToPrint.deliveryAddress);
+    const deliveryFee = orderToPrint.orderType === 'delivery' ?
+      getDeliveryFeeForArea(area) : 0;
+
+    const subtotal = extractValue(orderToPrint.subtotal) || 0;
+    const total = extractValue(orderToPrint.total) || 0;
+    const paymentMethod = orderToPrint.paymentMethod === 'cod' ? 'Cash' : 'Online Payment';
+    const changeRequest = orderToPrint.changeRequest || '0.00';
+    const itemCount = orderToPrint.items.length;
+
+    const itemRows = orderToPrint.items.map((item, index) => {
+      const itemName = item.title || item.name || "Unknown Item";
+      const quantity = item.quantity || 1;
+      const price = extractValue(item.price) || 0;
+      const amount = price * quantity;
+
+      let modifiersHtml = '';
+
+      if (item.selectedVariation) {
+        // modifiersHtml += `<div class="item-modifiers">- ${item.selectedVariation.name}</div>`;
+      } else if (item.type) {
+        modifiersHtml += `<div class="item-modifiers">- ${item.type}</div>`;
+      }
+
+      if (item.selectedExtras && item.selectedExtras.length > 0) {
+        item.selectedExtras.forEach(extra => {
+          modifiersHtml += `<div class="item-modifiers">+ ${extra.name} (+${extra.price})</div>`;
+        });
+      }
+
+      if (item.selectedSideOrders && item.selectedSideOrders.length > 0) {
+        item.selectedSideOrders.forEach(sideOrder => {
+          modifiersHtml += `<div class="item-modifiers">+ ${sideOrder.name} (+${sideOrder.price})</div>`;
+        });
+      }
+
+      if (item.specialInstructions) {
+        modifiersHtml += `<div class="item-modifiers" style="color: #cc0000;">Note: ${item.specialInstructions}</div>`;
+      }
+
+      return `
       <tr>
         <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">${index + 1}</td>
         <td style="padding: 2px 0; border-bottom: 1px dotted #ddd;">
@@ -768,39 +768,39 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
         <td style="padding: 2px 0; border-bottom: 1px dotted #ddd; text-align: right;">${amount}</td>
       </tr>
     `;
-  }).join('');
+    }).join('');
 
-  let htmlContent = paymentReceiptTemplate
-    .replace(/{{orderNumber}}/g, orderNumber)
-    .replace(/{{orderType}}/g, orderType)
-    .replace(/{{customerName}}/g, customerName)
-    .replace(/{{currentDate}}/g, currentDate)
-    .replace(/{{currentTime}}/g, currentTime)
-    .replace(/{{itemRows}}/g, itemRows)
-    .replace(/{{itemCount}}/g, itemCount)
-    .replace(/{{subtotal}}/g, subtotal)
-    .replace(/{{deliveryFee}}/g, deliveryFee)
-    .replace(/{{total}}/g, total)
-    .replace(/{{paymentMethod}}/g, paymentMethod)
-    .replace(/{{changeRequest}}/g, changeRequest)
-    .replace(/{{mobileNumber}}/g, mobileNumber)
-    .replace(/{{alternateMobile}}/g, alternateMobile)
-    .replace(/{{deliveryAddress}}/g, deliveryAddress)
-    .replace(/{{paymentInstructions}}/g, paymentInstructions);
+    let htmlContent = paymentReceiptTemplate
+      .replace(/{{orderNumber}}/g, orderNumber)
+      .replace(/{{orderType}}/g, orderType)
+      .replace(/{{customerName}}/g, customerName)
+      .replace(/{{currentDate}}/g, currentDate)
+      .replace(/{{currentTime}}/g, currentTime)
+      .replace(/{{itemRows}}/g, itemRows)
+      .replace(/{{itemCount}}/g, itemCount)
+      .replace(/{{subtotal}}/g, subtotal)
+      .replace(/{{deliveryFee}}/g, deliveryFee)
+      .replace(/{{total}}/g, total)
+      .replace(/{{paymentMethod}}/g, paymentMethod)
+      .replace(/{{changeRequest}}/g, changeRequest)
+      .replace(/{{mobileNumber}}/g, mobileNumber)
+      .replace(/{{alternateMobile}}/g, alternateMobile)
+      .replace(/{{deliveryAddress}}/g, deliveryAddress)
+      .replace(/{{paymentInstructions}}/g, paymentInstructions);
 
-  const newWindow = window.open("", "_blank", "width=300,height=600");
-  if (!newWindow) return;
+    const newWindow = window.open("", "_blank", "width=300,height=600");
+    if (!newWindow) return;
 
-  newWindow.document.write(htmlContent);
-  newWindow.document.close();
-}, [fetchOrderDetails, getDeliveryFeeForArea]);
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
+  }, [fetchOrderDetails, getDeliveryFeeForArea]);
 
   const refreshOrders = () => {
     fetchOrders(currentPage, true);
   };
 
   const getStatusBadgeColor = (status) => {
-    switch(status) {
+    switch (status) {
       case "Pending": return "bg-yellow-100 text-yellow-800";
       case "In-Process": return "bg-blue-100 text-blue-800";
       case "Dispatched": return "bg-purple-100 text-purple-800";
@@ -897,7 +897,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
             <option value="delivery">Delivery</option>
           </select>
         </div>
-        
+
         <div className="flex gap-2 items-center">
           <label htmlFor="statusFilter" className="font-medium">
             Status:
@@ -979,7 +979,7 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                 .padStart(2, "0");
               const orderType = order.orderType
                 ? order.orderType.charAt(0).toUpperCase() +
-                  order.orderType.slice(1)
+                order.orderType.slice(1)
                 : "Delivery";
               const currentStatus = order.status || "Pending";
               const currentLevel = statusLevels[currentStatus];
@@ -992,14 +992,15 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                   <td className="p-2 border">
                     <div className="flex items-center gap-2">
                       {order.fullName}
-                      {order.mobileNumber && (
-                        <button 
+                      {order.alternateMobile && (
+                        <button
                           onClick={() => openWhatsAppChat(order.alternateMobile)}
                           className="text-green-600 hover:text-green-700"
-                          aria-label="Contact via WhatsApp"
+                          aria-label="Contact via WhatsApp (Alternate)"
+                          title="Open WhatsApp chat with alternate number"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                           </svg>
                         </button>
                       )}
@@ -1037,14 +1038,14 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                           if (statusFilter === 'active' && (newStatus === 'Complete' || newStatus === 'Cancel')) {
                             removeOrder(orderId);
                           }
-                        } catch (err) {}
+                        } catch (err) { }
                       }}
                       className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(currentStatus)} w-full text-center`}
                     >
                       {Object.keys(statusLevels).map(status => (
-                        <option 
-                          key={status} 
-                          value={status} 
+                        <option
+                          key={status}
+                          value={status}
                           disabled={(statusLevels[status] < currentLevel && status !== 'Cancel' && status !== currentStatus) || (currentStatus === 'Complete' && status !== 'Cancel' && status !== 'Complete') || (currentStatus === 'Cancel' && status !== 'Cancel')}
                         >
                           {status}
@@ -1102,11 +1103,10 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
           <button
             onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className={`flex items-center px-3 py-2 text-sm font-medium border rounded-md ${
-              currentPage === 1
+            className={`flex items-center px-3 py-2 text-sm font-medium border rounded-md ${currentPage === 1
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                 : "bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-            }`}
+              }`}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
@@ -1122,11 +1122,10 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                 ) : (
                   <button
                     onClick={() => handlePageChange(page)}
-                    className={`px-3 py-2 text-sm font-medium border rounded-md ${
-                      currentPage === page
+                    className={`px-3 py-2 text-sm font-medium border rounded-md ${currentPage === page
                         ? "bg-blue-600 text-white border-blue-600"
                         : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
@@ -1138,11 +1137,10 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
           <button
             onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className={`flex items-center px-3 py-2 text-sm font-medium border rounded-md ${
-              currentPage === totalPages
+            className={`flex items-center px-3 py-2 text-sm font-medium border rounded-md ${currentPage === totalPages
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                 : "bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-            }`}
+              }`}
           >
             Next
             <ChevronRight className="h-4 w-4 ml-1" />
