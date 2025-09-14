@@ -208,7 +208,8 @@ export async function POST(request) {
       console.log('New order event emitted');
     }
 
-    const confirmationMessage = `Thank you for your order! Your order number is ${populatedOrder.orderNo}. Total amount: ${populatedOrder.total}. We will process it shortly.`;
+    const confirmationMessage = `Thanks for Ordering at Kingice.pk\nYour Order Will Deliver in 30 to 45 min\nYour Order number is: ${populatedOrder.orderNo}.`;
+
     // await sendWhatsAppMessage(mobileNumber, confirmationMessage);
     if (alternateMobile) {
       console.log("Alternate no. found")
