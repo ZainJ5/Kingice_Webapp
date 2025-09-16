@@ -94,18 +94,13 @@ export default function MenuTabs({ categories = [], visibleCategory }) {
         if (activeButton) {
           const containerRect = categoriesContainerRef.current.getBoundingClientRect();
           const buttonRect = activeButton.getBoundingClientRect();
-          
-          const isButtonVisible = 
-            buttonRect.left >= containerRect.left && 
-            buttonRect.right <= containerRect.right;
-            
-          if (!isButtonVisible) {
-            activeButton.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'nearest', 
-              inline: 'center' 
-            });
-          }
+          const container = categoriesContainerRef.current;
+          const scrollLeft = container.scrollLeft;
+          const offset = buttonRect.left - containerRect.left - (containerRect.width / 2) + (buttonRect.width / 2);
+          container.scrollTo({
+            left: scrollLeft + offset,
+            behavior: 'smooth'
+          });
         }
       }
     }
