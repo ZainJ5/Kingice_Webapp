@@ -20,8 +20,7 @@ export default function MenuSection({ category, subcategories, items, onSectionV
 
   const getCacheBustedUrl = (url) => {
     if (!url) return "";
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}t=${Date.now()}`;
+    return url;
   };
 
   const hasActiveSubcategories = subcategories && subcategories.length > 0 && 
@@ -917,4 +916,3 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
     </>
   );
 }
-
