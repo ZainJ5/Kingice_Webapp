@@ -587,7 +587,9 @@ const printKitchenSlip = useCallback(async (order) => {
 
   newWindow.document.write(htmlContent);
   newWindow.document.close();
-}, [fetchOrderDetails]);
+
+  updateOrderStatus(String(extractValue(orderToPrint._id)), { status: "In-Process" });
+}, [fetchOrderDetails, updateOrderStatus]);
 
 const printDeliveryPreBill = useCallback(async (order) => {
   let orderToPrint = order;
@@ -692,7 +694,9 @@ const printDeliveryPreBill = useCallback(async (order) => {
 
   newWindow.document.write(htmlContent);
   newWindow.document.close();
-}, [fetchOrderDetails, getDeliveryFeeForArea]);
+
+  updateOrderStatus(String(extractValue(orderToPrint._id)), { status: "Dispatched" });
+}, [fetchOrderDetails, getDeliveryFeeForArea, updateOrderStatus]);
 
 const printDeliveryPaymentReceipt = useCallback(async (order) => {
   let orderToPrint = order;
