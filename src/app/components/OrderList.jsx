@@ -996,9 +996,9 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                   <td className="p-2 border">
                     <div className="flex items-center gap-2">
                       {order.fullName}
-                      {order.mobileNumber && (
+                      {(order.alternateMobile) && (
                         <button 
-                          onClick={() => openWhatsAppChat(order.mobileNumber)}
+                          onClick={() => openWhatsAppChat(order.alternateMobile)}
                           className="text-green-600 hover:text-green-700"
                           aria-label="Contact via WhatsApp"
                         >

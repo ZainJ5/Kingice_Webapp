@@ -153,7 +153,7 @@ export default function OrderDetailsModal({
                     </div>
                     {selectedOrder.alternateMobile && (
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-600 whitespace-nowrap">Alternate Mobile:</p>
+                        <p className="text-sm text-gray-600 whitespace-nowrap">Whatsapp:</p>
                         <div className="flex items-center">
                           <p className="font-medium">{selectedOrder.alternateMobile}</p>
                           <button 

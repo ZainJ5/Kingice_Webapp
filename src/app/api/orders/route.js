@@ -83,6 +83,7 @@ export async function GET(request) {
       orderNo: 1,
       fullName: 1, 
       mobileNumber: 1, 
+      alternateMobile: 1,
       orderType: 1, 
       total: 1, 
       isCompleted: 1,
