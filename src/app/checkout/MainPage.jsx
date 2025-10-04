@@ -644,16 +644,31 @@ const handlePlaceOrder = async () => {
   return (
     <>
       <ToastContainer 
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
+        position="bottom-center"
+        autoClose={2500}
+        hideProgressBar={true}
         newestOnTop
         closeOnClick
         rtl={false}
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="colored"
+        theme="dark"
+        style={{ 
+          bottom: '80px',
+          width: 'auto',
+          maxWidth: '90%'
+        }}
+        toastStyle={{
+          backgroundColor: '#1f2937',
+          color: '#ffffff',
+          borderRadius: '12px',
+          padding: '12px 20px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          minHeight: '48px'
+        }}
       />
       {(!branch || !orderType) && <DeliveryPickupModal />}
       <div className="min-h-screen bg-gray-50 py-8">

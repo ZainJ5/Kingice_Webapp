@@ -151,6 +151,73 @@ export default function FoodItemList() {
     }
   };
 
+  // New function to toggle variation availability
+  const toggleVariationAvailability = async (itemId, variationIndex, currentAvailability) => {
+    const toggleKey = `${itemId}-${variationIndex}`;
+    setUpdatingAvailability(toggleKey);
+    try {
+      const item = foodItems.find(item => extractValue(item._id) === itemId);
+      if (!item) {
+        toast.error("Item not found");
+        return;
+      }
+
+      // Create updated variations array
+      const updatedVariations = item.variations.map((v, idx) => 
+        idx === variationIndex 
+          ? { ...v, isAvailable: !currentAvailability }
+          : v
+      );
+
+      // Prepare form data
+      const formData = new FormData();
+      formData.append("title", item.title);
+      formData.append("description", item.description);
+      formData.append("category", extractValue(item.category?._id || item.category));
+      formData.append("branch", extractValue(item.branch?._id || item.branch));
+      formData.append("isAvailable", item.isAvailable);
+      
+      if (item.subcategory) {
+        formData.append("subcategory", extractValue(item.subcategory?._id || item.subcategory));
+      }
+
+      // Add updated variations
+      formData.append("variations", JSON.stringify(updatedVariations));
+
+      // Add extras and side orders if they exist
+      if (item.extras && item.extras.length > 0) {
+        formData.append("extras", JSON.stringify(item.extras));
+      }
+      if (item.sideOrders && item.sideOrders.length > 0) {
+        formData.append("sideOrders", JSON.stringify(item.sideOrders));
+      }
+
+      const res = await fetch(`/api/fooditems/${itemId}`, {
+        method: "PATCH",
+        body: formData,
+      });
+      
+      if (res.ok) {
+        // Update the local state
+        const updatedItems = foodItems.map(item => 
+          extractValue(item._id) === itemId 
+            ? { ...item, variations: updatedVariations }
+            : item
+        );
+        setFoodItems(updatedItems);
+        toast.success(`Variation is now ${!currentAvailability ? "available" : "unavailable"}`);
+      } else {
+        const errorData = await res.json();
+        toast.error(`Failed to update variation: ${errorData.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error updating variation availability:", error);
+      toast.error("Error updating variation availability");
+    } finally {
+      setUpdatingAvailability(null);
+    }
+  };
+
   const applyFilters = () => {
     let filtered = [...foodItems];
     const { branch, category, subcategory, search } = filters;
@@ -287,7 +354,7 @@ export default function FoodItemList() {
       const updatedVariations = [...prev.variations];
       updatedVariations[index] = {
         ...updatedVariations[index],
-        [field]: field.includes("price") ? Number(value) : value,
+        [field]: field.includes("price") ? Number(value) : field === "isAvailable" ? value : value,
       };
       return {
         ...prev,
@@ -299,7 +366,7 @@ export default function FoodItemList() {
   const addVariation = () => {
     setEditData((prev) => ({
       ...prev,
-      variations: [...prev.variations, { name: "", price: 0, previousPrice: null }],
+      variations: [...prev.variations, { name: "", price: 0, previousPrice: null, isAvailable: true }],
     }));
   };
 
@@ -805,6 +872,17 @@ export default function FoodItemList() {
                               placeholder="Previous Price"
                               className="w-28 border p-2 rounded-lg text-sm"
                             />
+                            <div className="flex items-center gap-2 px-2">
+                              <input
+                                type="checkbox"
+                                checked={variation.isAvailable ?? true}
+                                onChange={(e) =>
+                                  handleVariationChange(index, "isAvailable", e.target.checked)
+                                }
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-xs text-gray-700">Available</span>
+                            </div>
                             <button
                               type="button"
                               onClick={() => removeVariation(index)}
@@ -1066,6 +1144,66 @@ export default function FoodItemList() {
                   {previousPrice && (
                     <span className="text-xs text-gray-500 line-through">{previousPrice} Rs</span>
                   )}
+                </div>
+              )}
+              
+              {/* Show variations if available */}
+              {item.variations && item.variations.length > 0 && (
+                <div className="mb-2">
+                  <div className="text-xs text-gray-600 mb-1">
+                    <span className="font-semibold text-gray-700">{item.variations.length}</span> variation{item.variations.length > 1 ? 's' : ''}
+                  </div>
+                  <div className="grid grid-cols-1 gap-1">
+                    {item.variations.map((variation, idx) => {
+                      const toggleKey = `${id}-${idx}`;
+                      const isUpdating = updatingAvailability === toggleKey;
+                      const isVariationAvailable = variation.isAvailable !== false;
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`flex items-center justify-between px-2 py-1 rounded-md text-xs border ${
+                            isVariationAvailable 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-gray-100 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <span className={`font-medium truncate ${!isVariationAvailable ? "text-gray-400 line-through" : "text-gray-700"}`}>
+                              {variation.name}
+                            </span>
+                            <span className="text-gray-500 flex-shrink-0">•</span>
+                            <span className={`flex-shrink-0 ${!isVariationAvailable ? "text-gray-400" : "text-gray-600"}`}>
+                              {extractValue(variation.price)} Rs
+                            </span>
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleVariationAvailability(id, idx, isVariationAvailable);
+                            }}
+                            disabled={isUpdating}
+                            className={`relative inline-flex items-center h-3.5 rounded-full w-7 focus:outline-none transition-colors duration-200 ml-2 flex-shrink-0 ${
+                              isVariationAvailable ? 'bg-green-500' : 'bg-gray-400'
+                            }`}
+                            aria-pressed={isVariationAvailable}
+                            title={isVariationAvailable ? 'Available - Click to disable' : 'Unavailable - Click to enable'}
+                          >
+                            <span className="sr-only">
+                              {isVariationAvailable ? 'Available' : 'Unavailable'}
+                            </span>
+                            <span
+                              className={`${
+                                isVariationAvailable ? 'translate-x-3.5' : 'translate-x-0.5'
+                              } inline-block w-2.5 h-2.5 transform bg-white rounded-full transition-transform duration-200 ease-in-out ${
+                                isUpdating ? 'animate-pulse' : ''
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               

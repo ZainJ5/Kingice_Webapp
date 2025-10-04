@@ -226,6 +226,7 @@ export default function MenuSection({ category, subcategories, items, onSectionV
 }
 
 function MenuItemCard({ item, getCacheBustedUrl }) {
+  console.log("Item is: ",item)
   const { addToCart } = useCartStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVariation, setSelectedVariation] = useState("");
@@ -335,7 +336,9 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
   const handleCardClick = () => {
     setIsModalOpen(true);
     if (hasVariations) {
-      setSelectedVariation("0");
+      // Find the first available variation
+      const firstAvailableIndex = item.variations.findIndex(v => v.isAvailable !== false);
+      setSelectedVariation(firstAvailableIndex >= 0 ? String(firstAvailableIndex) : "0");
     }
     setSelectedExtras({});
     setSelectedSideOrders([]);
@@ -361,6 +364,11 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
       const variationIndex = Number(selectedVariation);
       const selectedVar = item.variations[variationIndex];
       if (selectedVar && selectedVar.name) {
+        // Check if variation is available
+        if (selectedVar.isAvailable === false) {
+          toast.error("This variation is currently unavailable");
+          return;
+        }
         itemToAdd = { 
           ...itemToAdd, 
           price: selectedVar.price, 
@@ -703,35 +711,51 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                       const previousPrice = variation.previousPrice ? Number(getPrice(variation.previousPrice)) : null;
                       const hasDiscount = previousPrice && previousPrice > price;
                       const discountPercentage = hasDiscount ? calculateDiscountPercentage(price, previousPrice) : null;
+                      const isVariationAvailable = variation.isAvailable !== false;
 
                       return (
                         <div 
                           key={index}
-                          className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all ${
-                            selectedVariation === String(index)
-                              ? 'border-red-500 bg-red-50'
-                              : 'border-gray-200 hover:border-gray-300'
+                          className={`flex items-center justify-between p-3 border rounded-lg transition-all ${
+                            !isVariationAvailable 
+                              ? 'opacity-50 cursor-not-allowed bg-gray-100' 
+                              : selectedVariation === String(index)
+                              ? 'border-red-500 bg-red-50 cursor-pointer'
+                              : 'border-gray-200 hover:border-gray-300 cursor-pointer'
                           }`}
-                          onClick={() => setSelectedVariation(String(index))}
+                          onClick={() => isVariationAvailable && setSelectedVariation(String(index))}
                         >
                           <div className="flex items-center">
                             <div className={`w-4 h-4 rounded-full flex items-center justify-center border ${
-                              selectedVariation === String(index) ? 'border-red-600' : 'border-gray-400'
+                              !isVariationAvailable 
+                                ? 'border-gray-300' 
+                                : selectedVariation === String(index) ? 'border-red-600' : 'border-gray-400'
                             }`}>
-                              {selectedVariation === String(index) && (
+                              {selectedVariation === String(index) && isVariationAvailable && (
                                 <div className="w-2 h-2 bg-red-600 rounded-full"></div>
                               )}
                             </div>
-                            <span className="ml-2 text-sm font-medium text-gray-800">{variation.name}</span>
+                            <div className="ml-2">
+                              <span className={`text-sm font-medium ${!isVariationAvailable ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                {variation.name}
+                              </span>
+                              {!isVariationAvailable && (
+                                <span className="ml-2 text-xs text-red-600 font-semibold">(Unavailable)</span>
+                              )}
+                            </div>
                           </div>
                           <div className="text-right">
                             {hasDiscount ? (
                               <div>
                                 <span className="text-xs text-gray-400 line-through block">Rs.{previousPrice}</span>
-                                <span className="text-red-600 text-sm font-semibold">Rs.{price}</span>
+                                <span className={`text-sm font-semibold ${!isVariationAvailable ? 'text-gray-400' : 'text-red-600'}`}>
+                                  Rs.{price}
+                                </span>
                               </div>
                             ) : (
-                              <span className="text-sm font-semibold">Rs.{price}</span>
+                              <span className={`text-sm font-semibold ${!isVariationAvailable ? 'text-gray-400' : ''}`}>
+                                Rs.{price}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -904,9 +928,16 @@ function MenuItemCard({ item, getCacheBustedUrl }) {
                 </div>
                 <button
                   onClick={handleAddToCart}
-                  className="px-5 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 transition-colors shadow-sm"
+                  disabled={hasVariations && selectedVariation !== "" && item.variations[Number(selectedVariation)]?.isAvailable === false}
+                  className={`px-5 py-2 font-medium rounded-md transition-colors shadow-sm ${
+                    hasVariations && selectedVariation !== "" && item.variations[Number(selectedVariation)]?.isAvailable === false
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-red-600 text-white hover:bg-red-700'
+                  }`}
                 >
-                  Add to Cart
+                  {hasVariations && selectedVariation !== "" && item.variations[Number(selectedVariation)]?.isAvailable === false
+                    ? 'Unavailable'
+                    : 'Add to Cart'}
                 </button>
               </div>
             </div>

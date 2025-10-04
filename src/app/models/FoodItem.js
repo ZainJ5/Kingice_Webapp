@@ -4,7 +4,8 @@ const VariationSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     price: { type: Number, required: true },
-    previousPrice: { type: Number }, 
+    previousPrice: { type: Number },
+    isAvailable: { type: Boolean, default: true },
   },
   { _id: false }
 );

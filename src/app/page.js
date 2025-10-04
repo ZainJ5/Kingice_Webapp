@@ -10,6 +10,7 @@ import MenuTabs from "./components/MenuTabs";
 import Footer from "./components/Footer";
 import DeliveryPickupModal from "./components/DeliveryPickupModal";
 import MenuSection from "./components/MenuSection";
+import CartButton from "./components/CartButton";
 import { useBranchStore } from "../store/branchStore";
 
 export default function Home() {
@@ -182,6 +183,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* WhatsApp Button */}
         <div className="fixed bottom-24 sm:bottom-6 right-6 z-[101]">
           <button
             onClick={handleWhatsAppClick}
@@ -195,21 +197,40 @@ export default function Home() {
             />
           </button>
         </div>
+
+        {/* Cart Button */}
+        <CartButton />
+
         <div className="mt-10">
         <Footer />
         </div>
       </main>
 
       <ToastContainer
-        position="top-right"
+        position="bottom-center"
         autoClose={2000}
-        hideProgressBar={false}
+        hideProgressBar={true}
         newestOnTop={false}
         closeOnClick
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="colored"
+        theme="dark"
+        style={{ 
+          bottom: '80px',
+          width: 'auto',
+          maxWidth: '90%'
+        }}
+        toastStyle={{
+          backgroundColor: '#1f2937',
+          color: '#ffffff',
+          borderRadius: '12px',
+          padding: '12px 20px',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          minHeight: '48px'
+        }}
       />
     </>
   );

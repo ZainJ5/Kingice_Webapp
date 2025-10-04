@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { MapPin, Phone, ChevronDown, ClipboardList } from 'lucide-react'
-import StickyCartButton from './CartButton' 
+import HeaderCartIcon from './HeaderCartIcon' 
 import { useBranchStore } from '../../store/branchStore' 
 import Link from 'next/link'
 
@@ -142,7 +142,7 @@ function Header() {
 
         <div className="flex items-center space-x-1 sm:space-x-2">
           {hasOrders && (
-            <div className="hidden sm:block absolute sm:right-48 right-3 top-3">
+            <div className="hidden sm:block absolute sm:right-32 right-3">
               <Link href="/order">
                 <button className="bg-green-600 hover:bg-green-700 text-white font-bold px-2 sm:px-3 py-1 sm:py-2 rounded-lg text-xs sm:text-sm flex items-center shadow-sm">
                   <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 mr-1" />
@@ -160,8 +160,9 @@ function Header() {
             <span className="font-medium text-xs sm:text-sm">{branch?.phone || '03122754064'}</span>
           </a>
           
-          <div className="fixed top-11 right-3 z-[500]">
-            <StickyCartButton className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm" />
+          {/* Desktop Header Cart Icon */}
+          <div className="hidden sm:block">
+            <HeaderCartIcon />
           </div>
         </div>
       </div>

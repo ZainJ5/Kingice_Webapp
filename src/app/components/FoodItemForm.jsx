@@ -125,7 +125,8 @@ export default function AddFoodItemForm({
 
     const variation = { 
       name: variationName.trim(), 
-      price: parseFloat(variationPrice) 
+      price: parseFloat(variationPrice),
+      isAvailable: true
     };
 
     // Add previousPrice if discount is applied
