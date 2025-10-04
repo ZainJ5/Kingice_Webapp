@@ -25,6 +25,7 @@ export default function FoodItemList() {
   const [originalItemData, setOriginalItemData] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [updatingAvailability, setUpdatingAvailability] = useState(null); // Track which item's availability is being updated
+  const [expandedVariations, setExpandedVariations] = useState({}); // Track which items have expanded variations
   const [filters, setFilters] = useState({
     branch: "",
     category: "",
@@ -216,6 +217,14 @@ export default function FoodItemList() {
     } finally {
       setUpdatingAvailability(null);
     }
+  };
+
+  // Toggle expanded state for variations
+  const toggleVariationsExpanded = (itemId) => {
+    setExpandedVariations(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
   };
 
   const applyFilters = () => {
@@ -1150,60 +1159,83 @@ export default function FoodItemList() {
               {/* Show variations if available */}
               {item.variations && item.variations.length > 0 && (
                 <div className="mb-2">
-                  <div className="text-xs text-gray-600 mb-1">
-                    <span className="font-semibold text-gray-700">{item.variations.length}</span> variation{item.variations.length > 1 ? 's' : ''}
-                  </div>
-                  <div className="grid grid-cols-1 gap-1">
-                    {item.variations.map((variation, idx) => {
-                      const toggleKey = `${id}-${idx}`;
-                      const isUpdating = updatingAvailability === toggleKey;
-                      const isVariationAvailable = variation.isAvailable !== false;
-                      
-                      return (
-                        <div 
-                          key={idx} 
-                          className={`flex items-center justify-between px-2 py-1 rounded-md text-xs border ${
-                            isVariationAvailable 
-                              ? 'bg-green-50 border-green-200' 
-                              : 'bg-gray-100 border-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                            <span className={`font-medium truncate ${!isVariationAvailable ? "text-gray-400 line-through" : "text-gray-700"}`}>
-                              {variation.name}
-                            </span>
-                            <span className="text-gray-500 flex-shrink-0">•</span>
-                            <span className={`flex-shrink-0 ${!isVariationAvailable ? "text-gray-400" : "text-gray-600"}`}>
-                              {extractValue(variation.price)} Rs
-                            </span>
-                          </div>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleVariationAvailability(id, idx, isVariationAvailable);
-                            }}
-                            disabled={isUpdating}
-                            className={`relative inline-flex items-center h-3.5 rounded-full w-7 focus:outline-none transition-colors duration-200 ml-2 flex-shrink-0 ${
-                              isVariationAvailable ? 'bg-green-500' : 'bg-gray-400'
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleVariationsExpanded(id);
+                    }}
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors duration-200"
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <svg 
+                        className={`w-3.5 h-3.5 text-blue-600 transition-transform duration-200 ${expandedVariations[id] ? 'rotate-90' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span className="font-semibold text-blue-700">{item.variations.length}</span>
+                      <span className="text-blue-600">variation{item.variations.length > 1 ? 's' : ''}</span>
+                    </div>
+                    <span className="text-xs text-blue-600 font-medium">
+                      {expandedVariations[id] ? 'Hide' : 'Manage'}
+                    </span>
+                  </button>
+                  
+                  {expandedVariations[id] && (
+                    <div className="grid grid-cols-1 gap-1 mt-1.5">
+                      {item.variations.map((variation, idx) => {
+                        const toggleKey = `${id}-${idx}`;
+                        const isUpdating = updatingAvailability === toggleKey;
+                        const isVariationAvailable = variation.isAvailable !== false;
+                        
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`flex items-center justify-between px-2 py-1 rounded-md text-xs border ${
+                              isVariationAvailable 
+                                ? 'bg-green-50 border-green-200' 
+                                : 'bg-gray-100 border-gray-200'
                             }`}
-                            aria-pressed={isVariationAvailable}
-                            title={isVariationAvailable ? 'Available - Click to disable' : 'Unavailable - Click to enable'}
                           >
-                            <span className="sr-only">
-                              {isVariationAvailable ? 'Available' : 'Unavailable'}
-                            </span>
-                            <span
-                              className={`${
-                                isVariationAvailable ? 'translate-x-3.5' : 'translate-x-0.5'
-                              } inline-block w-2.5 h-2.5 transform bg-white rounded-full transition-transform duration-200 ease-in-out ${
-                                isUpdating ? 'animate-pulse' : ''
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              <span className={`font-medium truncate ${!isVariationAvailable ? "text-gray-400 line-through" : "text-gray-700"}`}>
+                                {variation.name}
+                              </span>
+                              <span className="text-gray-500 flex-shrink-0">•</span>
+                              <span className={`flex-shrink-0 ${!isVariationAvailable ? "text-gray-400" : "text-gray-600"}`}>
+                                {extractValue(variation.price)} Rs
+                              </span>
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleVariationAvailability(id, idx, isVariationAvailable);
+                              }}
+                              disabled={isUpdating}
+                              className={`relative inline-flex items-center h-3.5 rounded-full w-7 focus:outline-none transition-colors duration-200 ml-2 flex-shrink-0 ${
+                                isVariationAvailable ? 'bg-green-500' : 'bg-gray-400'
                               }`}
-                            />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                              aria-pressed={isVariationAvailable}
+                              title={isVariationAvailable ? 'Available - Click to disable' : 'Unavailable - Click to enable'}
+                            >
+                              <span className="sr-only">
+                                {isVariationAvailable ? 'Available' : 'Unavailable'}
+                              </span>
+                              <span
+                                className={`${
+                                  isVariationAvailable ? 'translate-x-3.5' : 'translate-x-0.5'
+                                } inline-block w-2.5 h-2.5 transform bg-white rounded-full transition-transform duration-200 ease-in-out ${
+                                  isUpdating ? 'animate-pulse' : ''
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
               
