@@ -52,21 +52,18 @@ export default function CartDrawer({ isOpen, onClose }) {
     toast.info(`Removed ${item.title.split(" x")[0]} from cart`);
   }
 
-  // Format price with locale string
   const formatPrice = (price) => {
     return Number(price).toLocaleString();
   }
 
-  // Get the base title without quantity
   const getBaseTitle = (fullTitle) => {
-    // Remove the quantity part at the end (e.g. "x2")
     const parts = fullTitle.split(" x");
     parts.pop();
     return parts.join(" x");
   }
 
   return (
-    <div className={`fixed top-0 right-0 w-full sm:w-96 h-full bg-white z-50 transform 
+    <div className={`fixed top-0 right-0 w-full sm:w-96 h-full bg-white z-[9999] transform 
       ${isOpen ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300 ease-out 
       shadow-2xl border-l-4 border-red-600 rounded-l-3xl overflow-hidden`}>
 
@@ -99,7 +96,6 @@ export default function CartDrawer({ isOpen, onClose }) {
           ) : (
             <div className="divide-y divide-gray-100">
               {items.map((item, index) => {
-                // Calculate actual price per item (unit price)
                 const unitPrice = item.unitPrice || Number(item.price);
                 const totalItemPrice = unitPrice * (item.quantity || 1);
                 const baseTitle = getBaseTitle(item.title);
@@ -151,7 +147,6 @@ export default function CartDrawer({ isOpen, onClose }) {
                         </div>
                       </div>
 
-                      {/* Display modifications (extras and side orders) */}
                       {item.modifications && (
                         <div className="mt-2 space-y-1 bg-gray-50 p-2 rounded-md">
                           {item.modifications.map((mod, i) => (
@@ -172,7 +167,6 @@ export default function CartDrawer({ isOpen, onClose }) {
                         </div>
                       )}
 
-                      {/* Legacy: Render addon list if available for backward compatibility */}
                       {!item.modifications && item.addons?.length > 0 && (
                         <div className="mt-2 space-y-1 bg-gray-50 p-2 rounded-md">
                           {item.addons.map((addon, i) => (
@@ -186,7 +180,6 @@ export default function CartDrawer({ isOpen, onClose }) {
                         </div>
                       )}
 
-                      {/* Selected extras */}
                       {item.selectedExtras && item.selectedExtras.length > 0 && !item.modifications && (
                         <div className="mt-2 space-y-1 bg-gray-50 p-2 rounded-md">
                           <p className="text-xs font-medium text-gray-600">Extras:</p>
