@@ -211,10 +211,10 @@ export async function POST(request) {
     const confirmationMessage = `Thanks for Ordering at Kingice.pk\nYour Order Will Deliver in 30 to 45 min\nYour Order number is: ${populatedOrder.orderNo}.`;
 
     // await sendWhatsAppMessage(mobileNumber, confirmationMessage);
-    if (alternateMobile) {
-      console.log("Alternate no. found")
-      await sendWhatsAppMessage(alternateMobile, confirmationMessage);
-    }
+    // if (alternateMobile) {
+    //   console.log("Alternate no. found")
+    //   await sendWhatsAppMessage(alternateMobile, confirmationMessage);
+    // }
     
     console.log("Created Order:", populatedOrder);
     return NextResponse.json(populatedOrder, { status: 201 });
