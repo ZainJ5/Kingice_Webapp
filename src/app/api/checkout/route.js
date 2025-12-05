@@ -48,10 +48,12 @@ async function sendWhatsAppMessage(to, text) {
       },
       body: JSON.stringify({ to: formattedTo, text })
     });
-    console.log("Response:", await response.text());
+    
+    const responseText = await response.text();
+    console.log("Response:", responseText);
 
     if (!response.ok) {
-      console.error(`Failed to send WhatsApp message to ${formattedTo}:`, await response.text());
+      console.error(`Failed to send WhatsApp message to ${formattedTo}:`, responseText);
     }
   } catch (error) {
     console.error(`Error sending WhatsApp message to ${formattedTo}:`, error);
@@ -92,8 +94,8 @@ export async function POST(request) {
         if (Array.isArray(parsedItems)) {
           items = parsedItems.map((item, index) => {
             const id = item.id || 
-                     (item._id ? getId(item._id) : 
-                      (item.cartItemId ? item.cartItemId.split("-")[0] : null));
+                       (item._id ? getId(item._id) : 
+                        (item.cartItemId ? item.cartItemId.split("-")[0] : null));
             
             const formattedItem = {
               id: id,
@@ -208,12 +210,13 @@ export async function POST(request) {
       console.log('New order event emitted');
     }
 
-    const confirmationMessage = `Thanks for Ordering at Kingice.pk\nYour Order Will Deliver in 30 to 45 min\nYour Order number is: ${populatedOrder.orderNo}.`;
+    // const confirmationMessage = `Thanks for Ordering at Kingice.pk\nYour Order Will Deliver in 30 to 45 min\nYour Order number is: ${populatedOrder.orderNo}.`;
 
+    // WhatsApp function calls commented out as requested
     // await sendWhatsAppMessage(mobileNumber, confirmationMessage);
     // if (alternateMobile) {
-    //   console.log("Alternate no. found")
-    //   await sendWhatsAppMessage(alternateMobile, confirmationMessage);
+    //    console.log("Alternate no. found")
+    //    await sendWhatsAppMessage(alternateMobile, confirmationMessage);
     // }
     
     console.log("Created Order:", populatedOrder);
