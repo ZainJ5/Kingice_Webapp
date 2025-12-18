@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import connectDB from "@/app/lib/mongoose";
 import FoodItem from "@/app/models/FoodItem";
 
-export async function PATCH(request, context) {
+export async function PATCH(request, { params }) {
   try {
     await connectDB();
-    const { id } = context.params;
+    
+    const { id } = await params;
+    
     const formData = await request.formData();
     const isAvailable = formData.get("isAvailable") === 'true';
 
