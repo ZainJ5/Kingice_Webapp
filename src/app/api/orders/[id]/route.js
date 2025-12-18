@@ -5,7 +5,7 @@ import Order from "@/app/models/Order";
 export async function GET(request, { params }) {
   try {
     await connectDB();
-    const id = await params.id;    
+    const { id } = await params;
     
     const order = await Order.findById(id)
       .populate('branch', 'name location contactNumber')
@@ -30,7 +30,9 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     await connectDB();
-    const id = await params.id;    
+    // FIX: Await the params object first
+    const { id } = await params;
+    
     const updateData = await request.json();
     
     if (updateData.status === 'Cancel' && !updateData.cancelReason) {
@@ -113,7 +115,8 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     await connectDB();
-    const id = await params.id;
+    // FIX: Await the params object first
+    const { id } = await params;
     
     const exists = await Order.exists({ _id: id });
     
