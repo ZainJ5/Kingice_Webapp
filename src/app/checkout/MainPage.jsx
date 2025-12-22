@@ -10,7 +10,7 @@ import { useDeliveryAreaStore } from "../../store/deliveryAreaStore"; // Import 
 import DeliveryPickupModal from "../components/DeliveryPickupModal";
 import { useRouter } from "next/navigation";
 
-const MIN_ORDER_VALUE = 1;
+const MIN_ORDER_VALUE = 500;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -185,7 +185,11 @@ export default function CheckoutPage() {
     
     async function fetchDeliveryAreas() {
       try {
-        const res = await fetch("/api/delivery-areas");
+        // Fetch areas based on selected branch
+        const url = branch?._id 
+          ? `/api/delivery-areas?branchId=${branch._id}`
+          : "/api/delivery-areas";
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setDeliveryAreas(data.filter(area => area.isActive));
@@ -216,11 +220,11 @@ export default function CheckoutPage() {
     }
     
     fetchDiscountSettings();
-    if (orderType === "delivery") {
+    if (orderType === "delivery" && branch) {
       fetchDeliveryAreas();
     }
     fetchSiteStatus();
-  }, [orderType]);
+  }, [orderType, branch]);
 
   useEffect(() => {
     setAppliedDiscount(totalDiscount);
@@ -304,19 +308,20 @@ export default function CheckoutPage() {
       return false;
     }
     
-    if(!alternateMobile.trim()){
+    if (orderType === "delivery") {
+      if(!alternateMobile.trim()){
         toast.error("Please enter your WhatsApp number.", {
-        style: { background: "#dc2626", color: "#ffffff" },
-      });
-      return false;
-    }
-    
-    // Added validation for WhatsApp number format
-    if (!phoneRegex.test(alternateMobile.trim())) {
-      toast.error("Please enter a valid WhatsApp number (format: 03XXXXXXXXX)", {
-        style: { background: "#dc2626", color: "#ffffff" },
-      });
-      return false;
+          style: { background: "#dc2626", color: "#ffffff" },
+        });
+        return false;
+      }
+      
+      if (!phoneRegex.test(alternateMobile.trim())) {
+        toast.error("Please enter a valid WhatsApp number (format: 03XXXXXXXXX)", {
+          style: { background: "#dc2626", color: "#ffffff" },
+        });
+        return false;
+      }
     }
     
     if (!branch) {
@@ -397,6 +402,7 @@ const handlePlaceOrder = async () => {
       const formattedItem = {
         id: item._id,
         title: item.title.split(" x")[0], 
+        description: item.description || "",
         price: item.unitPrice || item.price,
         quantity: item.quantity || 1,
         imageUrl: item.imageUrl || null,
@@ -471,6 +477,9 @@ const handlePlaceOrder = async () => {
       formData.append("deliveryAddress", completeAddress);
       formData.append("nearestLandmark", nearestLandmark);
       formData.append("deliveryFee", selectedArea.fee.toString());
+      formData.append("area", selectedArea.name);
+    } else if (orderType === "pickup") {
+      formData.append("area", "N/A");
     }
     
     formData.append("email", email);
@@ -797,6 +806,11 @@ const handlePlaceOrder = async () => {
                       <label className="block text-sm text-gray-700 mb-1">
                         Select Area <span className="text-red-500">*Required</span>
                       </label>
+                      {branch && (
+                        <p className="text-xs text-gray-600 mb-2">
+                          Showing areas for <span className="font-semibold">{branch.name}</span> branch
+                        </p>
+                      )}
                       <select
                         value={selectedArea ? selectedArea.name : ""}
                         onChange={(e) => {
@@ -814,6 +828,11 @@ const handlePlaceOrder = async () => {
                           </option>
                         ))}
                       </select>
+                      {deliveryAreas.length === 0 && branch && (
+                        <p className="text-xs text-red-600 mt-1">
+                          No delivery areas available for {branch.name} branch. Please contact support.
+                        </p>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
@@ -924,19 +943,20 @@ const handlePlaceOrder = async () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setPaymentMethod("online");
-                        setOnlineOption(null);
-                        setReceiptFile(null);
-                      }}
-                      className={`p-4 border rounded-md flex items-center justify-center space-x-2 ${
+                      // onClick={() => {
+                      //   setPaymentMethod("online");
+                      //   setOnlineOption(null);
+                      //   setReceiptFile(null);
+                      // }}
+                      className={`p-4 border rounded-md flex flex-col items-center justify-center space-y-2 ${
                         paymentMethod === "online"
                           ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200"
+                          : "border-gray-200 opacity-50"
                       }`}
                     >
                       <FaCreditCard className="text-blue-500" size={24} />
                       <span>Online Payment</span>
+                      <span className="text-xs text-gray-500">(Coming Soon)</span>
                     </button>
                   </div>
                 </div>
@@ -1300,7 +1320,7 @@ const handlePlaceOrder = async () => {
               {!isSiteActive && (
                 <div className="mt-6 p-4 bg-red-50 text-red-700 rounded-md text-center">
                   {/* <p className="font-medium">Service Unavailable</p> */}
-                  <p className="text-sm">Order time is 06:00 pm to 1:45 am. Please make orders during opening hours.</p>
+                  <p className="text-sm">Order time is 11:30 am to 3:30 am. Please make orders during opening hours.</p>
                 </div>
               )}
               
