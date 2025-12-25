@@ -1194,7 +1194,7 @@ const handlePlaceOrder = async () => {
                 </div>
               )}
               
-              <div className="mb-6 p-4 border border-gray-200 overflow-y-scroll rounded-md bg-gray-50">
+              <div className="mb-6 p-4 border border-gray-200 sm:overflow-hidden overflow-y-scroll rounded-md bg-gray-50">
                 <div className="flex items-center mb-3">
                   <FaTag className="text-red-500 mr-2" />
                   <span className="font-medium">Promo Code</span>
