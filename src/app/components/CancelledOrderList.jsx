@@ -110,7 +110,7 @@ export default function OrderHistory() {
 
   const handleDelete = async (orderId) => {
     const password = prompt("Enter password to delete order:");
-    if (password === "admin123") {
+    if (password === "Delete@0077") {
       try {
         const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
         if (res.ok) {
