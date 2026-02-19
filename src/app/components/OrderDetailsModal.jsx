@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Eye, Printer, CheckCircle, XCircle, Trash2, Save, MessageCircle } from "lucide-react";
+import { Eye, Printer, CheckCircle, XCircle, Trash2, Save, MessageCircle, Copy, Check } from "lucide-react";
 
 const OrderDetailsSkeleton = () => (
   <div className="animate-pulse space-y-4">
@@ -45,6 +45,7 @@ export default function OrderDetailsModal({
   extractAreaFromAddress,
 }) {
   const [area, setArea] = useState("");
+  const [copiedField, setCopiedField] = useState("");
 
   useEffect(() => {
     if (selectedOrder) {
@@ -56,6 +57,16 @@ export default function OrderDetailsModal({
   }, [selectedOrder, extractAreaFromAddress]);
 
   if (!selectedOrder) return null;
+
+  const copyToClipboard = async (text, fieldName) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(""), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   const formatPhoneForWhatsApp = (phoneNumber) => {
     const cleanNumber = phoneNumber.replace(/\D/g, '');
@@ -102,6 +113,20 @@ export default function OrderDetailsModal({
     );
   };
 
+  const CopyButton = ({ text, fieldName }) => (
+    <button
+      onClick={() => copyToClipboard(text, fieldName)}
+      className="ml-2 text-gray-400 hover:text-gray-600 transition-colors"
+      title={`Copy ${fieldName}`}
+    >
+      {copiedField === fieldName ? (
+        <Check className="h-4 w-4 text-green-600" />
+      ) : (
+        <Copy className="h-4 w-4" />
+      )}
+    </button>
+  );
+
   return (
     <>
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -125,21 +150,25 @@ export default function OrderDetailsModal({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 md:col-span-2">
-                  <h4 className="text-md font-semibold mb-2 text-gray-700 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Customer Information
-                  </h4>
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-md font-semibold text-gray-700 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Customer Information
+                    </h4>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-600 whitespace-nowrap">Full Name:</p>
-                      <p className="font-medium">{selectedOrder.fullName}</p>
+                      <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Full Name:</p>
+                      <p className="font-bold text-gray-900">{selectedOrder.fullName}</p>
+                      <CopyButton text={selectedOrder.fullName} fieldName="fullName" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-600 whitespace-nowrap">Mobile Number:</p>
+                      <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Mobile Number:</p>
                       <div className="flex items-center">
-                        <p className="font-medium">{selectedOrder.mobileNumber}</p>
+                        <p className="font-bold text-gray-900">{selectedOrder.mobileNumber}</p>
+                        <CopyButton text={selectedOrder.mobileNumber} fieldName="mobileNumber" />
                         <button 
                           onClick={() => openWhatsAppChat(selectedOrder.mobileNumber)}
                           className="ml-2 text-green-600 hover:text-green-700"
@@ -153,9 +182,10 @@ export default function OrderDetailsModal({
                     </div>
                     {selectedOrder.alternateMobile && (
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-600 whitespace-nowrap">Whatsapp:</p>
+                        <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Whatsapp:</p>
                         <div className="flex items-center">
-                          <p className="font-medium">{selectedOrder.alternateMobile}</p>
+                          <p className="font-bold text-gray-900">{selectedOrder.alternateMobile}</p>
+                          <CopyButton text={selectedOrder.alternateMobile} fieldName="alternateMobile" />
                           <button 
                             onClick={() => openWhatsAppChat(selectedOrder.alternateMobile)}
                             className="ml-2 text-green-600 hover:text-green-700"
@@ -170,24 +200,27 @@ export default function OrderDetailsModal({
                     )}
                     {selectedOrder.email && (
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-600 whitespace-nowrap">Email:</p>
-                        <p className="font-medium">{selectedOrder.email}</p>
+                        <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Email:</p>
+                        <p className="font-bold text-gray-900">{selectedOrder.email}</p>
+                        <CopyButton text={selectedOrder.email} fieldName="email" />
                       </div>
                     )}
                     {selectedOrder.orderType === "delivery" && selectedOrder.deliveryAddress && (
                       <>
                         <div className="flex flex-wrap items-baseline gap-2">
-                          <p className="text-sm text-gray-600 whitespace-nowrap">Delivery Address:</p>
-                          <p className="font-medium">{selectedOrder.deliveryAddress}</p>
+                          <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Delivery Address:</p>
+                          <p className="font-bold text-gray-900">{selectedOrder.deliveryAddress}</p>
+                          <CopyButton text={selectedOrder.deliveryAddress} fieldName="deliveryAddress" />
                         </div>
                         {area && (
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm text-gray-600 whitespace-nowrap">Area:</p>
+                            <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Area:</p>
                             <div className="flex items-center gap-2">
-                              <span className="inline-block px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full font-medium">
+                              <span className="inline-block px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full font-bold">
                                 {area}
                               </span>
-                              <span className="text-sm text-gray-600">
+                              <CopyButton text={area} fieldName="area" />
+                              <span className="text-sm text-gray-700 font-semibold">
                                 (Delivery Fee: Rs. {deliveryFee})
                               </span>
                             </div>
@@ -195,16 +228,18 @@ export default function OrderDetailsModal({
                         )}
                         {selectedOrder.nearestLandmark && (
                           <div className="flex flex-wrap items-baseline gap-2">
-                            <p className="text-sm text-gray-600 whitespace-nowrap">Nearest Landmark:</p>
-                            <p className="font-medium">{selectedOrder.nearestLandmark}</p>
+                            <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Nearest Landmark:</p>
+                            <p className="font-bold text-gray-900">{selectedOrder.nearestLandmark}</p>
+                            <CopyButton text={selectedOrder.nearestLandmark} fieldName="nearestLandmark" />
                           </div>
                         )}
                       </>
                     )}
                     {selectedOrder.orderType === "pickup" && selectedOrder.pickupTime && (
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-600 whitespace-nowrap">Pickup Time:</p>
-                        <p className="font-medium">{selectedOrder.pickupTime}</p>
+                        <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Pickup Time:</p>
+                        <p className="font-bold text-gray-900">{selectedOrder.pickupTime}</p>
+                        <CopyButton text={selectedOrder.pickupTime} fieldName="pickupTime" />
                       </div>
                     )}
                   </div>
@@ -219,35 +254,35 @@ export default function OrderDetailsModal({
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-600 whitespace-nowrap">Order Number:</p>
-                      <p className="font-medium">{selectedOrder.orderNo}</p>
+                      <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Order Number:</p>
+                      <p className="font-bold text-gray-900">{selectedOrder.orderNo}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-600 whitespace-nowrap">Order Type:</p>
-                      <p className="font-medium capitalize">
+                      <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Order Type:</p>
+                      <p className="font-bold text-gray-900 capitalize">
                         {selectedOrder.orderType || "Delivery"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-600 whitespace-nowrap">Order Status:</p>
-                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(selectedOrder.status)}`}>
+                      <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Order Status:</p>
+                      <span className={`inline-block px-2 py-1 text-xs font-bold rounded-full ${getStatusBadgeColor(selectedOrder.status)}`}>
                         {selectedOrder.status || "Pending"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-600 whitespace-nowrap">Payment Method:</p>
-                      <p className="font-medium">{selectedOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</p>
+                      <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Payment Method:</p>
+                      <p className="font-bold text-gray-900">{selectedOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}</p>
                     </div>
                     {selectedOrder.paymentMethod === "online" && selectedOrder.bankName && (
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-600 whitespace-nowrap">Payment Platform:</p>
-                        <p className="font-medium">{selectedOrder.bankName}</p>
+                        <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Payment Platform:</p>
+                        <p className="font-bold text-gray-900">{selectedOrder.bankName}</p>
                       </div>
                     )}
                     {selectedOrder.createdAt && (
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-600 whitespace-nowrap">Order Date:</p>
-                        <p className="font-medium">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+                        <p className="text-sm text-gray-700 font-semibold whitespace-nowrap">Order Date:</p>
+                        <p className="font-bold text-gray-900">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
                       </div>
                     )}
                   </div>
@@ -257,10 +292,10 @@ export default function OrderDetailsModal({
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead>
                             <tr>
-                              <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                              <th className="px-3 py-1 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                              <th className="px-3 py-1 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                              <th className="px-3 py-1 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                              <th className="px-3 py-1 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Item</th>
+                              <th className="px-3 py-1 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Qty</th>
+                              <th className="px-3 py-1 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Price</th>
+                              <th className="px-3 py-1 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Total</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -275,12 +310,12 @@ export default function OrderDetailsModal({
                                 <React.Fragment key={i}>
                                   <tr>
                                     <td className="px-3 py-1 text-sm text-gray-900">
-                                      <div className="font-medium">{itemName}</div>
+                                      <div className="font-bold">{itemName}</div>
                                       {item.type && !item.selectedVariation && (
-                                        <div className="text-xs text-gray-500">Type: {item.type}</div>
+                                        <div className="text-xs text-gray-700 font-semibold">Type: {item.type}</div>
                                       )}
                                       {item.selectedVariation && (
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs text-gray-700 font-semibold">
                                           Variation: {item.selectedVariation.name} 
                                           ({item.selectedVariation.price !== unitPrice ? 
                                             `+Rs. ${formatPrice(item.selectedVariation.price)}` : 'included'}
@@ -288,9 +323,9 @@ export default function OrderDetailsModal({
                                         </div>
                                       )}
                                     </td>
-                                    <td className="px-3 py-1 text-sm text-gray-500 text-center">{quantity}</td>
-                                    <td className="px-3 py-1 text-sm text-gray-500 text-right">Rs. {formatPrice(unitPrice)}</td>
-                                    <td className="px-3 py-1 text-sm font-medium text-gray-900 text-right">Rs. {formatPrice(itemTotal)}</td>
+                                    <td className="px-3 py-1 text-sm text-gray-900 font-bold text-center">{quantity}</td>
+                                    <td className="px-3 py-1 text-sm text-gray-900 font-bold text-right">Rs. {formatPrice(unitPrice)}</td>
+                                    <td className="px-3 py-1 text-sm font-bold text-gray-900 text-right">Rs. {formatPrice(itemTotal)}</td>
                                   </tr>
                                   
                                   {hasModifications(item) && (
@@ -299,12 +334,12 @@ export default function OrderDetailsModal({
                                         <div className="bg-gray-50 rounded p-1 text-xs">
                                           {item.selectedExtras && item.selectedExtras.length > 0 && (
                                             <div className="mb-1">
-                                              <div className="font-medium text-gray-700">Extras:</div>
+                                              <div className="font-bold text-gray-800">Extras:</div>
                                               <div className="ml-2 space-y-0.5">
                                                 {item.selectedExtras.map((extra, idx) => (
                                                   <div key={`extra-${idx}`} className="flex justify-between">
-                                                    <span>{extra.name}</span>
-                                                    <span className="text-gray-600">+Rs. {formatPrice(extra.price)}</span>
+                                                    <span className="font-semibold text-gray-800">{extra.name}</span>
+                                                    <span className="text-gray-700 font-semibold">+Rs. {formatPrice(extra.price)}</span>
                                                   </div>
                                                 ))}
                                               </div>
@@ -313,12 +348,12 @@ export default function OrderDetailsModal({
                                           
                                           {item.selectedSideOrders && item.selectedSideOrders.length > 0 && (
                                             <div className="mb-1">
-                                              <div className="font-medium text-gray-700">Side Orders:</div>
+                                              <div className="font-bold text-gray-800">Side Orders:</div>
                                               <div className="ml-2 space-y-0.5">
                                                 {item.selectedSideOrders.map((sideOrder, idx) => (
                                                   <div key={`side-${idx}`} className="flex justify-between">
-                                                    <span>{sideOrder.name}</span>
-                                                    <span className="text-gray-600">+Rs. {formatPrice(sideOrder.price)}</span>
+                                                    <span className="font-semibold text-gray-800">{sideOrder.name}</span>
+                                                    <span className="text-gray-700 font-semibold">+Rs. {formatPrice(sideOrder.price)}</span>
                                                   </div>
                                                 ))}
                                               </div>
@@ -328,12 +363,12 @@ export default function OrderDetailsModal({
                                           {item.modifications && item.modifications.length > 0 && (
                                             item.modifications.map((mod, index) => (
                                               <div key={`mod-${index}`} className="mb-1">
-                                                <div className="font-medium text-gray-700">{mod.type}:</div>
+                                                <div className="font-bold text-gray-800">{mod.type}:</div>
                                                 <div className="ml-2 space-y-0.5">
                                                   {mod.items.map((modItem, idx) => (
                                                     <div key={`mod-${index}-${idx}`} className="flex justify-between">
-                                                      <span>{modItem.name}</span>
-                                                      <span className="text-gray-600">+Rs. {formatPrice(modItem.price)}</span>
+                                                      <span className="font-semibold text-gray-800">{modItem.name}</span>
+                                                      <span className="text-gray-700 font-semibold">+Rs. {formatPrice(modItem.price)}</span>
                                                     </div>
                                                   ))}
                                                 </div>
@@ -343,12 +378,12 @@ export default function OrderDetailsModal({
                                           
                                           {!item.modifications && !item.selectedExtras && item.extras && item.extras.length > 0 && (
                                             <div className="mb-1">
-                                              <div className="font-medium text-gray-700">Extras:</div>
+                                              <div className="font-bold text-gray-800">Extras:</div>
                                               <div className="ml-2 space-y-0.5">
                                                 {item.extras.map((extra, idx) => (
                                                   <div key={`legacy-extra-${idx}`} className="flex justify-between">
-                                                    <span>{extra.name}</span>
-                                                    <span className="text-gray-600">+Rs. {formatPrice(extra.price)}</span>
+                                                    <span className="font-semibold text-gray-800">{extra.name}</span>
+                                                    <span className="text-gray-700 font-semibold">+Rs. {formatPrice(extra.price)}</span>
                                                   </div>
                                                 ))}
                                               </div>
@@ -357,12 +392,12 @@ export default function OrderDetailsModal({
                                           
                                           {!item.modifications && !item.selectedSideOrders && item.sideOrders && item.sideOrders.length > 0 && (
                                             <div className="mb-1">
-                                              <div className="font-medium text-gray-700">Side Orders:</div>
+                                              <div className="font-bold text-gray-800">Side Orders:</div>
                                               <div className="ml-2 space-y-0.5">
                                                 {item.sideOrders.map((sideOrder, idx) => (
                                                   <div key={`legacy-side-${idx}`} className="flex justify-between">
-                                                    <span>{sideOrder.name}</span>
-                                                    <span className="text-gray-600">+Rs. {formatPrice(sideOrder.price)}</span>
+                                                    <span className="font-semibold text-gray-800">{sideOrder.name}</span>
+                                                    <span className="text-gray-700 font-semibold">+Rs. {formatPrice(sideOrder.price)}</span>
                                                   </div>
                                                 ))}
                                               </div>
@@ -371,8 +406,8 @@ export default function OrderDetailsModal({
                                           
                                           {item.specialInstructions && (
                                             <div className="mt-1 pt-1 border-t border-gray-200">
-                                              <div className="font-medium text-gray-700">Special Instructions:</div>
-                                              <div className="ml-2 text-gray-600 italic">{item.specialInstructions}</div>
+                                              <div className="font-bold text-gray-800">Special Instructions:</div>
+                                              <div className="ml-2 text-gray-700 font-semibold italic">{item.specialInstructions}</div>
                                             </div>
                                           )}
                                         </div>
@@ -398,17 +433,17 @@ export default function OrderDetailsModal({
                   </h4>
                   <div className="space-y-0.5 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className="font-medium">Rs. {formatPrice(extractValue(selectedOrder.subtotal))}</span>
+                      <span className="text-gray-700 font-semibold">Subtotal:</span>
+                      <span className="font-bold text-gray-900">Rs. {formatPrice(extractValue(selectedOrder.subtotal))}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tax:</span>
-                      <span className="font-medium">Rs. {formatPrice(extractValue(selectedOrder.tax))}</span>
+                      <span className="text-gray-700 font-semibold">Tax:</span>
+                      <span className="font-bold text-gray-900">Rs. {formatPrice(extractValue(selectedOrder.tax))}</span>
                     </div>
                     {selectedOrder.orderType === "delivery" && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Delivery Fee ({area}):</span>
-                        <span className="font-medium">
+                        <span className="text-gray-700 font-semibold">Delivery Fee ({area}):</span>
+                        <span className="font-bold text-gray-900">
                           Rs. {formatPrice(selectedOrder.deliveryFee || deliveryFee)}
                         </span>
                       </div>
@@ -416,28 +451,28 @@ export default function OrderDetailsModal({
                     
                     {selectedOrder.globalDiscount > 0 && (
                       <div className="flex justify-between text-amber-600">
-                        <span>Global Discount ({selectedOrder.globalDiscountPercentage || 0}%):</span>
-                        <span>- Rs. {formatPrice(selectedOrder.globalDiscount)}</span>
+                        <span className="font-semibold">Global Discount ({selectedOrder.globalDiscountPercentage || 0}%):</span>
+                        <span className="font-bold">- Rs. {formatPrice(selectedOrder.globalDiscount)}</span>
                       </div>
                     )}
                     
                     {selectedOrder.promoDiscount > 0 && (
                       <div className="flex justify-between text-green-600">
-                        <span>Promo Discount ({selectedOrder.promoCode || ''} - {selectedOrder.promoDiscountPercentage || 0}%):</span>
-                        <span>- Rs. {formatPrice(selectedOrder.promoDiscount)}</span>
+                        <span className="font-semibold">Promo Discount ({selectedOrder.promoCode || ''} - {selectedOrder.promoDiscountPercentage || 0}%):</span>
+                        <span className="font-bold">- Rs. {formatPrice(selectedOrder.promoDiscount)}</span>
                       </div>
                     )}
                     
                     {(!selectedOrder.globalDiscount && !selectedOrder.promoDiscount && selectedOrder.discount > 0) && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Discount:</span>
-                        <span className="font-medium text-yellow-600">- Rs. {formatPrice(extractValue(selectedOrder.discount))}</span>
+                        <span className="text-gray-700 font-semibold">Discount:</span>
+                        <span className="font-bold text-yellow-600">- Rs. {formatPrice(extractValue(selectedOrder.discount))}</span>
                       </div>
                     )}
                     
                     <div className="flex justify-between pt-1 border-t border-gray-200 mt-1">
-                      <span className="font-semibold">Total:</span>
-                      <span className="font-bold text-red-600">Rs. {formatPrice(extractValue(selectedOrder.total))}</span>
+                      <span className="font-bold text-gray-900">Total:</span>
+                      <span className="font-bold text-red-600 text-base">Rs. {formatPrice(extractValue(selectedOrder.total))}</span>
                     </div>
                   </div>
                 </div>
@@ -445,30 +480,33 @@ export default function OrderDetailsModal({
                 <div className="md:col-span-2 space-y-2">
                   {selectedOrder.paymentInstructions && (
                     <div className="flex flex-wrap items-baseline gap-2">
-                      <p className="text-sm text-gray-600 font-medium whitespace-nowrap">Order Instructions:</p>
-                      <p className="text-sm bg-yellow-50 p-2 rounded border border-yellow-100">
+                      <p className="text-sm text-gray-700 font-bold whitespace-nowrap">Order Instructions:</p>
+                      <p className="text-sm font-semibold text-gray-800 bg-yellow-50 p-2 rounded border border-yellow-100">
                         {selectedOrder.paymentInstructions}
                       </p>
+                      <CopyButton text={selectedOrder.paymentInstructions} fieldName="paymentInstructions" />
                     </div>
                   )}
                   {selectedOrder.changeRequest && (
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-600 font-medium whitespace-nowrap">Change Request:</p>
-                      <p className="text-sm">Rs. {selectedOrder.changeRequest}</p>
+                      <p className="text-sm text-gray-700 font-bold whitespace-nowrap">Change Request:</p>
+                      <p className="text-sm font-bold text-gray-900">Rs. {selectedOrder.changeRequest}</p>
+                      <CopyButton text={`Rs. ${selectedOrder.changeRequest}`} fieldName="changeRequest" />
                     </div>
                   )}
                   {selectedOrder.isGift && selectedOrder.giftMessage && (
                     <div className="flex flex-wrap items-baseline gap-2">
-                      <p className="text-sm text-gray-600 font-medium whitespace-nowrap">Gift Message:</p>
-                      <p className="text-sm bg-pink-50 p-2 rounded border border-pink-100">
+                      <p className="text-sm text-gray-700 font-bold whitespace-nowrap">Gift Message:</p>
+                      <p className="text-sm font-semibold text-gray-800 bg-pink-50 p-2 rounded border border-pink-100">
                         {selectedOrder.giftMessage}
                       </p>
+                      <CopyButton text={selectedOrder.giftMessage} fieldName="giftMessage" />
                     </div>
                   )}
 
                   {selectedOrder.paymentMethod === "online" && selectedOrder.receiptImageUrl && (
                     <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Payment Receipt:</p>
+                      <p className="text-sm text-gray-700 font-bold mb-1">Payment Receipt:</p>
                       <div className="mt-1">
                         <img
                           src={selectedOrder.receiptImageUrl}
@@ -486,25 +524,25 @@ export default function OrderDetailsModal({
 
           <div className="p-4 border-t">
             <div className="">
-              <h4 className="text-sm font-medium mb-1 text-gray-700">Print Options:</h4>
+              <h4 className="text-sm font-bold mb-1 text-gray-800">Print Options:</h4>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => printKitchenSlip(selectedOrder)}
-                  className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition flex items-center"
+                  className="px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700 transition flex items-center"
                 >
                   <Printer className="h-4 w-4 mr-1" />
                   Kitchen Slip
                 </button>
                 <button
                   onClick={() => printDeliveryPreBill(selectedOrder)}
-                  className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition flex items-center"
+                  className="px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition flex items-center"
                 >
                   <Printer className="h-4 w-4 mr-1" />
                   Pre-Bill
                 </button>
                 <button
                   onClick={() => printDeliveryPaymentReceipt(selectedOrder)}
-                  className="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition flex items-center"
+                  className="px-3 py-2 bg-purple-600 text-white text-sm font-semibold rounded hover:bg-purple-700 transition flex items-center"
                 >
                   <Printer className="h-4 w-4 mr-1" />
                   Payment Receipt
