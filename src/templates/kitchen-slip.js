@@ -130,6 +130,14 @@ export default `<!DOCTYPE html>
       color: #000;
     }
 
+    .item-description {
+      font-size: 9px;
+      color: #333;
+      margin-top: 2px;
+      font-style: italic;
+      font-weight: normal;
+    }
+
     .header-row {
       background-color: #000;
       color: white;

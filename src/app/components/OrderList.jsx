@@ -116,10 +116,12 @@ export default function OrderList() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
 
   const [pageCache, setPageCache] = useState({});
   const [cacheKey, setCacheKey] = useState("");
   const [deliveryAreas, setDeliveryAreas] = useState([]);
+  const [branches, setBranches] = useState([]);
 
   const { latestOrder, notifications } = useSocket();
 
@@ -144,6 +146,22 @@ export default function OrderList() {
     fetchDeliveryAreas();
   }, []);
 
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const res = await fetch("/api/branches");
+        if (res.ok) {
+          const data = await res.json();
+          setBranches(data);
+        }
+      } catch (error) {
+        console.error("Error fetching branches:", error);
+      }
+    };
+
+    fetchBranches();
+  }, []);
+
   const getDeliveryFeeForArea = useCallback((areaName) => {
     if (!areaName || !deliveryAreas.length) return 0;
 
@@ -155,8 +173,8 @@ export default function OrderList() {
   }, [deliveryAreas]);
 
   const generateCacheKey = useCallback(() => {
-    return `${dateFilter}-${customDate || 'none'}-${typeFilter}-${statusFilter}-${paymentFilter}`;
-  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter]);
+    return `${dateFilter}-${customDate || 'none'}-${typeFilter}-${statusFilter}-${paymentFilter}-${branchFilter}`;
+  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter, branchFilter]);
 
   useEffect(() => {
     const newCacheKey = generateCacheKey();
@@ -165,7 +183,7 @@ export default function OrderList() {
       setCacheKey(newCacheKey);
       setCurrentPage(1);
     }
-  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter, cacheKey, generateCacheKey]);
+  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter, branchFilter, cacheKey, generateCacheKey]);
 
   useEffect(() => {
     if (latestOrder) {
@@ -211,6 +229,10 @@ export default function OrderList() {
 
       if (paymentFilter !== "all") {
         params.append("paymentFilter", paymentFilter);
+      }
+
+      if (branchFilter !== "all") {
+        params.append("branchFilter", branchFilter);
       }
 
       if (dateFilter === "custom" && customDate) {
@@ -276,7 +298,7 @@ export default function OrderList() {
     } finally {
       setLoading(false);
     }
-  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter, ordersPerPage, pageCache, generateCacheKey]);
+  }, [dateFilter, customDate, typeFilter, statusFilter, paymentFilter, branchFilter, ordersPerPage, pageCache, generateCacheKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -499,7 +521,6 @@ const updateOrderStatus = useCallback(async (orderId, updateData) => {
 
 const printKitchenSlip = useCallback(async (order) => {
   let orderToPrint = order;
-
   if (!order.items) {
     const fullOrder = await fetchOrderDetails(String(extractValue(order._id)));
     if (!fullOrder) {
@@ -525,13 +546,18 @@ const printKitchenSlip = useCallback(async (order) => {
     const itemName = item.title || item.name || "Unknown Item";
     const quantity = item.quantity || 1;
     
+    let descriptionHtml = '';
+    if (item.description && item.description.trim() !== '') {
+      descriptionHtml = `<div class="item-description" style="font-size: 9px; color: #333; margin-top: 2px; font-style: italic;">${item.description}</div>`;
+    }
+
     let modifiersHtml = '';
     
-    if (item.selectedVariation && item.selectedVariation.name) {
-      // modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
-    } else if (item.type) {
-      modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
-    }
+    // if (item.selectedVariation && item.selectedVariation.name) {
+    //   modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Variation: ${item.selectedVariation.name}</div>`;
+    // } else if (item.type) {
+    //   modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Type: ${item.type}</div>`;
+    // }
     
     if (item.selectedExtras && item.selectedExtras.length > 0) {
       modifiersHtml += `<div class="modifiers" style="margin-top: 3px;">Extras: ${item.selectedExtras.map(e => e.name).join('<br />')}</div>`;
@@ -551,7 +577,8 @@ const printKitchenSlip = useCallback(async (order) => {
     return `
       <tr>
         <td style="padding: 4px 0; border-top: 1px dashed black; ${borderStyle}">
-          ${itemName}
+          <div class="item-name" style="font-weight: 900;">${itemName}</div>
+          ${descriptionHtml}
           ${modifiersHtml}
         </td>
         <td style="padding: 4px 0; border-top: 1px dashed black; text-align: center; ${borderStyle}">${quantity}</td>
@@ -942,6 +969,27 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
             <option value="easypaisa">Easypaisa</option>
             <option value="jazzcash">JazzCash</option>
             <option value="bank">Bank Transfer</option>
+          </select>
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <label htmlFor="branchFilter" className="font-medium">
+            Branch:
+          </label>
+          <select
+            id="branchFilter"
+            className="px-3 py-1 border rounded"
+            value={branchFilter}
+            onChange={(e) => {
+              setBranchFilter(e.target.value);
+            }}
+          >
+            <option value="all">All Branches</option>
+            {branches.map((branch) => (
+              <option key={branch._id} value={branch._id}>
+                {branch.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

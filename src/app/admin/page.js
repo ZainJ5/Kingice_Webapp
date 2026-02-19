@@ -142,6 +142,11 @@ export default function AdminPage() {
         const itemName = item.title || item.name || "Unknown Item";
         const quantity = item.quantity || 1;
         
+        let descriptionHtml = '';
+        if (item.description && item.description.trim() !== '') {
+          descriptionHtml = `<div class="item-description" style="font-size: 9px; color: #333; margin-top: 2px; font-style: italic;">${item.description}</div>`;
+        }
+        
         let modifiersHtml = '';
         
         // if (item.selectedVariation && item.selectedVariation.name) {
@@ -168,7 +173,8 @@ export default function AdminPage() {
         return `
           <tr>
             <td style="padding: 8px 0; border-top: 1px dashed black; ${borderStyle}">
-              ${itemName}
+              <div class="item-name" style="font-weight: 900;">${itemName}</div>
+              ${descriptionHtml}
               ${modifiersHtml}
             </td>
             <td style="padding: 8px 0; border-top: 1px dashed black; text-align: center; ${borderStyle}">${quantity}</td>
