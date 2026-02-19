@@ -26,6 +26,7 @@ export async function GET(request) {
     const typeFilter = searchParams.get('typeFilter') || 'all';
     const statusFilter = searchParams.get('statusFilter') || 'all';
     const paymentFilter = searchParams.get('paymentFilter') || 'all';
+    const branchFilter = searchParams.get('branchFilter') || 'all';
     const customDate = searchParams.get('customDate') || '';
     
     const skip = (page - 1) * limit;
@@ -79,6 +80,11 @@ export async function GET(request) {
       filter.bankName = { $regex: /bank/i };
     }
 
+    // Add branch filter
+    if (branchFilter !== 'all') {
+      filter.branch = branchFilter;
+    }
+
     const listFields = {
       orderNo: 1,
       fullName: 1, 
@@ -91,6 +97,8 @@ export async function GET(request) {
       paymentMethod: 1,
       bankName: 1,
       branch: 1,
+      area: 1,
+      deliveryAddress: 1,
       createdAt: 1,
       itemCount: { $size: "$items" }
     };

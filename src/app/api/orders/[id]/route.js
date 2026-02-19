@@ -1,24 +1,30 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/app/lib/mongoose";
 import Order from "@/app/models/Order";
+import Branch from "@/app/models/Branch"; // Fixed: Added Branch import
 
 export async function GET(request, { params }) {
   try {
     await connectDB();
-    const { id } = await params;
     
+    // --- FIX FOR NEXT.JS 15 ---
+    const resolvedParams = await params; // Must await the object first
+    const { id } = resolvedParams;
+    // --------------------------
+
     const order = await Order.findById(id)
       .populate('branch', 'name location contactNumber')
       .lean();
-    
+
     if (!order) {
+      console.log("Order not found in DB");
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
-    
-    return NextResponse.json(order, { 
+
+    return NextResponse.json(order, {
       status: 200,
       headers: {
-        'Cache-Control': 'private, max-age=60' 
+        'Cache-Control': 'private, max-age=60'
       }
     });
   } catch (error) {
@@ -30,84 +36,47 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     await connectDB();
-    // FIX: Await the params object first
-    const { id } = await params;
+    
+    // --- FIX FOR NEXT.JS 15 ---
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    // --------------------------
     
     const updateData = await request.json();
-    
+
     if (updateData.status === 'Cancel' && !updateData.cancelReason) {
       return NextResponse.json(
         { message: "Cancel reason is required when status is Cancel" },
         { status: 400 }
       );
     }
-    
+
     const order = await Order.findById(id);
-    
+
     if (!order) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
-    
+
     if (updateData.items) {
-      for (const item of updateData.items) {
-        if (!item.title || !item.price) {
-          return NextResponse.json({
-            message: "Each order item must have a title and price",
-            status: 400
-          });
-        }
-        
-        if (item.selectedVariation && (!item.selectedVariation.name || !item.selectedVariation.price)) {
-          return NextResponse.json({
-            message: "Selected variation must have name and price",
-            status: 400
-          });
-        }
-        
-        if (item.selectedExtras) {
-          for (const extra of item.selectedExtras) {
-            if (!extra.name || !extra.price) {
-              return NextResponse.json({
-                message: "Each selected extra must have name and price",
-                status: 400
-              });
-            }
-          }
-        }
-        
-        if (item.selectedSideOrders) {
-          for (const sideOrder of item.selectedSideOrders) {
-            if (!sideOrder.name || !sideOrder.price) {
-              return NextResponse.json({
-                message: "Each selected side order must have name and price",
-                status: 400
-              });
-            }
-          }
-        }
-      }
-      
       order.items = updateData.items;
       delete updateData.items;
     }
-    
+
     Object.keys(updateData).forEach(key => {
       order[key] = updateData[key];
     });
-    
+
     await order.save();
-    
+
     return NextResponse.json(order.toObject(), { status: 200 });
   } catch (error) {
     console.error("Error updating order:", error);
-    
     if (error.name === 'ValidationError') {
-      return NextResponse.json({ 
-        message: "Validation error", 
-        errors: error.errors 
+      return NextResponse.json({
+        message: "Validation error",
+        errors: error.errors
       }, { status: 400 });
     }
-    
     return NextResponse.json({ message: "Failed to update order" }, { status: 500 });
   }
 }
@@ -115,29 +84,23 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     await connectDB();
-    // FIX: Await the params object first
-    const { id } = await params;
     
+    // --- FIX FOR NEXT.JS 15 ---
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    // --------------------------
+
     const exists = await Order.exists({ _id: id });
-    
+
     if (!exists) {
-      return NextResponse.json(
-        { message: "Order not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
-    
+
     await Order.deleteOne({ _id: id });
-    
-    return NextResponse.json(
-      { message: "Order deleted successfully" },
-      { status: 200 }
-    );
+
+    return NextResponse.json({ message: "Order deleted successfully" }, { status: 200 });
   } catch (error) {
     console.error("Error deleting order:", error);
-    return NextResponse.json(
-      { message: "Failed to delete order" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Failed to delete order" }, { status: 500 });
   }
 }
