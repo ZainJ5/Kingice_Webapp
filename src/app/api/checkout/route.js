@@ -100,6 +100,7 @@ export async function POST(request) {
             const formattedItem = {
               id: id,
               title: item.title || item.name || "",
+              description: item.description || "",
               price: Number(item.price) || 0,
               quantity: Number(item.quantity) || 1,
               imageUrl: item.imageUrl || null,
