@@ -548,7 +548,7 @@ const printKitchenSlip = useCallback(async (order) => {
     
     let descriptionHtml = '';
     if (item.description && item.description.trim() !== '') {
-      descriptionHtml = `<div class="item-description" style="font-size: 9px; color: #333; margin-top: 2px; font-style: italic;">${item.description}</div>`;
+      descriptionHtml = `<div class="item-description" style="font-size: 9px; color: #333; margin-top: 2px; font-style: italic; font-weight: normal !important;">${item.description}</div>`;
     }
 
     let modifiersHtml = '';
@@ -1068,14 +1068,8 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                   <td className="p-2 border">
                     <select
                       value={currentStatus}
-                      disabled={currentStatus === 'Complete'}
                       onChange={async (e) => {
                         const newStatus = e.target.value;
-                        if (currentStatus === 'Complete') {
-                          toast.error("Completed orders cannot be modified");
-                          e.target.value = currentStatus;
-                          return;
-                        }
                         if (statusLevels[newStatus] < currentLevel && newStatus !== 'Cancel') {
                           toast.error("Cannot revert to previous status");
                           e.target.value = currentStatus;
@@ -1097,13 +1091,13 @@ const printDeliveryPaymentReceipt = useCallback(async (order) => {
                           }
                         } catch (err) {}
                       }}
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(currentStatus)} w-full text-center ${currentStatus === 'Complete' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(currentStatus)} w-full text-center`}
                     >
                       {Object.keys(statusLevels).map(status => (
                         <option 
                           key={status} 
                           value={status} 
-                          disabled={(statusLevels[status] < currentLevel && status !== 'Cancel' && status !== currentStatus) || (currentStatus === 'Complete' && status !== 'Complete') || (currentStatus === 'Cancel' && status !== 'Cancel')}
+                          disabled={(statusLevels[status] < currentLevel && status !== 'Cancel' && status !== currentStatus) || (currentStatus === 'Complete' && status !== 'Cancel' && status !== 'Complete') || (currentStatus === 'Cancel' && status !== 'Cancel')}
                         >
                           {status}
                         </option>
