@@ -57,16 +57,6 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
 
-<<<<<<< HEAD
-    if (order.status === 'Complete') {
-      return NextResponse.json(
-        { message: "Completed orders cannot be modified" },
-        { status: 400 }
-      );
-    }
-
-=======
->>>>>>> 85cd33a16741733609d58ea1dd6331b409a6112a
     if (updateData.items) {
       order.items = updateData.items;
       delete updateData.items;
